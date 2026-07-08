@@ -4,6 +4,10 @@ Reads a Cline World-A ``messages.json`` v1 trace, version-gates it (fail loud on
 any other version), tolerantly ignores unknown keys, and normalizes the raw
 messages into turns with tool calls joined to their results on ``tool_use_id``.
 
+Content items whose ``type`` is unmodeled or mistyped are not dropped silently:
+they are collected on ``Trace.dropped_items`` so a caller can see what the loader
+could not model (surface hidden failures, never swallow them).
+
 This is the "load" stage of the walking skeleton (load trace -> score -> emit).
 No scorer, no report emitter, no CLI here.
 """
@@ -71,14 +75,17 @@ class Trace:
     version: int
     turns: tuple[Turn, ...]
     tool_calls: tuple[ToolCall, ...]
+    dropped_items: tuple[dict[str, Any], ...]
 
 
 def load_trace(path: str | Path) -> Trace:
     raw = _world_a_read_json(Path(path))
     _world_a_check_version(raw)
-    turns = _world_a_parse_turns(raw.get("messages", []))
+    turns, dropped_items = _world_a_parse_turns(raw.get("messages", []))
     tool_calls = _world_a_join_tool_calls(turns)
-    return Trace(version=1, turns=turns, tool_calls=tool_calls)
+    return Trace(
+        version=1, turns=turns, tool_calls=tool_calls, dropped_items=dropped_items
+    )
 
 
 def _world_a_read_json(path: Path) -> dict[str, Any]:
@@ -93,16 +100,23 @@ def _world_a_check_version(raw: dict[str, Any]) -> None:
         )
 
 
-def _world_a_parse_turns(messages: list[dict[str, Any]]) -> tuple[Turn, ...]:
+def _world_a_parse_turns(
+    messages: list[dict[str, Any]],
+) -> tuple[tuple[Turn, ...], tuple[dict[str, Any], ...]]:
     turns = []
+    dropped: list[dict[str, Any]] = []
     for message in messages:
-        content = _world_a_parse_content(message.get("content", []))
+        content, message_dropped = _world_a_parse_content(message.get("content", []))
         turns.append(Turn(role=message.get("role", ""), content=content))
-    return tuple(turns)
+        dropped.extend(message_dropped)
+    return tuple(turns), tuple(dropped)
 
 
-def _world_a_parse_content(items: list[dict[str, Any]]) -> tuple[ContentItem, ...]:
+def _world_a_parse_content(
+    items: list[dict[str, Any]],
+) -> tuple[tuple[ContentItem, ...], list[dict[str, Any]]]:
     parsed: list[ContentItem] = []
+    dropped: list[dict[str, Any]] = []
     for item in items:
         match item.get("type"):
             case "text":
@@ -126,8 +140,8 @@ def _world_a_parse_content(items: list[dict[str, Any]]) -> tuple[ContentItem, ..
                     )
                 )
             case _:
-                continue
-    return tuple(parsed)
+                dropped.append(item)
+    return tuple(parsed), dropped
 
 
 def _world_a_join_tool_calls(turns: tuple[Turn, ...]) -> tuple[ToolCall, ...]:

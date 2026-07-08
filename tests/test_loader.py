@@ -81,6 +81,32 @@ def test_loads_golden_v1(tmp_path: Path) -> None:
     assert trace.tool_calls[0].name == "read_files"
     assert trace.tool_calls[0].id == "tool-call-1"
     assert trace.tool_calls[0].is_error is False
+    assert trace.dropped_items == ()
+
+
+def test_unknown_content_type_is_surfaced_not_dropped(tmp_path: Path) -> None:
+    typo_item = {"type": "txt", "text": "REAL CONTENT that must not vanish"}
+    payload = {
+        "version": 1,
+        "sessionId": "fixture-drop-01",
+        "messages": [
+            {
+                "id": "m0",
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "kept"},
+                    typo_item,
+                ],
+            }
+        ],
+    }
+
+    trace = load_trace(_write(tmp_path, payload))
+
+    assert len(trace.turns[0].content) == 1
+    assert trace.turns[0].content[0].text == "kept"
+    assert len(trace.dropped_items) == 1
+    assert trace.dropped_items[0] == typo_item
 
 
 def test_rejects_version_2(tmp_path: Path) -> None:
