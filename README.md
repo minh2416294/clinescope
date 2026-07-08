@@ -17,7 +17,3 @@ with the **Cline World-A trace adapter** as the flagship and first adapter. Othe
 
 None of the mainstream eval frameworks ship a first-class **code-diff-quality scorer** or replay a
 real coding-agent trace. This does — starting with Cline, whose community it's built to serve.
-
-## Working title
-
-`agent-eval-harness` is a working title; the public name is a later decision.
