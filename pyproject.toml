@@ -15,3 +15,7 @@ dev = ["pytest"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agent_eval_harness"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
