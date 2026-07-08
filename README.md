@@ -1,4 +1,4 @@
-# agent-eval-harness
+# clinescope
 
 **A Cline eval harness — it scores the quality of a coding agent's diff and tool-trajectory from a real Cline execution trace.**
 
