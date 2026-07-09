@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "sessionId": "example-two-tool-01",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        { "type": "text", "text": "Add a newline at the end of config.py." }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        { "type": "thinking", "thinking": "First read the file, then patch it." },
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": { "paths": ["config.py"] }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "PORT = 8080",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "diff": "--- config.py\n+++ config.py\n@@ -1 +1 @@\n-PORT = 8080\n+PORT = 8080\n"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Applied 1 hunk to config.py",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}
