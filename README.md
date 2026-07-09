@@ -66,11 +66,11 @@ python -m clinescope examples/sample-trace.json --expected read_files apply_patc
 
 ## How it works
 
-Three stages, one thin path — **load → score → emit**:
+Three stages, one thin path: **load → score → emit**:
 
-1. **Load** (`clinescope.world_a`) — parse the World-A trace into typed turns and a flat list of tool calls, each joined to its result.
-2. **Score** (`clinescope.tool_selection`) — compute expected-recall against the caller's expected-tool set, returning the score plus the matched / missing / unexpected sets as evidence.
-3. **Emit** (`clinescope.report` + `clinescope.__main__`) — render the score and evidence as a stable plain-text report; the CLI is thin glue over a pure `render_report(...) -> str`.
+1. **Load** (`clinescope.world_a`) parse the World-A trace into typed turns and a flat list of tool calls, each joined to its result.
+2. **Score** (`clinescope.tool_selection`) compute expected-recall against the caller's expected-tool set, returning the score plus the matched / missing / unexpected sets as evidence.
+3. **Emit** (`clinescope.report` + `clinescope.__main__`) render the score and evidence as a stable plain-text report; the CLI is thin glue over a pure `render_report(...) -> str`.
 
 ## Roadmap
 
