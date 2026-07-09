@@ -14,8 +14,8 @@ dependencies = []
 [project.scripts]
 clinescope = "clinescope.__main__:main"
 
-[dependency-groups]
-dev = ["pytest"]
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "mypy"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/clinescope"]
@@ -23,3 +23,11 @@ packages = ["src/clinescope"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+strict = true

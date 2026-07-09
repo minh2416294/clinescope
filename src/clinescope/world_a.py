@@ -89,7 +89,12 @@ def load_trace(path: str | Path) -> Trace:
 
 
 def _world_a_read_json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise WorldATraceError(
+            f"Cline World-A trace must be a JSON object, got {type(raw).__name__}"
+        )
+    return raw
 
 
 def _world_a_check_version(raw: dict[str, Any]) -> None:
