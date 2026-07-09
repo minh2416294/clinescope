@@ -1,8 +1,8 @@
 """Report emitter: the EMIT stage of the walking skeleton (load -> score -> EMIT).
 
 A single pure function, :func:`render_report`, turns a loaded World-A
-:class:`~agent_eval_harness.world_a.Trace` and a
-:class:`~agent_eval_harness.tool_selection.ToolSelectionScore` into one
+:class:`~clinescope.world_a.Trace` and a
+:class:`~clinescope.tool_selection.ToolSelectionScore` into one
 human-readable, machine-greppable report string.
 
 No I/O, no LLM: aligned ``key: value`` lines, each frozenset ``sorted()`` for
@@ -14,8 +14,8 @@ than read here.
 
 from __future__ import annotations
 
-from agent_eval_harness.tool_selection import ToolSelectionScore
-from agent_eval_harness.world_a import Trace
+from clinescope.tool_selection import ToolSelectionScore
+from clinescope.world_a import Trace
 
 
 def render_report(
@@ -25,7 +25,7 @@ def render_report(
     session_id: str | None = None,
 ) -> str:
     lines = [
-        "=== agent-eval-harness report ===",
+        "=== clinescope report ===",
         f"sessionId:      {session_id if session_id is not None else '<unknown>'}",
         f"trace.version:  {trace.version}",
         f"turns:          {len(trace.turns)}",

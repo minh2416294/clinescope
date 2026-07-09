@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from agent_eval_harness.__main__ import main
-from agent_eval_harness.report import render_report
-from agent_eval_harness.tool_selection import score_tool_selection
-from agent_eval_harness.world_a import ToolCall, Trace, load_trace
+from clinescope.__main__ import main
+from clinescope.report import render_report
+from clinescope.tool_selection import score_tool_selection
+from clinescope.world_a import ToolCall, Trace, load_trace
 
 GOLDEN = Path(
     "C:/Users/admin/PycharmProjects/cline/sdk/packages/core/fixtures/messages/success.messages.json"

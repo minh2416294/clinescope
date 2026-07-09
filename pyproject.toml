@@ -3,18 +3,21 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agent-eval-harness"
+name = "clinescope"
 version = "0.0.0"
 description = "A Cline eval harness: scores diff quality + tool-trajectory from a real Cline messages.json trace."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.scripts]
+clinescope = "clinescope.__main__:main"
+
 [dependency-groups]
 dev = ["pytest"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/agent_eval_harness"]
+packages = ["src/clinescope"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

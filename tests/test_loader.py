@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_eval_harness.world_a import TraceVersionError, load_trace
+from clinescope.world_a import TraceVersionError, load_trace
 
 
 def _golden_messages() -> list[dict]:

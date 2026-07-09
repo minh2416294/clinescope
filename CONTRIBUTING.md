@@ -1,7 +1,7 @@
 # Contributing to clinescope
 
 Thanks for helping build clinescope. This is a `src`-layout Python package
-(`import agent_eval_harness`), Python 3.11+.
+(`import clinescope`), Python 3.11+.
 
 ## Setup
 
@@ -27,12 +27,12 @@ Two ways to stay safe:
 
   ```bash
   PYTHONPATH=src pytest -q
-  PYTHONPATH=src python -m agent_eval_harness <trace.json> --expected read_files
+  PYTHONPATH=src python -m clinescope <trace.json> --expected read_files
   ```
 
 `pytest` itself is already install-independent here: `pyproject.toml` sets
 `[tool.pytest.ini_options] pythonpath = ["src"]`, so plain `pytest -q` finds the package regardless of
-what any `.pth` points at. The gotcha only bites `python -m agent_eval_harness`, which does not read
+what any `.pth` points at. The gotcha only bites `python -m clinescope`, which does not read
 `pyproject.toml`.
 
 ## Running the tests
@@ -44,10 +44,10 @@ pytest -q
 ## Running the CLI
 
 ```bash
-python -m agent_eval_harness <trace.json> --expected <tool names...>
+python -m clinescope <trace.json> --expected <tool names...>
 # e.g.
-python -m agent_eval_harness path/to/messages.json --expected read_files write_file
+python -m clinescope path/to/messages.json --expected read_files write_file
 ```
 
-If `python -m agent_eval_harness` reports `No module named agent_eval_harness.__main__`, your editable
+If `python -m clinescope` reports `No module named clinescope.__main__`, your editable
 install is pinned to another worktree — re-run `pip install -e .` here, or prefix with `PYTHONPATH=src`.

@@ -1,7 +1,7 @@
 """Tool-selection-correctness scorer (deterministic, zero-LLM).
 
 The first metric of the walking skeleton's "score" stage (load -> SCORE -> emit).
-It scores a loaded :class:`~agent_eval_harness.world_a.Trace` against a
+It scores a loaded :class:`~clinescope.world_a.Trace` against a
 caller-supplied set of expected tool names, using name-only *recall*:
 
     score = |used names intersect expected| / |expected|
@@ -32,7 +32,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agent_eval_harness.world_a import Trace
+from clinescope.world_a import Trace
 
 
 @dataclass(frozen=True, slots=True)
