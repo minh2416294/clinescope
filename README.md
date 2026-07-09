@@ -2,6 +2,8 @@
 
 **A Cline eval harness — it scores the quality of a coding agent's diff and tool-trajectory from a real Cline execution trace.**
 
+> **clinescope is an independent, unofficial tool. It is not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used here only to describe compatibility — clinescope reads the trace format Cline produces.**
+
 Built for **agentic-coding traces, not chatbot Q&A**: point it at a Cline `messages.json` task
 trace and it emits a scored report — tool-selection correctness, code-diff quality, and task
 completion — the layer generic eval frameworks leave to a "write your own custom scorer."
