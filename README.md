@@ -20,7 +20,7 @@
 
 ## Why it's different
 
-Tool-selection and diff quality on a *coding-agent trace* are not what general eval frameworks score. Tools like deepeval and promptfoo focus on **prompt/output** evals — did the model's text answer meet an assertion. clinescope scores the **trajectory and the diff**: which tools the agent chose over a whole task, and (next) whether the patch it produced is coherent and minimal. That's the layer those frameworks leave to "write your own custom scorer."
+Tool-selection and diff quality on a *coding-agent trace* are not what general eval frameworks score. Tools like deepeval and promptfoo focus on **prompt/output** evals did the model's text answer meet an assertion. clinescope scores the **trajectory and the diff**: which tools the agent chose over a whole task, and (next) whether the patch it produced is coherent and minimal. That's the layer those frameworks leave to "write your own custom scorer."
 
 Under the hood the scoring engine is framework-agnostic; v1 ships with the Cline World-A adapter as the first and flagship adapter. Other adapters come later, only when a real second implementation exists.
 
