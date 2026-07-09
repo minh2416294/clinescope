@@ -1,6 +1,6 @@
 # clinescope
 
-**A Cline eval harness — it scores the quality of a coding agent's diff and tool-trajectory from a real Cline execution trace.**
+**A Cline eval harness  it scores the quality of a coding agent's diff and tool-trajectory from a real Cline execution trace.**
 
 > **clinescope is an independent, unofficial tool. It is not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used here only to describe compatibility — clinescope reads the trace format Cline produces.**
 
@@ -8,15 +8,15 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)
 
-**Status:** walking skeleton, runs end-to-end. It loads a Cline World-A `messages.json` trace, scores tool selection, and emits a report against Cline's golden fixture. The code-diff-quality scorer — the reason this exists — is next.
+**Status:** walking skeleton, runs end-to-end. It loads a Cline World-A `messages.json` trace, scores tool selection, and emits a report against Cline's golden fixture. The code-diff-quality scorer, the reason this exists, is next.
 
 ## What it does
 
 - Loads a Cline **World-A `messages.json` v1** trace: normalizes turns, joins each tool call to its result on `tool_use_id`, and version-gates the format (fails loud on an unsupported version).
-- Scores **tool-selection correctness** — did the agent call the tools the task expected? — as name-based recall over the trace.
+- Scores **tool-selection correctness**, did the agent call the tools the task expected?, as name-based recall over the trace.
 - Emits a **plain-text scored report** you can read or diff in CI.
 - Surfaces what it can't model instead of dropping it: unmodeled content items are collected on the trace, never silently discarded.
-- Reads the trace **read-only** — it never writes to or mutates the file it scores.
+- Reads the trace **read-only**, it never writes to or mutates the file it scores.
 
 ## Why it's different
 
@@ -84,7 +84,7 @@ Three stages, one thin path — **load → score → emit**:
 
 ## Contributing
 
-Small, discussed-first changes are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, how to run the tests and linters, and what a scorer change needs (a fixture trace + its expected score).
+Small, discussed-first changes are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, how to run the tests and linters, and what a scorer change needs (a fixture trace + its expected score).
 
 ## License
 
