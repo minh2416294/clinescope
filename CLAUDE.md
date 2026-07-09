@@ -74,7 +74,7 @@ module. No second adapter before a real one exists (two-adapter rule).
 ## Layout
 
 ```
-src/agent_eval_harness/   # the package (skeleton; fills starting Day 2)
+src/clinescope/           # the package (import clinescope)
 pyproject.toml            # metadata, no deps yet
 .venv/                    # local venv (git-ignored)
 writing-content/          # git-excluded build paper trail (created when a build phase runs)

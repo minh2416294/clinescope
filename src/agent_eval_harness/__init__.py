@@ -1,9 +1,0 @@
-"""agent-eval-harness — a Cline-native agentic-coding-trace eval harness.
-
-Package root. The thin path is load a World-A trace -> score tool selection ->
-render a report; see :mod:`agent_eval_harness.world_a`,
-:mod:`agent_eval_harness.tool_selection`, and :mod:`agent_eval_harness.report`,
-with :mod:`agent_eval_harness.__main__` as the CLI entry point.
-"""
-
-__version__ = "0.0.0"

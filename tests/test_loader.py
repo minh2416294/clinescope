@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_eval_harness.world_a import TraceVersionError, load_trace
+from clinescope.world_a import TraceVersionError, WorldATraceError, load_trace
 
 
 def _golden_messages() -> list[dict]:
@@ -118,3 +118,11 @@ def test_rejects_version_2(tmp_path: Path) -> None:
 
     with pytest.raises(TraceVersionError):
         load_trace(_write(tmp_path, payload))
+
+
+def test_rejects_non_object_top_level(tmp_path: Path) -> None:
+    path = tmp_path / "messages.json"
+    path.write_text(json.dumps([{"version": 1}]), encoding="utf-8")
+
+    with pytest.raises(WorldATraceError):
+        load_trace(path)

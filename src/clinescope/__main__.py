@@ -1,16 +1,16 @@
 """Thin CLI for the walking skeleton: load -> score -> EMIT.
 
 Usage:
-    python -m agent_eval_harness <trace.json> --expected read_files [write_file ...]
+    python -m clinescope <trace.json> --expected read_files [write_file ...]
 
 Loads a Cline World-A trace, scores tool selection against the expected tool
 names, renders the report, and prints it. The heavy lifting lives in
-:func:`agent_eval_harness.report.render_report` (a pure ``str``-returning
+:func:`clinescope.report.render_report` (a pure ``str``-returning
 function) so the report is testable WITHOUT a subprocess; this module is only
 argument parsing plus glue.
 
 The trace ``sessionId`` is not modelled on
-:class:`agent_eval_harness.world_a.Trace` (the loader discards it), so it is
+:class:`clinescope.world_a.Trace` (the loader discards it), so it is
 lifted here with one cheap read and passed through to the emitter.
 """
 
@@ -21,9 +21,9 @@ import json
 import sys
 from pathlib import Path
 
-from agent_eval_harness.report import render_report
-from agent_eval_harness.tool_selection import score_tool_selection
-from agent_eval_harness.world_a import load_trace
+from clinescope.report import render_report
+from clinescope.tool_selection import score_tool_selection
+from clinescope.world_a import load_trace
 
 
 def _read_session_id(path: Path) -> str | None:
@@ -33,7 +33,7 @@ def _read_session_id(path: Path) -> str | None:
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="agent_eval_harness")
+    parser = argparse.ArgumentParser(prog="clinescope")
     parser.add_argument(
         "trace", type=Path, help="Path to a Cline World-A messages.json trace"
     )

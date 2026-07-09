@@ -1,7 +1,7 @@
 import pytest
 
-from agent_eval_harness.tool_selection import ToolSelectionScore, score_tool_selection
-from agent_eval_harness.world_a import ToolCall, Trace
+from clinescope.tool_selection import ToolSelectionScore, score_tool_selection
+from clinescope.world_a import ToolCall, Trace
 
 
 def _trace(*tool_names: str) -> Trace:
