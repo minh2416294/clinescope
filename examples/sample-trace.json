@@ -26,7 +26,7 @@
         {
           "type": "tool_result",
           "tool_use_id": "call-1",
-          "content": "PORT = 8080",
+          "content": "MAX_RETRIES = 3\nPORT = 8080",
           "is_error": false
         }
       ]
@@ -39,7 +39,7 @@
           "id": "call-2",
           "name": "apply_patch",
           "input": {
-            "diff": "--- config.py\n+++ config.py\n@@ -1 +1 @@\n-PORT = 8080\n+PORT = 8080\n"
+            "diff": "--- config.py\n+++ config.py\n@@ -1,2 +1,3 @@\n MAX_RETRIES = 3\n-PORT = 8080\n\\ No newline at end of file\n+PORT = 8080\n"
           }
         }
       ]
