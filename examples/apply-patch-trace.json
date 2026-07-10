@@ -1,22 +1,25 @@
 {
   "version": 1,
-  "sessionId": "example-two-tool-01",
+  "sessionId": "example-apply-patch-01",
   "messages": [
     {
       "role": "user",
       "content": [
-        { "type": "text", "text": "Add a newline at the end of config.py." }
+        { "type": "text", "text": "Create note.txt containing the word hello." }
       ]
     },
     {
       "role": "assistant",
       "content": [
-        { "type": "thinking", "thinking": "First read the file, then patch it." },
+        {
+          "type": "thinking",
+          "thinking": "Check the directory first, then add the file with apply_patch."
+        },
         {
           "type": "tool_use",
           "id": "call-1",
           "name": "read_files",
-          "input": { "paths": ["config.py"] }
+          "input": { "path": "note.txt" }
         }
       ]
     },
@@ -26,8 +29,8 @@
         {
           "type": "tool_result",
           "tool_use_id": "call-1",
-          "content": "MAX_RETRIES = 3\nPORT = 8080",
-          "is_error": false
+          "content": "Error: file not found",
+          "is_error": true
         }
       ]
     },
@@ -39,7 +42,7 @@
           "id": "call-2",
           "name": "apply_patch",
           "input": {
-            "input": "*** Begin Patch\n*** Update File: config.py\n@@\n MAX_RETRIES = 3\n PORT = 8080\n+\n*** End Patch"
+            "input": "*** Begin Patch\n*** Add File: note.txt\n+hello\n*** End Patch"
           }
         }
       ]
@@ -50,7 +53,7 @@
         {
           "type": "tool_result",
           "tool_use_id": "call-2",
-          "content": "Applied 1 hunk to config.py",
+          "content": "Successfully applied patch to the following files:\nnote.txt",
           "is_error": false
         }
       ]

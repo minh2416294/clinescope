@@ -18,7 +18,8 @@ Point it at a Cline trace and it scores the run. `[x]` = works today · `[ ]` = 
 - [x] **Scores tool selection** — did the agent call the tools the task needed? Reported as a recall score with the matched / missing / unexpected tools shown.
 - [x] **Emits a plain-text report** you can read at a glance or diff in CI.
 - [x] **Never touches your files** — reads the trace read-only, and surfaces anything it can't model instead of silently dropping it.
-- [ ] **Scores diff quality** — is the patch the agent produced coherent and minimal, or a sprawling mess? *(the wedge — see [Why it's different](#why-its-different))*
+- [x] **Scores diff coherence** — does the patch the agent produced parse cleanly against Cline's real `apply_patch` grammar, or is it malformed? *(the wedge — see [Why it's different](#why-its-different))*
+- [ ] **Scores diff minimality** — is the coherent patch also tight, or a sprawling over-edit? *(next slice of the wedge)*
 - [ ] **Detects task completion** — did the run actually finish the job?
 - [ ] **Validates its own LLM judge** against human labels, so a score you can trust.
 - [ ] **Gates CI** — fail the build when an agent version regresses.
@@ -28,6 +29,8 @@ Point it at a Cline trace and it scores the run. `[x]` = works today · `[ ]` = 
 General eval tools — deepeval, promptfoo, Langfuse — score **prompt and output**: did the model's text answer meet an assertion. clinescope scores the **whole coding run**: which tools the agent chose across a task, whether it finished, and whether the diff it produced was coherent and minimal. That trajectory-and-diff layer is exactly what those tools leave to *"write your own custom scorer."*
 
 **The bet:** the diff a coding agent produces — not just whether the tests went green — is the signal that actually tells you if the run was good. Almost nobody scores it. That's why clinescope exists.
+
+The first slice of that scorer ships today: **diff coherence** grades the agent's patch against Cline's *real* `apply_patch` grammar (the `*** Begin Patch` / `*** Update File:` / `@@` envelope), from the trace text alone — is it well-formed, or a malformed patch that would fail to apply? It's a deterministic, zero-LLM gate. (Honesty caveat: this scores grammatical coherence, **not** whether the patch's context actually matches your on-disk file — that fuzzy match needs the repo Cline ran against, which a standalone trace doesn't carry.)
 
 Under the hood the scoring engine is framework-agnostic; it ships with the Cline adapter as the first and flagship one. Other adapters come later — only when a real second implementation exists to justify the seam.
 
@@ -62,7 +65,19 @@ used:           apply_patch, read_files
 matched:        apply_patch, read_files
 missing:        -
 unexpected:     -
+
+[diff_coherence]
+score:          1.0000
+passed_gates:   add_files_all_plus, move_placement_valid, no_stray_triple_star, update_hunks_wellformed
+failed_gates:   -
+violations:     -
+apply_patch_calls: 1
+cline_is_error: False
 ```
+
+A malformed patch — say an Add File whose lines are missing the `+` prefix — drops the
+`diff_coherence` score and names the gate it failed, and a trace with no `apply_patch` call at all
+scores `0.0` with `violations: no apply_patch tool call in trace` rather than silently passing.
 
 Ask for a tool the trace didn't use and the score drops, with the gap shown:
 
@@ -76,15 +91,16 @@ python -m clinescope examples/sample-trace.json --expected read_files apply_patc
 Three stages, one thin path: **load → score → emit**:
 
 1. **Load** (`clinescope.world_a`) parse the World-A trace into typed turns and a flat list of tool calls, each joined to its result.
-2. **Score** (`clinescope.tool_selection`) compute expected-recall against the caller's expected-tool set, returning the score plus the matched / missing / unexpected sets as evidence.
-3. **Emit** (`clinescope.report` + `clinescope.__main__`) render the score and evidence as a stable plain-text report; the CLI is thin glue over a pure `render_report(...) -> str`.
+2. **Score** — two deterministic, zero-LLM scorers today: `clinescope.tool_selection` computes expected-recall against the caller's expected-tool set, and `clinescope.diff_coherence` grades the `apply_patch` patch text against Cline's real grammar. Each returns its score plus evidence (matched/missing tools; passed/failed gates + violations).
+3. **Emit** (`clinescope.report` + `clinescope.__main__`) render the scores and evidence as a stable plain-text report; the CLI is thin glue over a pure `render_report(...) -> str`.
 
 ## Roadmap
 
 - [x] World-A trace loader (version-gated, tool-call join, surfaces unmodeled items)
 - [x] Tool-selection correctness scorer (name-based recall)
 - [x] Plain-text report emitter + CLI, runs on Cline's golden fixture
-- [ ] **Code-diff-quality scorer** — diff coherence / minimal-diff / apply-recovery on a real diff-bearing trace (the wedge)
+- [x] **Diff-coherence scorer** — grades the `apply_patch` patch against Cline's real grammar, on a real-format trace (the wedge, first slice)
+- [ ] Diff-minimality / apply-recovery scorers — the rest of the diff-quality wedge
 - [ ] Task-completion detection (successful `submit_and_exit`)
 - [ ] LLM-judge validation with chance-corrected agreement (Cohen's κ) against human labels
 - [ ] CI-gateable pass/fail on a seeded regression
