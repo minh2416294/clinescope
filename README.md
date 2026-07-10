@@ -20,21 +20,24 @@ Point it at a Cline trace and it scores the run. `[x]` = works today · `[ ]` = 
 - [x] **Never touches your files** — reads the trace read-only, and surfaces anything it can't model instead of silently dropping it.
 - [x] **Scores diff coherence** — does the patch the agent produced parse cleanly against Cline's real `apply_patch` grammar, or is it malformed? *(the wedge — see [Why it's different](#why-its-different))*
 - [x] **Scores diff minimality** — flags one specific bloat shape: a *blind whole-block rewrite* (delete N lines, retype N lines, keeping no anchor) inside an Update hunk. *(second slice of the wedge — deliberately narrow; see the caveat below)*
+- [x] **Scores apply-recovery** — when a patch *failed*, did the agent retry and land a confirmed fix on the same file? Scores the failure→recovery trajectory from the turn sequence. *(third slice of the wedge — the multi-turn dimension a single patch can't show)*
 - [ ] **Detects task completion** — did the run actually finish the job?
 - [ ] **Validates its own LLM judge** against human labels, so a score you can trust.
 - [ ] **Gates CI** — fail the build when an agent version regresses.
 
 ## Why it's different
 
-General eval tools — deepeval, promptfoo, Langfuse — score **prompt and output**: did the model's text answer meet an assertion. clinescope scores the **whole coding run**: which tools the agent chose across a task, whether it finished, and whether the diff it produced was coherent and minimal. That trajectory-and-diff layer is exactly what those tools leave to *"write your own custom scorer."*
+General eval tools — deepeval, promptfoo, Langfuse — score **prompt and output**: did the model's text answer meet an assertion. clinescope scores the **whole coding run**: which tools the agent chose across a task, whether the diff it produced was coherent and minimal, and — when a patch failed — whether the agent recovered. That trajectory-and-diff layer is exactly what those tools leave to *"write your own custom scorer."*
 
 **The bet:** the diff a coding agent produces — not just whether the tests went green — is the signal that actually tells you if the run was good. Almost nobody scores it. That's why clinescope exists.
 
-Two slices of that scorer ship today, both deterministic and zero-LLM, both read from the trace text alone:
+Three slices of that scorer ship today, all deterministic and zero-LLM, all read from the trace alone:
 
 **Diff coherence** grades the agent's patch against Cline's *real* `apply_patch` grammar (the `*** Begin Patch` / `*** Update File:` / `@@` envelope) — is it well-formed, or a malformed patch that would fail to apply? (Honesty caveat: this scores grammatical coherence, **not** whether the patch's context actually matches your on-disk file — that fuzzy match needs the repo Cline ran against, which a standalone trace doesn't carry.)
 
 **Diff minimality** asks one narrow question about the patch's *shape*: does each edited region keep an anchor, or is it a *blind whole-block rewrite* — delete N lines, retype N lines, keeping nothing (`N ≥ 3`)? It reports the fraction of Update hunks that are **not** blind rewrites. (Honesty caveat — read this: it detects exactly **one** bloat shape and is deliberately **blind** to the other, more common one, dragging large unchanged context. It does *not* threshold on context count, because context is what `apply_patch` needs to anchor a hunk — penalizing it would invert the metric on well-formed patches. A low score means "contains a large rewrite" (which may be *necessary* — read it as *large-block*, not *wasteful*); a high score means "no blind rewrite," **not** "minimal." There is no reference or ideal patch to compare against — a standalone trace carries neither — so this is a structural property of the patch text, never churn-vs-an-ideal.)
+
+**Apply-recovery** is the first *trajectory* scorer, not a single-patch one: of every `apply_patch` Cline marked failed, what fraction was later recovered — a strictly-later `apply_patch` that Cline **confirmed** applied (`is_error=false`) and that re-touched the same file? It scores per failed *file* (a multi-file failure fixed on only one file scores 0.5), and surfaces `same_file_refail` so a brute-force "retry until one lands" is visible, not hidden behind a `1.0`. (Honesty caveat — read this: "recovered" means only that a later same-file patch **applied**, *not* that it fixed the defect (no repo to verify against). It reads Cline's `is_error` as the oracle here — the one scorer that does. It is deliberately conservative: a retry with no joined verdict (`is_error` absent — a truncated trace) is **never** counted as recovery, so the number can't be inflated by cutting the log short. It is blind to cross-tool recovery: a failure fixed via `write_to_file` instead of `apply_patch` scores as *un*recovered — so a low score means "not recovered via a same-file confirmed apply_patch," not "not recovered." Paths are matched literally, no normalization.)
 
 Under the hood the scoring engine is framework-agnostic; it ships with the Cline adapter as the first and flagship one. Other adapters come later — only when a real second implementation exists to justify the seam.
 
@@ -88,12 +91,30 @@ add_file_lines: 0
 violations:     -
 apply_patch_calls: 1
 cline_is_error: False
+
+[apply_recovery]
+score:          1.0000
+applicable:     True
+total_failed_pairs: 1
+recovered_pairs: 1
+unrecovered_pairs: 0
+partially_recovered: 0
+same_file_refail: 0
+unverified_reattempts: 0
+verdict_coverage: 1.0000
+failed_files:   src/auth.py
+unparseable_failed_calls: 0
+violations:     -
+apply_patch_calls: 2
+cline_is_error: True
 ```
 
 `context_density` is descriptive only — it is reported so you can eyeball how much unchanged context the
 patch drags, but it never enters the `diff_minimality` score. A `score: n/a` with `applicable: False` means
 the trace had no `apply_patch` call at all, so there was no patch shape to check (the golden fixture is one
-such trace).
+such trace). `apply_recovery` also reports `score: n/a` with `applicable: False` when no `apply_patch` call
+*failed* — a recovery rate is undefined when nothing needed recovering; `verdict_coverage` distinguishes a
+genuinely clean run from a truncated trace whose verdicts were never joined.
 
 A malformed patch — say an Add File whose lines are missing the `+` prefix — drops the
 `diff_coherence` score and names the gate it failed, and a trace with no `apply_patch` call at all
@@ -111,7 +132,7 @@ python -m clinescope examples/sample-trace.json --expected read_files apply_patc
 Three stages, one thin path: **load → score → emit**:
 
 1. **Load** (`clinescope.world_a`) parse the World-A trace into typed turns and a flat list of tool calls, each joined to its result.
-2. **Score** — three deterministic, zero-LLM scorers today: `clinescope.tool_selection` computes expected-recall against the caller's expected-tool set, `clinescope.diff_coherence` grades the `apply_patch` patch text against Cline's real grammar, and `clinescope.diff_minimality` flags blind whole-block rewrites in that patch. Each returns its score plus evidence (matched/missing tools; passed/failed gates + violations; blind-rewrite-hunk count + a descriptive context-density number).
+2. **Score** — four deterministic, zero-LLM scorers today: `clinescope.tool_selection` computes expected-recall against the caller's expected-tool set, `clinescope.diff_coherence` grades the `apply_patch` patch text against Cline's real grammar, `clinescope.diff_minimality` flags blind whole-block rewrites in that patch, and `clinescope.apply_recovery` scores the failure→retry trajectory (did a failed patch get a confirmed same-file fix later?). Each returns its score plus evidence (matched/missing tools; passed/failed gates + violations; blind-rewrite-hunk count; recovered/unrecovered failed-file pairs + refail count).
 3. **Emit** (`clinescope.report` + `clinescope.__main__`) render the scores and evidence as a stable plain-text report; the CLI is thin glue over a pure `render_report(...) -> str`.
 
 ## Roadmap
@@ -121,7 +142,7 @@ Three stages, one thin path: **load → score → emit**:
 - [x] Plain-text report emitter + CLI, runs on Cline's golden fixture
 - [x] **Diff-coherence scorer** — grades the `apply_patch` patch against Cline's real grammar, on two structurally-different real-format traces (Add File; multi-hunk Update + Move + Delete) — the wedge, first slice
 - [x] **Diff-minimality scorer** — flags blind whole-block rewrites (delete ≥3 / retype ≥3) in the `apply_patch` patch, on the same real-format traces — the wedge, second slice
-- [ ] Apply-recovery scorer (did a failed `apply_patch` get retried and fixed?) — the rest of the diff-quality wedge
+- [x] **Apply-recovery scorer** — of every failed `apply_patch`, the fraction later recovered by a confirmed same-file retry; scored per failed file, on an authored real-format failure→retry trace — the wedge, third slice
 - [ ] Task-completion detection (successful `submit_and_exit`)
 - [ ] LLM-judge validation with chance-corrected agreement (Cohen's κ) against human labels
 - [ ] CI-gateable pass/fail on a seeded regression

@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "sessionId": "example-apply-recovery-01",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Change the return value of authenticate() in src/auth.py from True to a real token check."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "Read auth.py, then apply a patch to the authenticate function."
+        },
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": { "path": "src/auth.py" }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "def authenticate(token):\n    return True",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "Apply the fix. My context lines may not match exactly; if it fails I'll re-read and retry."
+        },
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: src/auth.py\n@@\n def authenticate(tok):\n-    return True\n+    return tok == EXPECTED_TOKEN\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Patch could not be applied because 1 hunk did not match the current file content.\nsrc/auth.py: hunk 1: Could not find matching context (similarity: 0.40). Chunk skipped.",
+          "is_error": true
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "The context was wrong (I guessed the signature). Retry with the real 'def authenticate(token):' context line from the read."
+        },
+        {
+          "type": "tool_use",
+          "id": "call-3",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: src/auth.py\n@@\n def authenticate(token):\n-    return True\n+    return token == EXPECTED_TOKEN\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-3",
+          "content": "Successfully applied patch to the following files:\nsrc/auth.py",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}
