@@ -3,21 +3,23 @@
 A single pure function, :func:`render_report`, turns a loaded World-A
 :class:`~clinescope.world_a.Trace` and a
 :class:`~clinescope.tool_selection.ToolSelectionScore` (and, optionally, a
-:class:`~clinescope.diff_coherence.DiffCoherenceScore`) into one
+:class:`~clinescope.diff_coherence.DiffCoherenceScore` and/or a
+:class:`~clinescope.diff_minimality.DiffMinimalityScore`) into one
 human-readable, machine-greppable report string.
 
 No I/O, no LLM: aligned ``key: value`` lines, each frozenset ``sorted()`` for
 stable output. The ``.score`` float stays exact on the dataclass; only the
 displayed value is formatted (``.4f``). ``sessionId`` is not modelled on
 ``Trace`` (the loader discards it), so it is passed in by the caller rather
-than read here. ``diff_coherence`` is an optional keyword: when ``None`` the
-``[diff_coherence]`` section is omitted, so existing single-scorer callers keep
-their exact output.
+than read here. ``diff_coherence`` and ``diff_minimality`` are optional
+keywords: when ``None`` the matching section is omitted, so existing
+single-scorer callers keep their exact output.
 """
 
 from __future__ import annotations
 
 from clinescope.diff_coherence import DiffCoherenceScore
+from clinescope.diff_minimality import DiffMinimalityScore
 from clinescope.tool_selection import ToolSelectionScore
 from clinescope.world_a import Trace
 
@@ -28,6 +30,7 @@ def render_report(
     *,
     session_id: str | None = None,
     diff_coherence: DiffCoherenceScore | None = None,
+    diff_minimality: DiffMinimalityScore | None = None,
 ) -> str:
     lines = [
         "=== clinescope report ===",
@@ -46,6 +49,8 @@ def render_report(
     ]
     if diff_coherence is not None:
         lines.extend(_render_diff_coherence(diff_coherence))
+    if diff_minimality is not None:
+        lines.extend(_render_diff_minimality(diff_minimality))
     return "\n".join(lines)
 
 
@@ -60,6 +65,26 @@ def _render_diff_coherence(score: DiffCoherenceScore) -> list[str]:
         f"apply_patch_calls: {score.apply_patch_call_count}",
         f"cline_is_error: {score.cline_apply_is_error}",
     ]
+
+
+def _render_diff_minimality(score: DiffMinimalityScore) -> list[str]:
+    return [
+        "",
+        "[diff_minimality]",
+        f"score:          {_render_optional_4f(score.score)}",
+        f"applicable:     {score.applicable}",
+        f"blind_rewrite_hunks: {score.blind_rewrite_hunks}",
+        f"hunks_with_body: {score.hunks_with_body}",
+        f"context_density: {_render_optional_4f(score.mean_context_density)}",
+        f"add_file_lines: {score.add_file_lines}",
+        f"violations:     {_render_violations(score.violations)}",
+        f"apply_patch_calls: {score.apply_patch_call_count}",
+        f"cline_is_error: {score.cline_apply_is_error}",
+    ]
+
+
+def _render_optional_4f(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.4f}"
 
 
 def _render_names(names: frozenset[str]) -> str:
