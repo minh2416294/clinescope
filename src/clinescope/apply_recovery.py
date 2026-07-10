@@ -34,14 +34,26 @@ re-attempted on the same files and Cline confirmed those re-attempts applied", N
 
 **Deliberate decisions (each a stated choice, not undefined behaviour):**
 
-* ``is_error`` IS THE ORACLE here (unlike the two siblings, which read it as context
-  only). Apply-recovery is *about* the failure/success verdict, so the score reads
-  ``is_error is True`` (failure) and ``is_error is False`` (confirmed success)
-  directly. ``None`` (no ``tool_result`` joined) is a THIRD state: neither failure
-  nor confirmed success.
-* Recovery requires ``is_error is False`` (Cline-confirmed), NOT merely ``is not
-  True``. Admitting ``None`` would let an adversary max the score by truncating the
-  trace right after any re-attempt (``None`` == "no verdict", not "it worked").
+* The VERDICT is the oracle here (unlike the two siblings, which read outcome as
+  context only). Apply-recovery is *about* the failure/success verdict, so the score
+  reads an EFFECTIVE verdict per call -- ``True`` (failure), ``False`` (confirmed
+  success), or ``None`` (a THIRD state: neither failure nor confirmed success).
+* The effective verdict is resolved with ``is_error`` AUTHORITATIVE, then a SECONDARY
+  ``"success"``-JSON oracle (:func:`_recovery_effective_verdict`): (1) if the loader
+  gave a real ``bool`` ``is_error``, use it (and it wins any conflict with the
+  content); (2) else, because a genuine Cline ``apply_patch`` result carries NO
+  ``is_error`` field and encodes the outcome as ``{...,"success":true/false}`` inside
+  the tool_result content JSON (cline ``definitions.ts`` + ``agent-message-codec.ts``),
+  read that ``"success"`` bool from a ``str`` content (``not success`` -> the
+  ``is_error`` polarity); (3) else ``None``. Without the oracle the scorer abstained on
+  every real trace (the Day-10 gap); the oracle is what lets it score genuine runs.
+* Recovery requires an effective verdict of ``False`` (Cline-confirmed OR
+  ``"success":true``), NOT merely ``is not True``. Admitting ``None`` would let an
+  adversary max the score by truncating the trace right after any re-attempt (``None``
+  == "no verdict", not "it worked"). The oracle NEVER weakens this: a truncated trace
+  loses the tool_result content too, so the ``"success"`` read fails closed to ``None``
+  -- the content JSON is written atomically with the result, so a readable ``"success"``
+  means the apply actually finished.
 * Same-target = literal edit-intent file path. ``targets(call)`` = the paths on
   ``*** Update File:`` and ``*** Add File:`` headers, plus the ``*** Move to:``
   DESTINATION. It EXCLUDES ``*** Delete File:`` paths and the Move SOURCE: re-deleting
@@ -56,10 +68,10 @@ re-attempted on the same files and Cline confirmed those re-attempts applied", N
 * Vacuous case: no failed pair -> ``score=None``, ``applicable=False``. A recovery
   rate is undefined when nothing failed; ``1.0`` would falsely headline flawless
   recovery, ``0.0`` would falsely accuse a clean run. ``verdict_coverage`` splits the
-  two honest sub-cases: ``> 0`` = a genuine clean run (verdicts present, none failed);
-  ``== 0`` = every ``apply_patch`` has ``is_error is None`` (a truncated export) --
-  surfaced with a distinct reason so an evidence gap is never laundered into
-  "nothing failed".
+  two honest sub-cases: ``> 0`` = a genuine clean run (EFFECTIVE verdicts present, none
+  failed); ``== 0`` = every ``apply_patch`` has a ``None`` effective verdict (neither
+  ``is_error`` nor a readable ``"success"`` -- a truncated export) -- surfaced with a
+  distinct reason so an evidence gap is never laundered into "nothing failed".
 
 The scorer is pure: no I/O, no LLM, deterministic. It reads only ``Trace.tool_calls``
 and reuses the coherence sibling's grammar parser.
@@ -67,6 +79,7 @@ and reuses the coherence sibling's grammar parser.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 from clinescope.diff_coherence import (
@@ -74,6 +87,11 @@ from clinescope.diff_coherence import (
     diff_coherence_read_patch_text,
 )
 from clinescope.world_a import ToolCall, Trace
+
+# The key inside an apply_patch tool_result's JSON-string content that carries the
+# outcome (source: cline definitions.ts createApplyPatchTool -> {query, result,
+# [error], success}). The SECONDARY oracle reads this when is_error is absent.
+_SUCCESS_KEY = "success"
 
 # Reused verbatim from cline apply-patch-parser.ts markers (see diff_coherence).
 # Matched WITH the trailing ": " so "*** End of File" / "*** Begin Patch" etc.
@@ -93,9 +111,11 @@ class ApplyRecoveryScore:
 
     Invariants:
 
-    * ``applicable`` is ``False`` iff no ``apply_patch`` call has ``is_error is
-      True`` (nothing failed); then ``score is None`` and the vacuous split is read
-      from ``verdict_coverage`` (``> 0`` clean run vs ``== 0`` no verdicts joined).
+    * ``applicable`` is ``False`` iff no ``apply_patch`` call has an EFFECTIVE verdict
+      of ``True`` (nothing failed); then ``score is None`` and the vacuous split is read
+      from ``verdict_coverage`` (``> 0`` clean run vs ``== 0`` no verdicts joined). The
+      effective verdict is ``is_error`` when present, else the ``"success"``-JSON oracle
+      (see the module docstring / :func:`_recovery_effective_verdict`).
     * Otherwise ``score = confirmed_recovered_pairs / total_failed_pairs`` in
       ``[0.0, 1.0]``. It is ``1.0`` iff every failed (call, file) pair was recovered.
     * ``total_failed_pairs`` counts EACH failed file of EACH failed call; an
@@ -115,12 +135,15 @@ class ApplyRecoveryScore:
       file -- evidence a reader can scan for a large index gap (a distant, unrelated
       later success that inflated the number -- the disclosed residual risk).
     * ``verdict_coverage`` = fraction of ``apply_patch`` calls carrying a non-``None``
-      verdict; ``None`` when there are no ``apply_patch`` calls at all.
+      EFFECTIVE verdict (``is_error`` or the ``"success"`` oracle); ``None`` when there
+      are no ``apply_patch`` calls at all.
     * ``violations`` has >=1 entry iff there is an unrecovered pair OR a vacuous
       evidence gap; ordered (detection order).
-    * ``cline_apply_is_error`` mirrors the FIRST ``apply_patch`` call's verdict --
-      context parity with the sibling scorers; the score reads every call's verdict,
-      not just this one.
+    * ``cline_apply_is_error`` mirrors the FIRST ``apply_patch`` call's RAW
+      ``tool_result.is_error`` (``None`` when the trace has no ``is_error`` field, as
+      real Cline apply_patch results do) -- context parity with the sibling scorers,
+      which also mirror the raw verdict. This is NOT the oracle-resolved verdict: the
+      SCORE reads the effective verdict of every call, the CONTEXT field stays raw.
 
     Measures a TRAJECTORY PATTERN (same-file confirmed re-attempt), NOT that the
     retry fixed the defect (see the module docstring's honesty caveat).
@@ -145,10 +168,18 @@ class ApplyRecoveryScore:
 
 @dataclass(frozen=True, slots=True)
 class _ApplyPatchView:
-    """One apply_patch call reduced to what the recovery scorer reads."""
+    """One apply_patch call reduced to what the recovery scorer reads.
+
+    ``is_error`` is the EFFECTIVE verdict the score reads: the loader-level
+    ``ToolCall.is_error`` when it is a real bool, else the ``"success"`` oracle's
+    reading of the tool_result content (``None`` when neither resolves). ``raw_is_error``
+    is the untouched loader verdict -- surfaced ONLY on ``cline_apply_is_error`` for
+    context parity with the sibling scorers, never read by the score.
+    """
 
     index: int
     is_error: bool | None
+    raw_is_error: bool | None
     targets: frozenset[str]
     unparseable: bool
 
@@ -194,12 +225,50 @@ def _recovery_apply_patch_views(trace: Trace) -> list[_ApplyPatchView]:
         views.append(
             _ApplyPatchView(
                 index=index,
-                is_error=call.is_error,
+                is_error=_recovery_effective_verdict(call),
+                raw_is_error=call.is_error,
                 targets=targets,
                 unparseable=unparseable,
             )
         )
     return views
+
+
+def _recovery_effective_verdict(call: ToolCall) -> bool | None:
+    """The effective failure/success verdict of one apply_patch call.
+
+    Precedence, is_error AUTHORITATIVE:
+
+    1. If ``call.is_error`` is a real ``bool`` -> return it directly (Cline's
+       loader-level verdict wins; it also wins any conflict with the content).
+    2. Else read the SECONDARY oracle: a genuine Cline apply_patch result carries
+       NO ``is_error`` field, so the loader gives ``None``; the outcome lives inside
+       the tool_result CONTENT as a JSON string ``{...,"success":true/false}``
+       (source: cline definitions.ts + agent-message-codec.ts). If ``result_content``
+       is a ``str`` that parses to a ``dict`` with a real ``bool`` ``"success"``,
+       return ``not success`` (success -> non-failing verdict ``False``; failure ->
+       failing verdict ``True``), matching the ``is_error`` polarity.
+    3. Else -> ``None`` (abstain). Fails CLOSED on non-str/list content, invalid or
+       truncated JSON, non-dict JSON, a missing/``null``/non-``bool`` ``"success"``.
+       Abstaining can only ever UNDER-count recovery (the numerator needs a confirmed
+       ``False``), never inflate it -- preserving the anti-truncation guarantee.
+    """
+    if isinstance(call.is_error, bool):
+        return call.is_error
+
+    content = call.result_content
+    if not isinstance(content, str):
+        return None
+    try:
+        parsed = json.loads(content)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    success = parsed.get(_SUCCESS_KEY)
+    if not isinstance(success, bool):
+        return None
+    return not success
 
 
 def _recovery_targets(call: ToolCall) -> tuple[frozenset[str], bool]:
@@ -318,7 +387,9 @@ def _recovery_grade(
         ),
         apply_patch_call_count=len(views),
         violations=violations,
-        cline_apply_is_error=views[0].is_error,
+        # RAW first-call verdict (parity with the sibling scorers' context field),
+        # NOT the effective/oracle-resolved verdict the score reads.
+        cline_apply_is_error=views[0].raw_is_error,
     )
 
 

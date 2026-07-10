@@ -20,6 +20,7 @@ exactly as the sibling scorers' example traces do.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -119,6 +120,57 @@ def _apply_call(
         result_content=None if is_error is None else "result",
         is_error=is_error,
     )
+
+
+def _apply_call_json(
+    call_id: str,
+    patch_text: str,
+    *,
+    result_content: str | list[object] | None,
+) -> ToolCall:
+    """One apply_patch call whose joined tool_result is a REAL Cline result shape.
+
+    Unlike ``_apply_call`` (which sets the loader-level ``is_error`` bool directly),
+    this builds the shape a genuine Cline ``apply_patch`` result carries: NO
+    ``is_error`` field (so the loader gives ``is_error=None``) and a JSON-string
+    ``result_content`` like ``{"query":"apply_patch","result":"...","success":true}``.
+    Reading the ``"success"`` bool out of that content is the secondary oracle. The
+    ``result_content`` type is deliberately permissive (``str | list | None``) so a
+    test can pass a non-str (the ``read_files`` list shape) to prove fail-closed.
+    """
+    return ToolCall(
+        id=call_id,
+        name="apply_patch",
+        # arg-type: result_content is deliberately widened to list/None here to
+        # feed the oracle non-str content and prove it fails closed (the loader's
+        # own annotation is str | None; a real trace can carry a list, per R3).
+        result_content=result_content,  # type: ignore[arg-type]
+        input={"input": patch_text},
+        is_error=None,
+    )
+
+
+def _apply_result_content(*, success: bool) -> str:
+    """The exact JSON-string content Cline writes for an apply_patch result.
+
+    Success: ``{"query":"apply_patch","result":"Successfully applied ...","success":true}``.
+    Failure: ``{"query":"apply_patch","result":"","error":"apply_patch failed: ...",
+    "success":false}`` (source: cline definitions.ts createApplyPatchTool).
+    """
+    if success:
+        payload = {
+            "query": "apply_patch",
+            "result": "Successfully applied patch to the following files:\nsrc/auth.py",
+            "success": True,
+        }
+    else:
+        payload = {
+            "query": "apply_patch",
+            "result": "",
+            "error": "apply_patch failed: hunk 1: Could not find matching context",
+            "success": False,
+        }
+    return json.dumps(payload)
 
 
 def _recovery_trace(*calls: ToolCall) -> Trace:
@@ -437,6 +489,194 @@ def test_trace_type_guard_raises_type_error() -> None:
     # The dangerous input: passing the raw patch STRING instead of a Trace.
     with pytest.raises(TypeError):
         score_apply_recovery(_update_patch("src/auth.py"))  # type: ignore[arg-type]
+
+
+# --- the "success"-JSON secondary oracle (real Cline apply_patch result shape) --
+#
+# A genuine Cline apply_patch result carries NO is_error field; the outcome lives
+# inside the tool_result CONTENT as a JSON string {"...","success":true/false}
+# (source: cline definitions.ts createApplyPatchTool + agent-message-codec.ts).
+# So on real traces is_error joins as None and the scorer must read "success" as a
+# SECONDARY oracle -- else it abstains on every real run (the Day-10 gap). is_error
+# stays AUTHORITATIVE when present (a bool wins); the oracle only fills the None gap.
+
+
+def test_success_json_failure_then_confirmed_retry_scores_1() -> None:
+    # THE real-shape recovery: neither call has is_error; the first content says
+    # success:false (a failure), the second success:true (a confirmed fix) on the
+    # same file. The oracle must resolve both and score recovery = 1.0 -- exactly
+    # what the four authored is_error traces could prove but no REAL trace could.
+    trace = _recovery_trace(
+        _apply_call_json(
+            "c1",
+            _update_patch("src/auth.py"),
+            result_content=_apply_result_content(success=False),
+        ),
+        _apply_call_json(
+            "c2",
+            _update_patch("src/auth.py"),
+            result_content=_apply_result_content(success=True),
+        ),
+    )
+    result = score_apply_recovery(trace)
+
+    assert result.score == 1.0
+    assert result.applicable is True
+    assert result.total_failed_pairs == 1
+    assert result.confirmed_recovered_pairs == 1
+    assert result.verdict_coverage == 1.0
+
+
+def test_success_json_failure_never_recovered_scores_0() -> None:
+    # A real-shape failure (success:false) with no later confirmed retry -> 0.0.
+    trace = _recovery_trace(
+        _apply_call_json(
+            "c1",
+            _update_patch("src/auth.py"),
+            result_content=_apply_result_content(success=False),
+        ),
+    )
+    result = score_apply_recovery(trace)
+
+    assert result.score == 0.0
+    assert result.applicable is True
+    assert result.total_failed_pairs == 1
+    assert result.confirmed_recovered_pairs == 0
+
+
+def test_success_json_all_true_is_clean_run_not_truncated() -> None:
+    # A real all-success run (both content success:true, no is_error) is a CLEAN
+    # run, not a truncated export: verdict_coverage must be 1.0 (the oracle read the
+    # verdicts) and the "no verdicts joined" violation must NOT fire. This is the
+    # Day-10 misfire fixed -- previously such a trace falsely tripped truncation.
+    trace = _recovery_trace(
+        _apply_call_json(
+            "c1",
+            _update_patch("src/x.py"),
+            result_content=_apply_result_content(success=True),
+        ),
+        _apply_call_json(
+            "c2",
+            _update_patch("src/y.py"),
+            result_content=_apply_result_content(success=True),
+        ),
+    )
+    result = score_apply_recovery(trace)
+
+    assert result.applicable is False  # nothing failed -> recovery undefined
+    assert result.score is None
+    assert result.verdict_coverage == 1.0
+    assert not any("no apply_patch verdicts" in v.lower() for v in result.violations)
+
+
+def test_is_error_bool_wins_over_conflicting_success_json() -> None:
+    # PRECEDENCE: is_error is authoritative. is_error=False (Cline-confirmed
+    # success) with a conflicting success:false in content -> the bool wins, so the
+    # call is a confirmed SUCCESS, and it recovers the earlier failure -> 1.0.
+    conflicting = ToolCall(
+        id="c2",
+        name="apply_patch",
+        input={"input": _update_patch("src/auth.py")},
+        result_content=_apply_result_content(success=False),  # says failed...
+        is_error=False,  # ...but is_error says confirmed success -> WINS
+    )
+    trace = _recovery_trace(
+        _apply_call("c1", _update_patch("src/auth.py"), is_error=True),
+        conflicting,
+    )
+    result = score_apply_recovery(trace)
+
+    assert result.score == 1.0
+    assert result.confirmed_recovered_pairs == 1
+
+
+def test_is_error_true_wins_over_success_true_json() -> None:
+    # The other precedence direction: is_error=True (failure) with success:true in
+    # content -> the bool wins, so this call is a FAILURE, not a recovery.
+    conflicting = ToolCall(
+        id="c2",
+        name="apply_patch",
+        input={"input": _update_patch("src/auth.py")},
+        result_content=_apply_result_content(success=True),  # says success...
+        is_error=True,  # ...but is_error says failed -> WINS
+    )
+    trace = _recovery_trace(
+        _apply_call("c1", _update_patch("src/auth.py"), is_error=True),
+        conflicting,
+    )
+    result = score_apply_recovery(trace)
+
+    # c1 fails, c2 also fails (is_error wins) and re-touches auth.py -> refail, not
+    # recovery: nothing confirmed -> 0.0.
+    assert result.score == 0.0
+    assert result.confirmed_recovered_pairs == 0
+    assert result.same_file_refail_count == 1
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "result",  # the existing _apply_call non-JSON string
+        "",  # empty
+        '{"success":tr',  # truncated / invalid JSON
+        "null",  # valid JSON but not a dict
+        "true",  # valid JSON bool, not a dict
+        "[]",  # valid JSON list, not a dict
+        "42",  # valid JSON number, not a dict
+        '{"query":"apply_patch"}',  # dict but no "success" key
+        '{"success":1}',  # "success" present but not a bool (int)
+        '{"success":"true"}',  # "success" a string, not a bool
+        '{"success":null}',  # "success" explicit null
+    ],
+)
+def test_oracle_fails_closed_on_non_success_content(content: str) -> None:
+    # Fail CLOSED: any content the oracle cannot confidently read as a bool
+    # "success" leaves the verdict None (abstain) -- never a guessed verdict. A
+    # single failing call with unreadable content is thus NOT a confirmed failure;
+    # with no readable verdict at all the run is not-applicable (verdict_coverage 0).
+    trace = _recovery_trace(
+        _apply_call_json("c1", _update_patch("src/x.py"), result_content=content),
+    )
+    result = score_apply_recovery(trace)
+
+    assert result.applicable is False
+    assert result.score is None
+    assert result.verdict_coverage == 0.0
+
+
+def test_oracle_ignores_list_content_read_files_shape() -> None:
+    # read_files results carry a LIST content [{...,"success":true}] (structured,
+    # not a JSON string). The oracle only parses str content -> a list is ignored
+    # (fails closed). Here an apply_patch call is given the list shape defensively;
+    # it must abstain, not crash or mis-read.
+    list_content: list[object] = [{"query": "x", "result": "y", "success": True}]
+    trace = _recovery_trace(
+        _apply_call_json("c1", _update_patch("src/x.py"), result_content=list_content),
+    )
+    result = score_apply_recovery(trace)
+
+    assert result.applicable is False
+    assert result.score is None
+    assert result.verdict_coverage == 0.0
+
+
+def test_cline_apply_is_error_stays_raw_none_under_oracle() -> None:
+    # The cline_apply_is_error CONTEXT field mirrors the RAW first-call is_error
+    # (parity with the sibling scorers), NOT the oracle-resolved verdict. A real
+    # apply_patch failure resolved only via the "success" oracle still reports the
+    # raw is_error (None) here -- the score uses the effective verdict, the context
+    # field stays raw.
+    trace = _recovery_trace(
+        _apply_call_json(
+            "c1",
+            _update_patch("src/auth.py"),
+            result_content=_apply_result_content(success=False),
+        ),
+    )
+    result = score_apply_recovery(trace)
+
+    assert result.total_failed_pairs == 1  # resolved via the oracle
+    assert result.cline_apply_is_error is None  # but the context field is RAW
 
 
 # --- report integration ------------------------------------------------------

@@ -15,12 +15,20 @@ CONFIRMED applied (``"success": true``). Provenance is in the trace itself
 **Real-shape finding this trace surfaced (the value of a live capture):** Cline's
 real ``apply_patch`` ``tool_result`` carries ``"success": true`` in its JSON
 ``content`` but NO ``is_error`` field at all. The loader maps a missing ``is_error``
-to ``None`` (the R11 fix -- an unknown verdict, never a coerced success). So
-``apply_recovery``, which keys strictly on ``is_error is False``, correctly ABSTAINS
-(``applicable=False``) rather than fake a verdict -- its anti-truncation guarantee
-firing on genuine data. The three text-only scorers are unaffected (they never read
-``is_error``). This is a scorer behaving correctly on a real shape, not a defect;
-the numbers below are pinned exactly as the live run produced them.
+to ``None`` (the R11 fix -- an unknown verdict, never a coerced success). The three
+text-only scorers are unaffected (they never read ``is_error``); ``tool_selection`` /
+``diff_coherence`` / ``diff_minimality`` all score exactly as the live run produced.
+
+**Day-11 update (the "success"-JSON secondary oracle).** Day 10 recorded that
+``apply_recovery`` ABSTAINED on this trace: keying strictly on ``is_error``, it read
+the ``None`` verdict as "no confirmed outcome" and reported a truncated-export gap.
+Day 11 taught the scorer to read the ``"success"`` boolean out of the tool_result
+content JSON as a SECONDARY oracle (``is_error`` still wins when present). Now this
+trace's ``"success": true`` resolves to a confirmed-success verdict, so the run is
+correctly recognized as a genuinely CLEAN run: nothing failed, so recovery is still
+undefined (``score=None``, ``applicable=False``) -- but for the honest reason, with
+``verdict_coverage == 1.0`` and NO false "no verdicts joined" violation (the Day-10
+misfire, fixed). The abstain is now a clean-run abstain, not an evidence-gap abstain.
 
 The test is ``skipif``-gated on the example file's presence, mirroring the authored
 example tests in ``test_diff_coherence.py`` / ``test_apply_recovery.py``.
@@ -126,10 +134,15 @@ def test_live_trace_diff_minimality_scores_1() -> None:
 @pytest.mark.skipif(
     not LIVE_TRACE.exists(), reason="live gpt-oss capture trace not present"
 )
-def test_live_trace_apply_recovery_abstains_on_absent_verdict() -> None:
-    # THE real-shape finding, pinned: the success tool_result omits is_error, so the
-    # verdict joins as None. apply_recovery refuses to score a run with no confirmed
-    # verdicts (anti-truncation guarantee), reporting applicable=False, not a fake 1.0.
+def test_live_trace_apply_recovery_reads_success_as_clean_run() -> None:
+    # Day-11 behavior (supersedes the Day-10 abstain-on-absent-verdict pin): the
+    # apply_patch tool_result omits is_error but carries "success": true in its
+    # content JSON. The secondary oracle reads that -> a confirmed-success verdict,
+    # so the run is a genuinely CLEAN run (nothing failed). Recovery is still
+    # undefined (score=None, applicable=False), but now for the honest reason:
+    # verdict_coverage == 1.0 (the verdict WAS read) with NO false "no verdicts
+    # joined" violation. Previously (Day 10) this abstained with verdict_coverage
+    # 0.0 and a truncated-export violation -- that misfire is fixed.
     trace = load_trace(LIVE_TRACE)
     score = score_apply_recovery(trace)
 
@@ -137,7 +150,10 @@ def test_live_trace_apply_recovery_abstains_on_absent_verdict() -> None:
     assert score.applicable is False
     assert score.total_failed_pairs == 0
     assert score.apply_patch_call_count == 1
-    assert score.verdict_coverage == 0.0
-    # It says WHY it abstained, in the open.
-    assert score.violations
-    assert "is_error None" in score.violations[0]
+    # The oracle resolved the verdict from "success": true -> full coverage.
+    assert score.verdict_coverage == 1.0
+    # A clean run raises no evidence-gap violation (the Day-10 false accusation).
+    assert score.violations == ()
+    # The RAW context field stays None (the trace really has no is_error field);
+    # only the SCORE reads the oracle-resolved verdict.
+    assert score.cline_apply_is_error is None
