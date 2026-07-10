@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 from clinescope.diff_coherence import score_diff_coherence
+from clinescope.diff_minimality import score_diff_minimality
 from clinescope.report import render_report
 from clinescope.tool_selection import score_tool_selection
 from clinescope.world_a import load_trace
@@ -53,8 +54,17 @@ def main(argv: list[str] | None = None) -> int:
     trace = load_trace(args.trace)
     score = score_tool_selection(trace, set(args.expected))
     diff_score = score_diff_coherence(trace)
+    minimality_score = score_diff_minimality(trace)
     session_id = _read_session_id(args.trace)
-    print(render_report(trace, score, session_id=session_id, diff_coherence=diff_score))
+    print(
+        render_report(
+            trace,
+            score,
+            session_id=session_id,
+            diff_coherence=diff_score,
+            diff_minimality=minimality_score,
+        )
+    )
     return 0
 
 
