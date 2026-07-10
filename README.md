@@ -143,6 +143,7 @@ Three stages, one thin path: **load → score → emit**:
 - [x] **Diff-coherence scorer** — grades the `apply_patch` patch against Cline's real grammar, on two structurally-different real-format traces (Add File; multi-hunk Update + Move + Delete) — the wedge, first slice
 - [x] **Diff-minimality scorer** — flags blind whole-block rewrites (delete ≥3 / retype ≥3) in the `apply_patch` patch, on the same real-format traces — the wedge, second slice
 - [x] **Apply-recovery scorer** — of every failed `apply_patch`, the fraction later recovered by a confirmed same-file retry; scored per failed file, on an authored real-format failure→retry trace — the wedge, third slice
+- [x] **Validated on a live capture** — all four scorers run on a trace captured from a real Cline CLI run against a local `gpt-oss:20b` model (`examples/live-gpt-oss-trace.json`), not just authored traces. The live run also surfaced a real-shape detail: Cline signals `apply_patch` success via the result's `"success": true` JSON, not an `is_error` field — so `apply_recovery` correctly abstains (`applicable: false`) rather than fake a verdict.
 - [ ] Task-completion detection (successful `submit_and_exit`)
 - [ ] LLM-judge validation with chance-corrected agreement (Cohen's κ) against human labels
 - [ ] CI-gateable pass/fail on a seeded regression
