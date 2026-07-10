@@ -133,6 +133,54 @@ BAD_END_BEFORE_BEGIN = "\n".join(
     ]
 )
 
+# Good: a structurally DIFFERENT multi-op patch -- a multi-hunk Update File with a
+# Move-to rename PLUS a Delete File, exercising gates G4 (>=1 '@@' + diff-prefixed
+# content across two hunks) and G6 (Move immediately after the Update header) that
+# the Day-6 single-line Add-File trace never hit. CONSTRUCTED from Cline's real
+# apply-patch-parser.ts grammar (parseUpdate reads '*** Move to:' on the line right
+# after the header; parseDelete is a body-less header) -- NOT copied from a passing
+# Cline test, because apply-patch.test.ts has no delete/rename/multi-hunk fixture.
+GOOD_MULTI_OP_UPDATE_MOVE_DELETE = "\n".join(
+    [
+        "*** Begin Patch",
+        "*** Update File: src/app.py",
+        "*** Move to: src/main.py",
+        "@@",
+        " def greet(name):",
+        '-    return "hi " + name',
+        '+    return f"hello {name}"',
+        "@@",
+        " def farewell(name):",
+        '-    return "bye " + name',
+        '+    return f"goodbye {name}"',
+        "*** Delete File: src/legacy.py",
+        "*** End Patch",
+    ]
+)
+
+# Bad: the SAME multi-op patch, but with '*** Move to:' relocated to AFTER the first
+# '@@' so it no longer sits immediately after the Update header. Breaks EXACTLY one
+# gate (G6 move_placement_valid); G4 still passes because the '*** Move to:' skip in
+# the update-content loop is position-independent. Proves the score is COMPUTED
+# (1.0 -> 0.75), not hardcoded to the Day-6 value.
+BAD_MULTI_OP_MISPLACED_MOVE = "\n".join(
+    [
+        "*** Begin Patch",
+        "*** Update File: src/app.py",
+        "@@",
+        "*** Move to: src/main.py",
+        " def greet(name):",
+        '-    return "hi " + name',
+        '+    return f"hello {name}"',
+        "@@",
+        " def farewell(name):",
+        '-    return "bye " + name',
+        '+    return f"goodbye {name}"',
+        "*** Delete File: src/legacy.py",
+        "*** End Patch",
+    ]
+)
+
 
 def _patch_trace(
     patch_text: str | None,
@@ -288,6 +336,39 @@ def test_update_hunk_without_section_marker_lowers_score() -> None:
     assert "update_hunks_wellformed" in result.failed_gates
 
 
+# --- second real-format trace: a structurally different multi-op patch --------
+# Retires (narrows) the Day-6 overfit tripwire -- the scorer is exercised on a
+# multi-hunk Update + Move + Delete shape, not just a single-line Add File.
+
+
+def test_multi_op_update_move_delete_scores_1() -> None:
+    # All four gates pass via DIFFERENT paths than Day-6's Add-File trace: G3
+    # vacuously (no Add), G4 across two '@@' hunks, G5 (all '***' known), G6
+    # (Move immediately after the Update header). Pins the passed-gate set so a
+    # constant-return mutant that always yields 1.0 is still caught elsewhere.
+    result = score_diff_coherence(_patch_trace(GOOD_MULTI_OP_UPDATE_MOVE_DELETE))
+
+    assert result.score == 1.0
+    assert result.failed_gates == frozenset()
+    assert result.violations == ()
+    assert "update_hunks_wellformed" in result.passed_gates
+    assert "move_placement_valid" in result.passed_gates
+
+
+def test_multi_op_misplaced_move_lowers_score_to_0_75() -> None:
+    # The anti-hardcode proof: the SAME patch with only the Move relocated to
+    # after '@@' breaks EXACTLY one gate (G6). The score moves 1.0 -> 0.75, so
+    # it is computed from this trace, not pinned to the Day-6 value. G4 must
+    # still pass -- if it also failed the score would be 0.50.
+    result = score_diff_coherence(_patch_trace(BAD_MULTI_OP_MISPLACED_MOVE))
+
+    assert result.score == 0.75
+    assert result.score < 1.0
+    assert "move_placement_valid" in result.failed_gates
+    assert "move_placement_valid" not in result.passed_gates
+    assert "update_hunks_wellformed" in result.passed_gates
+
+
 # --- oracle / multiplicity / guard -------------------------------------------
 
 
@@ -393,3 +474,52 @@ def test_load_apply_patch_trace_is_real_input_shape() -> None:
     assert patch_calls, "expected an apply_patch call in the example trace"
     assert "input" in patch_calls[0].input
     assert "diff" not in patch_calls[0].input
+
+
+# --- end-to-end on the SECOND authored real-format trace (multi-op) -----------
+# The second, structurally-different trace that narrows the overfit tripwire: a
+# multi-hunk Update + Move + Delete, distinct from Day-6's single Add-File.
+
+MULTI_OP_EXAMPLE = (
+    Path(__file__).resolve().parent.parent / "examples" / "multi-op-trace.json"
+)
+
+
+@pytest.mark.skipif(
+    not MULTI_OP_EXAMPLE.exists(), reason="multi-op example trace not present"
+)
+def test_cli_end_to_end_on_multi_op_trace(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = main([str(MULTI_OP_EXAMPLE), "--expected", "apply_patch"])
+
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "[diff_coherence]" in out
+    assert "score:          1.0000" in out
+    # Proves it exercised the Move/Update gates, not just the Day-6 Add path.
+    assert "move_placement_valid" in out
+    assert "update_hunks_wellformed" in out
+
+
+@pytest.mark.skipif(
+    not MULTI_OP_EXAMPLE.exists(), reason="multi-op example trace not present"
+)
+def test_multi_op_trace_scores_1_via_multi_hunk_update_and_move() -> None:
+    # Loads the real JSON off disk (not an inline body) and confirms the score is
+    # 1.0 through the multi-hunk Update + Move + Delete gates -- and that its patch
+    # text is genuinely different from Day-6's Add-File trace (id-keyed join gives
+    # cline_apply_is_error, and the patch carries a Move + Delete).
+    trace = load_trace(MULTI_OP_EXAMPLE)
+    result = score_diff_coherence(trace)
+
+    assert result.score == 1.0
+    assert result.failed_gates == frozenset()
+    assert result.cline_apply_is_error is False
+
+    patch_calls = [c for c in trace.tool_calls if c.name == "apply_patch"]
+    assert patch_calls, "expected an apply_patch call in the multi-op trace"
+    patch_text = patch_calls[0].input["input"]
+    assert "*** Move to:" in patch_text
+    assert "*** Delete File:" in patch_text
+    assert patch_text.count("@@") == 2
