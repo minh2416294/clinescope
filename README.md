@@ -99,7 +99,7 @@ Three stages, one thin path: **load → score → emit**:
 - [x] World-A trace loader (version-gated, tool-call join, surfaces unmodeled items)
 - [x] Tool-selection correctness scorer (name-based recall)
 - [x] Plain-text report emitter + CLI, runs on Cline's golden fixture
-- [x] **Diff-coherence scorer** — grades the `apply_patch` patch against Cline's real grammar, on a real-format trace (the wedge, first slice)
+- [x] **Diff-coherence scorer** — grades the `apply_patch` patch against Cline's real grammar, on two structurally-different real-format traces (Add File; multi-hunk Update + Move + Delete) — the wedge, first slice
 - [ ] Diff-minimality / apply-recovery scorers — the rest of the diff-quality wedge
 - [ ] Task-completion detection (successful `submit_and_exit`)
 - [ ] LLM-judge validation with chance-corrected agreement (Cohen's κ) against human labels
