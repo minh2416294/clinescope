@@ -49,7 +49,10 @@ class ToolUseItem:
 class ToolResultItem:
     tool_use_id: str
     content: str
-    is_error: bool
+    # None = no explicit verdict (key missing OR an explicit JSON null); a bool is
+    # Cline's real verdict. Distinguishing null-from-false matters downstream: a
+    # scorer must not read an unknown verdict as a confirmed success.
+    is_error: bool | None
 
 
 ContentItem: TypeAlias = TextItem | ThinkingItem | ToolUseItem | ToolResultItem
@@ -137,11 +140,16 @@ def _world_a_parse_content(
                     )
                 )
             case "tool_result":
+                raw_is_error = item.get("is_error")
                 parsed.append(
                     ToolResultItem(
                         tool_use_id=item.get("tool_use_id", ""),
                         content=item.get("content", ""),
-                        is_error=bool(item.get("is_error", False)),
+                        # Only a real bool is a verdict; a missing key or an explicit
+                        # null is an UNKNOWN verdict (None), never a coerced False.
+                        is_error=raw_is_error
+                        if isinstance(raw_is_error, bool)
+                        else None,
                     )
                 )
             case _:

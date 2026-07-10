@@ -18,6 +18,7 @@ single-scorer callers keep their exact output.
 
 from __future__ import annotations
 
+from clinescope.apply_recovery import ApplyRecoveryScore
 from clinescope.diff_coherence import DiffCoherenceScore
 from clinescope.diff_minimality import DiffMinimalityScore
 from clinescope.tool_selection import ToolSelectionScore
@@ -31,6 +32,7 @@ def render_report(
     session_id: str | None = None,
     diff_coherence: DiffCoherenceScore | None = None,
     diff_minimality: DiffMinimalityScore | None = None,
+    apply_recovery: ApplyRecoveryScore | None = None,
 ) -> str:
     lines = [
         "=== clinescope report ===",
@@ -51,6 +53,8 @@ def render_report(
         lines.extend(_render_diff_coherence(diff_coherence))
     if diff_minimality is not None:
         lines.extend(_render_diff_minimality(diff_minimality))
+    if apply_recovery is not None:
+        lines.extend(_render_apply_recovery(apply_recovery))
     return "\n".join(lines)
 
 
@@ -81,6 +85,38 @@ def _render_diff_minimality(score: DiffMinimalityScore) -> list[str]:
         f"apply_patch_calls: {score.apply_patch_call_count}",
         f"cline_is_error: {score.cline_apply_is_error}",
     ]
+
+
+def _render_apply_recovery(score: ApplyRecoveryScore) -> list[str]:
+    return [
+        "",
+        "[apply_recovery]",
+        f"score:          {_render_optional_4f(score.score)}",
+        f"applicable:     {score.applicable}",
+        f"total_failed_pairs: {score.total_failed_pairs}",
+        f"recovered_pairs: {score.confirmed_recovered_pairs}",
+        f"unrecovered_pairs: {score.unrecovered_pairs}",
+        f"partially_recovered: {score.partially_recovered_failures}",
+        f"same_file_refail: {score.same_file_refail_count}",
+        f"unverified_reattempts: {score.unverified_reattempt_pairs}",
+        f"verdict_coverage: {_render_optional_4f(score.verdict_coverage)}",
+        f"failed_files:   {_render_violations(score.failed_target_paths)}",
+        f"recovered_by:   {_render_recovery_pairs(score.recovery_pairs)}",
+        f"unparseable_failed_calls: {score.unparseable_failed_calls}",
+        f"violations:     {_render_violations(score.violations)}",
+        f"apply_patch_calls: {score.apply_patch_call_count}",
+        f"cline_is_error: {score.cline_apply_is_error}",
+    ]
+
+
+def _render_recovery_pairs(pairs: tuple[tuple[int, int, str], ...]) -> str:
+    # Each triple: the failed call index, the confirming call index, the file. The
+    # index gap is the evidence -- a large gap is a distant (possibly unrelated) fix.
+    return (
+        "; ".join(f"{path} @ call {fail}->{fixer}" for fail, fixer, path in pairs)
+        if pairs
+        else "-"
+    )
 
 
 def _render_optional_4f(value: float | None) -> str:

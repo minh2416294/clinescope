@@ -21,6 +21,7 @@ import json
 import sys
 from pathlib import Path
 
+from clinescope.apply_recovery import score_apply_recovery
 from clinescope.diff_coherence import score_diff_coherence
 from clinescope.diff_minimality import score_diff_minimality
 from clinescope.report import render_report
@@ -55,6 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     score = score_tool_selection(trace, set(args.expected))
     diff_score = score_diff_coherence(trace)
     minimality_score = score_diff_minimality(trace)
+    recovery_score = score_apply_recovery(trace)
     session_id = _read_session_id(args.trace)
     print(
         render_report(
@@ -63,6 +65,7 @@ def main(argv: list[str] | None = None) -> int:
             session_id=session_id,
             diff_coherence=diff_score,
             diff_minimality=minimality_score,
+            apply_recovery=recovery_score,
         )
     )
     return 0

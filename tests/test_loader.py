@@ -109,6 +109,79 @@ def test_unknown_content_type_is_surfaced_not_dropped(tmp_path: Path) -> None:
     assert trace.dropped_items[0] == typo_item
 
 
+def _tool_result_trace(tmp_path: Path, result_item: dict) -> Path:
+    """A minimal v1 trace: one tool_use joined to ``result_item``."""
+    payload = {
+        "version": 1,
+        "sessionId": "fixture-is-error-01",
+        "messages": [
+            {
+                "id": "m0",
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "tc-1",
+                        "name": "apply_patch",
+                        "input": {"input": "*** Begin Patch\n*** End Patch"},
+                    }
+                ],
+            },
+            {"id": "m1", "role": "user", "content": [result_item]},
+        ],
+    }
+    return _write(tmp_path, payload)
+
+
+def test_explicit_is_error_null_maps_to_none_not_false(tmp_path: Path) -> None:
+    # A PRESENT tool_result with an explicit JSON null verdict is NOT a confirmed
+    # success -- it is an unknown verdict. Coercing it to False (the old
+    # bool(get(...)) behavior) would let a null-verdict retry count as a recovery
+    # in apply_recovery. It must map to None (distinct from True/False).
+    path = _tool_result_trace(
+        tmp_path,
+        {
+            "type": "tool_result",
+            "tool_use_id": "tc-1",
+            "content": "x",
+            "is_error": None,
+        },
+    )
+
+    trace = load_trace(path)
+
+    assert trace.tool_calls[0].is_error is None
+
+
+def test_missing_is_error_key_maps_to_none(tmp_path: Path) -> None:
+    # A tool_result with no is_error field at all is likewise an unknown verdict,
+    # not a success. (Cline always emits is_error; this is malformed-input hardening.)
+    path = _tool_result_trace(
+        tmp_path,
+        {"type": "tool_result", "tool_use_id": "tc-1", "content": "x"},
+    )
+
+    trace = load_trace(path)
+
+    assert trace.tool_calls[0].is_error is None
+
+
+def test_explicit_is_error_true_and_false_preserved(tmp_path: Path) -> None:
+    # The real verdicts still map to themselves (regression guard for the fix).
+    for flag in (True, False):
+        path = _tool_result_trace(
+            tmp_path,
+            {
+                "type": "tool_result",
+                "tool_use_id": "tc-1",
+                "content": "x",
+                "is_error": flag,
+            },
+        )
+        trace = load_trace(path)
+        assert trace.tool_calls[0].is_error is flag
+
+
 def test_rejects_version_2(tmp_path: Path) -> None:
     payload = {
         "version": 2,
