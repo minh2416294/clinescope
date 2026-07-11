@@ -35,6 +35,8 @@ clinescope path/to/messages.json --expected read_files apply_patch
 
 After `--expected`, list the tools you think the task needed (here: read a file, then edit it). Clinescope checks whether the agent actually used them and scores the rest of the run automatically. It reads the log only, and never changes your files.
 
+Not sure which tool names to use? Run `clinescope --list-tools` to print the ones Clinescope knows. If you omit `--expected` entirely, tool selection is skipped (shown as `n/a`) rather than scored, and the other three scorers still run.
+
 By default it prints a one-line summary per scorer. For the full breakdown of every scorer (gates, counters, evidence), add `--verbose`:
 
 ```bash
