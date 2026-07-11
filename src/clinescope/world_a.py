@@ -45,10 +45,22 @@ class ToolUseItem:
     input: dict[str, Any]
 
 
+# A Cline tool_result's content value. Cline emits TWO real shapes: a plain str
+# (an apply_patch result -- a JSON string), and a single-element list of structured
+# result objects (a read_files / run_commands result -- [{"query","result","success"}]).
+# The loader PRESERVES whichever shape it finds; it does NOT normalize or reject
+# either. The only value-consumer, apply_recovery._recovery_effective_verdict, reads
+# content solely for apply_patch calls (always str) and abstains (returns None) on any
+# non-str via an isinstance(str) guard -- so a list content is a documented, tested
+# ABSTAIN boundary, never a crash. Widened from a bare ``str`` (which was a lie for
+# real traces carrying list content) to match reality. (R3)
+ToolResultContent: TypeAlias = str | list[object]
+
+
 @dataclass(frozen=True, slots=True)
 class ToolResultItem:
     tool_use_id: str
-    content: str
+    content: ToolResultContent
     # None = no explicit verdict (key missing OR an explicit JSON null); a bool is
     # Cline's real verdict. Distinguishing null-from-false matters downstream: a
     # scorer must not read an unknown verdict as a confirmed success.
@@ -69,7 +81,9 @@ class ToolCall:
     id: str
     name: str
     input: dict[str, Any]
-    result_content: str | None
+    # str or list (see ToolResultContent) when a tool_result was joined; None when
+    # the tool_use had no matching result.
+    result_content: ToolResultContent | None
     is_error: bool | None
 
 
@@ -144,6 +158,9 @@ def _world_a_parse_content(
                 parsed.append(
                     ToolResultItem(
                         tool_use_id=item.get("tool_use_id", ""),
+                        # A present content (str OR list) is preserved as-is; the ""
+                        # default fires ONLY when the "content" key is entirely absent
+                        # (a malformed result) -- a valid str the oracle abstains on.
                         content=item.get("content", ""),
                         # Only a real bool is a verdict; a missing key or an explicit
                         # null is an UNKNOWN verdict (None), never a coerced False.
