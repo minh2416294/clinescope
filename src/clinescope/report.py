@@ -29,6 +29,13 @@ exact output in both renderings.
 
 from __future__ import annotations
 
+from clinescope.advice import (
+    ScorerAdvice,
+    advice_for_apply_recovery,
+    advice_for_diff_coherence,
+    advice_for_diff_minimality,
+    advice_for_tool_selection,
+)
 from clinescope.apply_recovery import ApplyRecoveryScore
 from clinescope.diff_coherence import DiffCoherenceScore
 from clinescope.diff_minimality import DiffMinimalityScore
@@ -51,6 +58,7 @@ def render_report(
     diff_minimality: DiffMinimalityScore | None = None,
     apply_recovery: ApplyRecoveryScore | None = None,
     expected_provided: bool = True,
+    advice: bool = False,
     verbose: bool = False,
 ) -> str:
     if verbose:
@@ -62,7 +70,7 @@ def render_report(
             diff_minimality=diff_minimality,
             apply_recovery=apply_recovery,
         )
-    return _render_summary(
+    summary = _render_summary(
         trace,
         score,
         session_id=session_id,
@@ -71,6 +79,50 @@ def render_report(
         apply_recovery=apply_recovery,
         expected_provided=expected_provided,
     )
+    if not advice:
+        return summary
+    advice_block = _render_advice_block(
+        score, diff_coherence, diff_minimality, apply_recovery
+    )
+    return summary if advice_block is None else f"{summary}\n{advice_block}"
+
+
+# --- Advice / coach layer (opt-in via --advice; reads existing evidence) -------
+
+
+def _render_advice_block(
+    score: ToolSelectionScore,
+    diff_coherence: DiffCoherenceScore | None,
+    diff_minimality: DiffMinimalityScore | None,
+    apply_recovery: ApplyRecoveryScore | None,
+) -> str | None:
+    # One advice entry per FAILING scorer, in report order; a passing/abstaining
+    # scorer contributes nothing. Returns None when there is nothing to coach, so
+    # a clean run under --advice adds no block.
+    entries: list[tuple[str, ScorerAdvice]] = []
+    ts = advice_for_tool_selection(score)
+    if ts is not None:
+        entries.append(("tool_selection", ts))
+    if diff_coherence is not None:
+        dc = advice_for_diff_coherence(diff_coherence)
+        if dc is not None:
+            entries.append(("diff_coherence", dc))
+    if diff_minimality is not None:
+        dm = advice_for_diff_minimality(diff_minimality)
+        if dm is not None:
+            entries.append(("diff_minimality", dm))
+    if apply_recovery is not None:
+        ar = advice_for_apply_recovery(apply_recovery)
+        if ar is not None:
+            entries.append(("apply_recovery", ar))
+    if not entries:
+        return None
+
+    lines = ["", "advice (how to improve the agent):"]
+    for name, entry in entries:
+        lines.append(f"  [{name}] {entry.label.value}")
+        lines.extend(f"    - {line}" for line in entry.lines)
+    return "\n".join(lines)
 
 
 # --- Default summary rendering (one line per scorer) --------------------------

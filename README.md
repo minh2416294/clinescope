@@ -43,6 +43,12 @@ By default it prints a one-line summary per scorer. For the full breakdown of ev
 clinescope path/to/messages.json --expected read_files apply_patch --verbose
 ```
 
+To turn a low score into a concrete next step, add `--advice`. For each failing scorer it prints a short failure label and what to change (usually a prompt fix), quoting the run's own evidence — the missing tool, the malformed patch line, the unrecovered file. A clean run prints no advice.
+
+```bash
+clinescope path/to/messages.json --expected read_files apply_patch --advice
+```
+
 ## Contributing
 
 Small, discussed-first changes are welcome - see [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, tests, and what a scorer change needs.
