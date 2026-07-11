@@ -114,3 +114,30 @@ for r in resolved:
 `gold_load_items` parses without resolving; `gold_resolve_item` / `gold_load_resolved`
 resolve each pointer to its trace and first apply_patch, failing loud on a missing trace, a
 trace with no apply_patch, or a `patch_sha256` drift.
+
+## The judge cache (`diff_minimality.judge.jsonl`)
+
+`diff_minimality.judge.jsonl` is the committed **judge-output cache** — one row per gold
+item, produced by running the opt-in LLM judge over the gold set:
+
+```
+python -m clinescope.judge_run --report        # judge all items, write the cache, print κ
+python -m clinescope.judge_run --report-only    # re-print κ from the cache (NO model call)
+```
+
+It is committed so κ is reproducible with **no model call and no cost**: the reporter reads
+this cache + the human labels above and computes Cohen's κ. Each row is a JSON object:
+
+- `schema_version` (int), `item_id` (str, joins to the gold row), `dimension` (str).
+- `outcome` — `"verdict"` (a real judge label), `"unparseable"` (no `VERDICT:` line in the
+  model answer), or `"error"` (an endpoint / truncation failure). Only `"verdict"` rows enter
+  κ; the others are **excluded and counted** (never silently defaulted to a class).
+- `judge_label` — `"WASTEFUL"` / `"NOT-WASTEFUL"`, or `null` for a non-verdict outcome.
+- `rationale` — the raw model answer (audit trail for a low-κ disagreement, never scored).
+- `model_id` — the exact model that produced the verdict (the free-vs-paid provenance).
+- `patch_sha256` — the digest of the lifted patch judged; the reporter fails loud if the gold
+  trace drifted between the run and the report.
+- `judged_at` — ISO-8601 timestamp.
+
+The cache is written LF-only (`.gitattributes` pins `*.jsonl eol=lf`). The judge is **opt-in**
+and the ONLY LLM surface — the core scorers stay deterministic / zero-LLM / keyless.
