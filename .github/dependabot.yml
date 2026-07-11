@@ -1,0 +1,9 @@
+version: 2
+updates:
+  # Keep the GitHub Actions in .github/workflows/ up to date. clinescope has no runtime
+  # dependencies (dependencies = []), so there is no pip ecosystem to watch — Actions is
+  # the only surface that drifts.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

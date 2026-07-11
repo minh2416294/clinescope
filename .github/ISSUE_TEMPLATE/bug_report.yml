@@ -1,0 +1,63 @@
+name: Bug report
+description: A scorer, the CLI, or the trace loader misbehaves on a real trace.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. clinescope scores a Cline `messages.json` trace, so a bug is usually
+        reproducible from a trace + the command you ran. Please include both.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did clinescope do, and what did you expect instead?
+      placeholder: "e.g. diff_coherence scored 0.0 on a patch that applies cleanly in Cline."
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command you ran
+      placeholder: "clinescope path/to/messages.json --expected read_files apply_patch"
+    validations:
+      required: true
+  - type: dropdown
+    id: trace-source
+    attributes:
+      label: Trace source
+      description: Where did the trace come from?
+      options:
+        - A real Cline CLI run
+        - A real Cline VS Code session
+        - A hand-authored / synthetic trace
+        - The bundled examples/
+        - Other (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: expected-vs-actual
+    attributes:
+      label: Expected vs actual score
+      description: Which scorer, the number you expected, and the number you got.
+      placeholder: "diff_coherence — expected 1.0, got 0.0."
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal trace to reproduce
+      description: >
+        Paste the smallest trace that triggers it (a `messages.json` snippet). Do NOT paste secrets
+        or anything you can't share publicly. Never include Cline's own golden fixture.
+      render: json
+    validations:
+      required: false
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "clinescope version (or commit), Python version, OS"
+    validations:
+      required: true
