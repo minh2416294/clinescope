@@ -14,6 +14,10 @@ argument parsing plus glue.
 The trace ``sessionId`` is not modelled on
 :class:`clinescope.world_a.Trace` (the loader discards it), so it is
 lifted here with one cheap read and passed through to the emitter.
+
+A trace that cannot be loaded (missing path, unsupported version, malformed or
+non-object JSON) prints a single ``error: ...`` line to stderr and exits 1 --
+never a raw Python traceback.
 """
 
 from __future__ import annotations
@@ -59,12 +63,29 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
-    trace = load_trace(args.trace)
+
+    # Load boundary: a bad path / bad version / malformed or non-object JSON must
+    # print a clean one-line error, NOT a raw Python traceback. The loader raises
+    # a whole family of failures beyond its own WorldATraceError: OSError from a
+    # missing/unreadable file, json.JSONDecodeError from bad JSON, and even an
+    # AttributeError/TypeError when JSON-parseable-but-structurally-invalid input
+    # trips the parser. Catch broadly here so every load failure normalizes to the
+    # same clean stderr line + exit 1 -- this is the deliberate load boundary (the
+    # sibling `clinescope.gate` CLI does the same), not swallowed application logic.
+    try:
+        trace = load_trace(args.trace)
+        session_id = _read_session_id(args.trace)
+    except Exception as err:  # noqa: BLE001 -- deliberate load-failure boundary (see above)
+        print(
+            f"error: could not load trace {args.trace}: {type(err).__name__}: {err}",
+            file=sys.stderr,
+        )
+        return 1
+
     score = score_tool_selection(trace, set(args.expected))
     diff_score = score_diff_coherence(trace)
     minimality_score = score_diff_minimality(trace)
     recovery_score = score_apply_recovery(trace)
-    session_id = _read_session_id(args.trace)
     print(
         render_report(
             trace,
