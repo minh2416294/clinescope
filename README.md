@@ -22,7 +22,7 @@ Point it at a Cline trace and it scores the run. `[x]` = works today · `[ ]` = 
 - [x] **Scores diff minimality** — flags one specific bloat shape: a *blind whole-block rewrite* (delete N lines, retype N lines, keeping no anchor) inside an Update hunk. *(second slice of the wedge — deliberately narrow; see the caveat below)*
 - [x] **Scores apply-recovery** — when a patch *failed*, did the agent retry and land a confirmed fix on the same file? Scores the failure→recovery trajectory from the turn sequence. *(third slice of the wedge — the multi-turn dimension a single patch can't show)*
 - [ ] **Detects task completion** — did the run actually finish the job?
-- [ ] **Validates its own LLM judge** against human labels, so a score you can trust.
+- [ ] **Validates its own LLM judge** against human labels, so a score you can trust. *(no judge yet — but the chance-corrected agreement math it will report, Cohen's κ + a bootstrap CI, ships today as a standalone, tested module; see the [roadmap](#roadmap))*
 - [ ] **Gates CI** — fail the build when an agent version regresses.
 
 ## Why it's different
@@ -146,7 +146,8 @@ Three stages, one thin path: **load → score → emit**:
 - [x] **Validated on live captures** — all four scorers run on **four** traces captured from real Cline CLI runs against a local `gpt-oss:20b` model (`examples/live-gpt-oss-*.json`), across distinct shapes (single- and two-hunk Update, Add File, and a genuine `apply_patch` **failure**). The failure capture drives `apply_recovery` to a real numeric score (`0.0`, one failed file never recovered) via the `"success"`-JSON oracle — the first time the recovery scorer scores on live data, not just abstains. (Breadth honesty: still one local model on small edits; a second model would need a paid API key. A live failure→*recovery* trace — a real `success:false` then a same-file `success:true` retry that lands, scoring recovery `> 0` — is not yet captured: gpt-oss:20b either over-thinks past its turn budget before retrying, or Cline's fuzzy matcher applies the mis-anchored patch anyway. The recovery *numerator* stays proven by real-shape unit tests, not yet by a live end-to-end retry.)
 - [x] **Golden-fixture drift guard** — a content check (sha256 + size) fails loudly if Cline's ingested `success.messages.json` changes upstream, and skips cleanly when the Cline checkout is absent (CI) — so a drifted ingest point can't silently pass.
 - [ ] Task-completion detection (successful `submit_and_exit`)
-- [ ] LLM-judge validation with chance-corrected agreement (Cohen's κ) against human labels
+- [~] **Cohen's κ agreement harness** (`clinescope.agreement.cohen_kappa`) — the chance-corrected agreement statistic + a seeded bootstrap 95% CI, hand-rolled zero-dependency, validated against published textbook κ values. This is the *stats* half of judge-validation; it is a standalone module and is **not yet wired to a judge or a gold set** (there is no LLM judge yet — the label lists it scores are the caller's).
+- [ ] LLM-judge validation with chance-corrected agreement — feed the κ harness above a small human gold set vs. an LLM judge's labels, report judge↔human κ + CI
 - [ ] CI-gateable pass/fail on a seeded regression
 
 ## Contributing
