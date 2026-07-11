@@ -1,0 +1,48 @@
+name: New scorer / metric request
+description: Propose a new eval scorer or metric for clinescope to compute from a trace.
+title: "[scorer]: "
+labels: ["enhancement", "scorer"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        clinescope scores a coding-agent run from its trace alone (no rerun, no repo). A new scorer
+        has to be computable from the `messages.json` trace and, ideally, verifiable against a known
+        expected number. Please open this before writing code so we can agree on the shape.
+  - type: textarea
+    id: signal
+    attributes:
+      label: What signal should it measure
+      description: What quality of the run would this scorer capture that the current ones don't?
+      placeholder: "e.g. how much unrelated context the agent read before editing."
+    validations:
+      required: true
+  - type: dropdown
+    id: llm
+    attributes:
+      label: Deterministic or judge-based?
+      description: >
+        clinescope prefers deterministic, zero-LLM scorers; an LLM judge must be validated against
+        human labels (Cohen's κ) before it counts.
+      options:
+        - Deterministic (zero-LLM) — computed from the trace text
+        - LLM-judge (would need κ validation vs human labels)
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: definition
+    attributes:
+      label: How would you define / compute it
+      description: The rule, and what in the trace it reads (tool calls, patch text, results, verdicts).
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: A trace + its expected score
+      description: >
+        A scorer is only reviewable with a trace that pins its output. Sketch one case (a trace shape)
+        and the number the scorer should produce on it.
+    validations:
+      required: false

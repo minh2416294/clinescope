@@ -1,160 +1,56 @@
 # clinescope
 
-**clinescope is a test suite for your Cline coding agent.** It scores how well an agent did a coding task — the tools it chose, whether it finished, and whether the diff it produced was any good — straight from the `messages.json` trace Cline already writes. No instrumentation, no rerun.
+Clinescope is an AI evaluation tool that lives in your development workflow, reads your Cline logs, and helps you ship better prompts by checking tool choices, catching messy block rewrites, and ensuring updates don't break past work.
 
-*Today, judging an agent's coding run means eyeballing the diff and re-reading the trace by hand. Tests passing tells you the code ran — not whether the change was good.*
-
-> **clinescope is an independent, unofficial tool. It is not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used here only to describe compatibility — clinescope reads the trace format Cline produces.**
+> clinescope is an independent, unofficial tool — not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used only to describe compatibility.
 
 [![CI](https://github.com/minh2416294/clinescope/actions/workflows/ci.yml/badge.svg)](https://github.com/minh2416294/clinescope/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)
 
-## What it does
+<!-- Demo GIF goes here: record a run of `clinescope <trace.json>` and add it as ![demo](docs/demo.gif) once docs/demo.gif exists. -->
 
-Point it at a Cline trace and it scores the run. `[x]` = works today · `[ ]` = on the [roadmap](#roadmap).
 
-- [x] **Reads Cline's `messages.json` trace directly** — normalizes the run, joins each tool call to its result, fails loud on an unsupported version. Nothing to instrument.
-- [x] **Scores tool selection** — did the agent call the tools the task needed? Reported as a recall score with the matched / missing / unexpected tools shown.
-- [x] **Emits a plain-text report** you can read at a glance or diff in CI.
-- [x] **Never touches your files** — reads the trace read-only, and surfaces anything it can't model instead of silently dropping it.
-- [x] **Scores diff coherence** — does the patch the agent produced parse cleanly against Cline's real `apply_patch` grammar, or is it malformed? *(the wedge — see [Why it's different](#why-its-different))*
-- [x] **Scores diff minimality** — flags one specific bloat shape: a *blind whole-block rewrite* (delete N lines, retype N lines, keeping no anchor) inside an Update hunk. *(second slice of the wedge — deliberately narrow; see the caveat below)*
-- [x] **Scores apply-recovery** — when a patch *failed*, did the agent retry and land a confirmed fix on the same file? Scores the failure→recovery trajectory from the turn sequence. *(third slice of the wedge — the multi-turn dimension a single patch can't show)*
-- [ ] **Detects task completion** — did the run actually finish the job?
-- [x] **Validates its own LLM judge** against human labels — an opt-in judge (a local `gpt-oss:20b` via Ollama) answers "is this patch wasteful?" from the patch text alone, and clinescope reports its **Cohen's κ agreement with the human gold labels + a bootstrap CI**. First honest result: **κ = 0.24, 95% CI [0.00, 0.52]** on N=26 — *below* the 0.5 bar, so the judge is flagged **advisory-only** (a free 20B model catches only 2 of 10 human-"wasteful" patches). That low number is the point: it's an honest, chance-corrected measure of a judge you should *not* yet trust — the opposite of a floating high score. (It's a *single-draw snapshot*: the model flips labels run-to-run even at temp 0, so the κ isn't reproducible to the digit — see the [roadmap](#roadmap).) The core scorers stay deterministic / zero-LLM / keyless; the judge is opt-in (`python -m clinescope.judge_run`).
-- [x] **Gates CI** — fail the build (non-zero exit) when a deterministic scorer drops below a threshold you set; passes it otherwise. Gates on the *deterministic* scorers only — **never** the advisory judge (see below).
+## Get started
 
-## Why it's different
+Requires Python 3.11+. Install with [pipx](https://pipx.pypa.io) — no clone, no virtualenv:
 
-General eval tools — deepeval, promptfoo, Langfuse — score **prompt and output**: did the model's text answer meet an assertion. clinescope scores the **whole coding run**: which tools the agent chose across a task, whether the diff it produced was coherent and minimal, and — when a patch failed — whether the agent recovered. That trajectory-and-diff layer is exactly what those tools leave to *"write your own custom scorer."*
+**macOS / Linux:**
 
-**The bet:** the diff a coding agent produces — not just whether the tests went green — is the signal that actually tells you if the run was good. Almost nobody scores it. That's why clinescope exists.
+```bash
+pipx install "git+https://github.com/minh2416294/clinescope.git"
+```
 
-Three slices of that scorer ship today, all deterministic and zero-LLM, all read from the trace alone:
+**Windows:**
 
-**Diff coherence** grades the agent's patch against Cline's *real* `apply_patch` grammar (the `*** Begin Patch` / `*** Update File:` / `@@` envelope) — is it well-formed, or a malformed patch that would fail to apply? (Honesty caveat: this scores grammatical coherence, **not** whether the patch's context actually matches your on-disk file — that fuzzy match needs the repo Cline ran against, which a standalone trace doesn't carry.)
+```powershell
+py -m pip install --user pipx
+py -m pipx ensurepath        # then open a NEW terminal so PATH updates
+pipx install "git+https://github.com/minh2416294/clinescope.git"
+```
 
-**Diff minimality** asks one narrow question about the patch's *shape*: does each edited region keep an anchor, or is it a *blind whole-block rewrite* — delete N lines, retype N lines, keeping nothing (`N ≥ 3`)? It reports the fraction of Update hunks that are **not** blind rewrites. (Honesty caveat — read this: it detects exactly **one** bloat shape and is deliberately **blind** to the other, more common one, dragging large unchanged context. It does *not* threshold on context count, because context is what `apply_patch` needs to anchor a hunk — penalizing it would invert the metric on well-formed patches. A low score means "contains a large rewrite" (which may be *necessary* — read it as *large-block*, not *wasteful*); a high score means "no blind rewrite," **not** "minimal." There is no reference or ideal patch to compare against — a standalone trace carries neither — so this is a structural property of the patch text, never churn-vs-an-ideal.)
+Then point it at a Cline `messages.json` trace:
 
-**Apply-recovery** is the first *trajectory* scorer, not a single-patch one: of every `apply_patch` that failed, what fraction was later recovered — a strictly-later `apply_patch` that Cline **confirmed** applied and that re-touched the same file? It scores per failed *file* (a multi-file failure fixed on only one file scores 0.5), and surfaces `same_file_refail` so a brute-force "retry until one lands" is visible, not hidden behind a `1.0`. It reads the failure/success **verdict** as its oracle — the one scorer that does — with `is_error` authoritative when present, and a **secondary `"success"`-JSON oracle** for real Cline traces: a genuine `apply_patch` result carries no `is_error` field, encoding the outcome as `{…,"success":true/false}` inside the tool-result content, so the scorer reads that boolean to know whether a call failed or a retry landed. (Honesty caveat — read this: "recovered" means only that a later same-file patch **applied**, *not* that it fixed the defect (no repo to verify against). It is deliberately conservative: a retry with no readable verdict at all (neither `is_error` nor a `"success"` bool — a truncated trace) is **never** counted as recovery, so the number can't be inflated by cutting the log short. It is blind to cross-tool recovery: a failure fixed via `write_to_file` instead of `apply_patch` scores as *un*recovered — so a low score means "not recovered via a same-file confirmed apply_patch," not "not recovered." Paths are matched literally, no normalization.)
+```bash
+clinescope path/to/messages.json --expected read_files apply_patch
+```
 
-Under the hood the scoring engine is framework-agnostic; it ships with the Cline adapter as the first and flagship one. Other adapters come later — only when a real second implementation exists to justify the seam.
+`--expected` lists the tool names the task should have used. clinescope prints a report scoring tool
+selection, diff coherence, diff minimality, and apply-recovery — and, opt-in, validates its own LLM judge
+against human labels (Cohen's κ). It reads the trace read-only and never touches your files.
 
-## Quickstart
-
-Requires Python 3.11+.
+New here? Clone the repo and score the bundled example to see the output — no install needed:
 
 ```bash
 git clone https://github.com/minh2416294/clinescope
 cd clinescope
-pip install -e .
-
-# score the bundled example trace
-python -m clinescope examples/sample-trace.json --expected read_files apply_patch
+PYTHONPATH=src python -m clinescope examples/sample-trace.json --expected read_files apply_patch
 ```
-
-`--expected` takes the tool names the task should have used (space-separated). The score is recall: how many of those expected tools the trace actually used.
-
-## Example output
-
-```text
-=== clinescope report ===
-sessionId:      example-two-tool-01
-trace.version:  1
-turns:          5
-tool_calls:     2
-
-[tool_selection]
-score:          1.0000
-expected:       apply_patch, read_files
-used:           apply_patch, read_files
-matched:        apply_patch, read_files
-missing:        -
-unexpected:     -
-
-[diff_coherence]
-score:          1.0000
-passed_gates:   add_files_all_plus, move_placement_valid, no_stray_triple_star, update_hunks_wellformed
-failed_gates:   -
-violations:     -
-apply_patch_calls: 1
-cline_is_error: False
-
-[diff_minimality]
-score:          1.0000
-applicable:     True
-blind_rewrite_hunks: 0
-hunks_with_body: 2
-context_density: 0.3333
-add_file_lines: 0
-violations:     -
-apply_patch_calls: 1
-cline_is_error: False
-
-[apply_recovery]
-score:          1.0000
-applicable:     True
-total_failed_pairs: 1
-recovered_pairs: 1
-unrecovered_pairs: 0
-partially_recovered: 0
-same_file_refail: 0
-unverified_reattempts: 0
-verdict_coverage: 1.0000
-failed_files:   src/auth.py
-unparseable_failed_calls: 0
-violations:     -
-apply_patch_calls: 2
-cline_is_error: True
-```
-
-`context_density` is descriptive only — it is reported so you can eyeball how much unchanged context the
-patch drags, but it never enters the `diff_minimality` score. A `score: n/a` with `applicable: False` means
-the trace had no `apply_patch` call at all, so there was no patch shape to check (the golden fixture is one
-such trace). `apply_recovery` also reports `score: n/a` with `applicable: False` when no `apply_patch` call
-*failed* — a recovery rate is undefined when nothing needed recovering; `verdict_coverage` distinguishes a
-genuinely clean run from a truncated trace whose verdicts were never joined.
-
-A malformed patch — say an Add File whose lines are missing the `+` prefix — drops the
-`diff_coherence` score and names the gate it failed, and a trace with no `apply_patch` call at all
-scores `0.0` with `violations: no apply_patch tool call in trace` rather than silently passing.
-
-Ask for a tool the trace didn't use and the score drops, with the gap shown:
-
-```bash
-python -m clinescope examples/sample-trace.json --expected read_files apply_patch write_file
-# score: 0.6667 ... missing: write_file
-```
-
-## How it works
-
-Three stages, one thin path: **load → score → emit**:
-
-1. **Load** (`clinescope.world_a`) parse the World-A trace into typed turns and a flat list of tool calls, each joined to its result.
-2. **Score** — four deterministic, zero-LLM scorers today: `clinescope.tool_selection` computes expected-recall against the caller's expected-tool set, `clinescope.diff_coherence` grades the `apply_patch` patch text against Cline's real grammar, `clinescope.diff_minimality` flags blind whole-block rewrites in that patch, and `clinescope.apply_recovery` scores the failure→retry trajectory (did a failed patch get a confirmed same-file fix later?). Each returns its score plus evidence (matched/missing tools; passed/failed gates + violations; blind-rewrite-hunk count; recovered/unrecovered failed-file pairs + refail count).
-3. **Emit** (`clinescope.report` + `clinescope.__main__`) render the scores and evidence as a stable plain-text report; the CLI is thin glue over a pure `render_report(...) -> str`.
-
-## Roadmap
-
-- [x] World-A trace loader (version-gated, tool-call join, surfaces unmodeled items)
-- [x] Tool-selection correctness scorer (name-based recall)
-- [x] Plain-text report emitter + CLI, runs on Cline's golden fixture
-- [x] **Diff-coherence scorer** — grades the `apply_patch` patch against Cline's real grammar, on two structurally-different real-format traces (Add File; multi-hunk Update + Move + Delete) — the wedge, first slice
-- [x] **Diff-minimality scorer** — flags blind whole-block rewrites (delete ≥3 / retype ≥3) in the `apply_patch` patch, on the same real-format traces — the wedge, second slice
-- [x] **Apply-recovery scorer** — of every failed `apply_patch`, the fraction later recovered by a confirmed same-file retry; scored per failed file — the wedge, third slice. Reads the failure/success verdict via `is_error` when present, and via a **secondary `"success"`-JSON oracle** for real Cline traces (whose results carry no `is_error` field).
-- [x] **Validated on live captures** — all four scorers run on **four** traces captured from real Cline CLI runs against a local `gpt-oss:20b` model (`examples/live-gpt-oss-*.json`), across distinct shapes (single- and two-hunk Update, Add File, and a genuine `apply_patch` **failure**). The failure capture drives `apply_recovery` to a real numeric score (`0.0`, one failed file never recovered) via the `"success"`-JSON oracle — the first time the recovery scorer scores on live data, not just abstains. (Breadth honesty: still one local model on small edits; a second model would need a paid API key. A live failure→*recovery* trace — a real `success:false` then a same-file `success:true` retry that lands, scoring recovery `> 0` — is not yet captured: gpt-oss:20b either over-thinks past its turn budget before retrying, or Cline's fuzzy matcher applies the mis-anchored patch anyway. The recovery *numerator* stays proven by real-shape unit tests, not yet by a live end-to-end retry.)
-- [x] **Golden-fixture drift guard** — a content check (sha256 + size) fails loudly if Cline's ingested `success.messages.json` changes upstream, and skips cleanly when the Cline checkout is absent (CI) — so a drifted ingest point can't silently pass.
-- [ ] Task-completion detection (successful `submit_and_exit`)
-- [x] **Cohen's κ agreement harness** (`clinescope.agreement.cohen_kappa`) — the chance-corrected agreement statistic + a seeded bootstrap 95% CI, hand-rolled zero-dependency, validated against published textbook κ values. The *stats* half of judge-validation; now wired to the live judge + gold set below.
-- [x] **Gold-set format + loader + judge seam** (`gold/`, `clinescope.gold`, `clinescope.judge`) — the JSONL gold-set contract (`gold/README.md`), a loader that resolves each item's trace pointer to the same first `apply_patch` the scorer grades (failing loud on a missing trace, a mis-shaped patch, or a `patch_sha256` drift), and `judge_diff_minimality(trace)` — now a **live LLM judge** (see below).
-- [x] **Human-labeled gold set + a blind labeling harness** (`gold/diff_minimality.gold.jsonl`, `clinescope.label_gold`) — 26 `diff_minimality` gold traces (24 authored to sit on the deterministic proxy's blind spots) with a **human** WASTEFUL/NOT-WASTEFUL label each (10 W / 16 NW), collected by a harness that shows the labeler only the patch text (never the score, the proxy verdict, or the authored intent — structurally, it cannot import the proxy or the judge).
-- [x] **LLM-judge validation with chance-corrected agreement** (`clinescope.judge`, `clinescope.judge_run`) — the opt-in judge (a local `gpt-oss:20b` via Ollama, stdlib `urllib`, temp 0, patch text alone) labels each of the 26 gold items; its labels feed `cohen_kappa` vs the human labels. **Result: κ = 0.24, 95% CI [0.00, 0.52], N=26** — below the 0.5 bar, so the judge is reported **advisory-only** (protocol tripwire). Verdicts are cached to `gold/diff_minimality.judge.jsonl` (re-running κ needs no model call). Run it with `python -m clinescope.judge_run --report`. Honest caveats: N=26 makes the CI wide (it touches 0, i.e. chance-level agreement is inside the interval); **the judge is not reproducible — `gpt-oss:20b` via Ollama flips labels run-to-run even at temp 0 + fixed seed (GPU/batch nondeterminism), so this κ is a *single-draw snapshot*, not a stable constant**; only one free local model tested; the judge misses 8 of 10 human-"wasteful" patches (its blind spots overlap the deterministic proxy's).
-- [x] **CI-gateable pass/fail on a seeded regression** (`clinescope.gate`) — `python -m clinescope.gate <trace> --min-diff-coherence 0.75 [--min-diff-minimality …] [--min-apply-recovery …]` runs the deterministic scorers and **exits non-zero when any gated score is below its threshold** (fail the build), exit 0 when all pass. Proven both directions: it exits `1` on a seeded regression (`examples/live-gpt-oss-apply-fail.json` → `apply_recovery 0.0`; and an authored `examples/gate-regression-badpatch.json` → `diff_coherence 0.75`) and exits `0` on a baseline (`examples/apply-patch-trace.json`); a usage error (no `--min-*` flag, an unloadable trace, or a trace where every gated scorer is *not applicable*) exits `2` so CI never confuses "the build failed" with "the gate broke". Thresholds are explicit flags with no hidden defaults, and the verdict echoes the thresholds it used (scores are glued to the setup). **It gates on the deterministic scorers only — deliberately NOT the LLM judge:** the judge came out at κ = 0.24 (advisory-only), so leaning a build gate on it would contradict that very finding; the gate imports no judge-arc module (an AST test pins that).
 
 ## Contributing
 
-Small, discussed-first changes are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, how to run the tests and linters, and what a scorer change needs (a fixture trace + its expected score).
+Small, discussed-first changes are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, tests,
+and what a scorer change needs.
 
 ## License
 
