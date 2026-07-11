@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "sessionId": "gate-regression-badpatch-01",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        { "type": "text", "text": "Create note.txt with two lines: ok and done." }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Add File: note.txt\n+ok\ndone\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "{\"query\": \"apply_patch\", \"result\": \"\", \"error\": \"apply_patch failed: malformed Add File body\", \"success\": false}"
+        }
+      ]
+    }
+  ]
+}
