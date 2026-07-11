@@ -1,0 +1,12 @@
+# Normalize line endings to LF for text so the checked-out form is identical on
+# every platform. The gold set + example traces are a versioned contract read by a
+# byte-preserving label writer (src/clinescope/label_gold.py); a mixed CRLF/LF
+# checkout would make that writer's "leave other lines byte-identical" guarantee
+# platform-dependent. Pinning LF makes it hold on Windows and Linux/CI alike.
+* text=auto eol=lf
+
+# Explicit for the contract files (belt-and-suspenders; the wildcard already covers them).
+*.jsonl text eol=lf
+*.json  text eol=lf
+*.py    text eol=lf
+*.md    text eol=lf

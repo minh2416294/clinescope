@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hardcase-03",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Change the retry config defaults to 5 attempts with a 2-second base backoff."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "internal/retry/config.go"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "package retry\n\ntype Config struct {\n\tMaxAttempts int\n\tBaseBackoff time.Duration\n\tMaxBackoff  time.Duration\n\tJitter      bool\n}\n\nfunc Default() Config {\n\treturn Config{\n\t\tMaxAttempts: 3,\n\t\tBaseBackoff: time.Second,\n\t\tMaxBackoff:  30 * time.Second,\n\t\tJitter:      true,\n\t}\n}\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: internal/retry/config.go\n@@ func Default() Config {\n     return Config{\n-        MaxAttempts: 3,\n-        BaseBackoff: time.Second,\n+        MaxAttempts: 5,\n+        BaseBackoff: 2 * time.Second,\n         MaxBackoff:  30 * time.Second,\n         Jitter:      true,\n     }\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\ninternal/retry/config.go",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}

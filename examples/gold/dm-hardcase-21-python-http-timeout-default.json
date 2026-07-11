@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hardcase-21",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Bump the default request timeout in the HTTP client config from 30 to 60 seconds."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "src/clients/http_config.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "from __future__ import annotations\n\nfrom dataclasses import dataclass\n\n\n@dataclass(frozen=True, slots=True)\nclass HttpClientConfig:\n    \"\"\"Runtime configuration for the shared outbound HTTP client.\n\n    All fields have safe defaults so callers can construct the config with no\n    arguments in tests and only override the knobs they care about.\n    \"\"\"\n\n    base_url: str = \"https://api.internal.example.com\"\n    user_agent: str = \"clinescope-httpclient/1.4\"\n    max_connections: int = 100\n    max_keepalive: int = 20\n    verify_tls: bool = True\n    follow_redirects: bool = True\n    request_timeout_seconds: float = 30.0\n    connect_timeout_seconds: float = 5.0\n    retry_attempts: int = 3\n    retry_backoff_seconds: float = 0.25\n    enable_http2: bool = False\n    proxy_url: str | None = None\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: src/clients/http_config.py\n@@ class HttpClientConfig:\n     base_url: str = \"https://api.internal.example.com\"\n     user_agent: str = \"clinescope-httpclient/1.4\"\n     max_connections: int = 100\n     max_keepalive: int = 20\n     verify_tls: bool = True\n     follow_redirects: bool = True\n-    request_timeout_seconds: float = 30.0\n+    request_timeout_seconds: float = 60.0\n     connect_timeout_seconds: float = 5.0\n     retry_attempts: int = 3\n     retry_backoff_seconds: float = 0.25\n     enable_http2: bool = False\n     proxy_url: str | None = None\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\nsrc/clients/http_config.py",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}
