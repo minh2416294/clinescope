@@ -79,6 +79,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="Print the known Cline tool names (for --expected) and exit",
     )
     parser.add_argument(
+        "--advice",
+        action="store_true",
+        help="Append per-failing-scorer coaching (what to change) to the summary",
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Emit the full per-scorer debug dump instead of the one-line summary",
@@ -136,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
             diff_minimality=minimality_score,
             apply_recovery=recovery_score,
             expected_provided=expected_provided,
+            advice=args.advice,
             verbose=args.verbose,
         )
     )
