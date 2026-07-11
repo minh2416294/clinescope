@@ -31,3 +31,6 @@ artifacts/
 
 # --- Machine/workflow state (skills read this back) ---
 .planning/
+
+# Windows folder settings
+desktop.ini
