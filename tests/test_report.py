@@ -323,3 +323,92 @@ def test_cli_verbose_flag_toggles_dump(capsys: pytest.CaptureFixture[str]) -> No
 
     assert "[tool_selection]" not in default_out
     assert "[tool_selection]" in verbose_out
+
+
+# --- CLI load-error boundary: a clean one-liner, never a raw traceback --------
+# The main CLI must normalize every load failure (bad path, unsupported version,
+# malformed / non-object JSON) to a single `error: ...` line on stderr + exit 1,
+# mirroring the sibling clinescope.gate CLI. A raw Python traceback is a bug.
+
+RECOVERY_EXAMPLE = (
+    Path(__file__).resolve().parent.parent / "examples" / "apply-recovery-trace.json"
+)
+
+
+def _run_main_stderr(
+    argv: list[str], capsys: pytest.CaptureFixture[str]
+) -> tuple[int, str]:
+    exit_code = main(argv)
+    return exit_code, capsys.readouterr().err
+
+
+def test_cli_nonexistent_path_prints_clean_error_not_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    missing = tmp_path / "does-not-exist.json"
+
+    exit_code, err = _run_main_stderr(
+        [str(missing), "--expected", "read_files"], capsys
+    )
+
+    assert exit_code == 1
+    assert err.startswith("error: could not load trace ")
+    assert "FileNotFoundError" in err
+    assert "Traceback (most recent call last)" not in err
+
+
+def test_cli_unsupported_version_prints_clean_error_not_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bad = tmp_path / "version2.json"
+    bad.write_text('{"version": 2, "messages": []}', encoding="utf-8")
+
+    exit_code, err = _run_main_stderr([str(bad), "--expected", "read_files"], capsys)
+
+    assert exit_code == 1
+    assert err.startswith("error: could not load trace ")
+    assert "TraceVersionError" in err
+    assert "Traceback (most recent call last)" not in err
+
+
+def test_cli_malformed_json_prints_clean_error_not_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bad = tmp_path / "malformed.json"
+    bad.write_text('{"version": 1, "messages": [', encoding="utf-8")
+
+    exit_code, err = _run_main_stderr([str(bad), "--expected", "read_files"], capsys)
+
+    assert exit_code == 1
+    assert err.startswith("error: could not load trace ")
+    assert "JSONDecodeError" in err
+    assert "Traceback (most recent call last)" not in err
+
+
+def test_cli_json_not_object_prints_clean_error_not_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bad = tmp_path / "notobject.json"
+    bad.write_text("[1, 2, 3]", encoding="utf-8")
+
+    exit_code, err = _run_main_stderr([str(bad), "--expected", "read_files"], capsys)
+
+    assert exit_code == 1
+    assert err.startswith("error: could not load trace ")
+    assert "WorldATraceError" in err
+    assert "Traceback (most recent call last)" not in err
+
+
+@pytest.mark.skipif(
+    not RECOVERY_EXAMPLE.exists(), reason="apply-recovery example trace not present"
+)
+def test_cli_valid_trace_still_scores_and_exits_0(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # The error boundary must not regress the happy path.
+    exit_code = main([str(RECOVERY_EXAMPLE), "--expected", "read_files", "apply_patch"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "clinescope report - session" in captured.out
+    assert captured.err == ""
