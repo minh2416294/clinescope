@@ -391,13 +391,19 @@ def test_committed_gold_file_loads_and_resolves() -> None:
         assert resolved.apply_patch_call_count >= 1
 
 
-# ---- the judge seam stub ------------------------------------------------------
+# ---- the judge seam (now a live LLM call; segment 4) --------------------------
 
 
-def test_judge_diff_minimality_is_a_stub_that_raises(tmp_path: Path) -> None:
+def test_judge_diff_minimality_is_wired_to_a_real_http_call(tmp_path: Path) -> None:
+    # Segment 4 filled the stub with a real Ollama HTTP call. Pointed at a dead port,
+    # the judge fails loud with a JudgeUnreachableError (a JudgeError) -- proving the
+    # seam now reaches the network rather than raising NotImplementedError. (The real
+    # live-model behavior is exercised by the skipif-gated tests in test_judge_live.py.)
+    from clinescope.judge import JudgeUnreachableError
+
     trace = load_trace(_REPO_ROOT / _APPLY_PATCH_TRACE)
-    with pytest.raises(NotImplementedError):
-        judge_diff_minimality(trace)
+    with pytest.raises(JudgeUnreachableError):
+        judge_diff_minimality(trace, base_url="http://127.0.0.1:1", timeout=1.0)
 
 
 def test_judge_label_is_a_frozen_value_object() -> None:
