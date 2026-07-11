@@ -66,6 +66,11 @@ def test_live_trace_loads_as_world_a_v1() -> None:
     names = [c.name for c in trace.tool_calls]
     assert names == ["read_files", "apply_patch"]
     assert trace.dropped_items == ()
+    # R3 live proof: a real read_files result carries LIST-valued content, which
+    # now rides the widened ToolResultContent field (str | list[object]) with the
+    # annotation's blessing rather than as a silent typing lie.
+    read_files_call = next(c for c in trace.tool_calls if c.name == "read_files")
+    assert isinstance(read_files_call.result_content, list)
 
 
 @pytest.mark.skipif(

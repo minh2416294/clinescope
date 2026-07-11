@@ -3,7 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from clinescope.world_a import TraceVersionError, WorldATraceError, load_trace
+from clinescope.world_a import (
+    ToolResultItem,
+    TraceVersionError,
+    WorldATraceError,
+    load_trace,
+)
 
 
 def _golden_messages() -> list[dict]:
@@ -199,3 +204,91 @@ def test_rejects_non_object_top_level(tmp_path: Path) -> None:
 
     with pytest.raises(WorldATraceError):
         load_trace(path)
+
+
+# --- R3: honest, tested tool_result content-type contract -------------------
+# Real Cline traces emit LIST-valued tool_result content on read_files /
+# run_commands results (a single-element [{"query","result","success"}] object),
+# not just the str a JSON-string apply_patch result carries. These tests pin
+# that the loader PRESERVES either shape without error or dropping -- so the
+# widened `ToolResultContent = str | list[object]` annotation matches reality and
+# the apply_recovery oracle's isinstance(str) abstain boundary is the documented,
+# tested contract, never a silent typing lie.
+
+# The exact list shape a live read_files result carries (see the committed
+# examples/live-gpt-oss-*.json traces).
+_LIST_CONTENT: list[object] = [
+    {"query": "calc.py", "result": "def f(): ...", "success": True}
+]
+
+EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
+_ALL_EXAMPLE_TRACES = sorted(EXAMPLES.glob("*.json"))
+
+
+def test_list_content_is_preserved_on_tool_result_item(tmp_path: Path) -> None:
+    # A list-valued content rides onto ToolResultItem.content unchanged -- not
+    # stringified, not dropped. (The read_files list shape a live trace carries.)
+    path = _tool_result_trace(
+        tmp_path,
+        {"type": "tool_result", "tool_use_id": "tc-1", "content": _LIST_CONTENT},
+    )
+
+    trace = load_trace(path)
+
+    result_item = trace.turns[1].content[0]
+    assert isinstance(result_item, ToolResultItem)
+    assert result_item.content == _LIST_CONTENT
+
+
+def test_list_content_rides_into_tool_call_result_content(tmp_path: Path) -> None:
+    # The tool_use->tool_result join copies the list through to
+    # ToolCall.result_content; the field now legitimately holds a list.
+    path = _tool_result_trace(
+        tmp_path,
+        {"type": "tool_result", "tool_use_id": "tc-1", "content": _LIST_CONTENT},
+    )
+
+    trace = load_trace(path)
+
+    assert trace.tool_calls[0].result_content == _LIST_CONTENT
+
+
+def test_str_content_still_loads_as_str(tmp_path: Path) -> None:
+    # Regression guard for the widening: a str content (the apply_patch
+    # JSON-string shape) still loads as a str, unchanged.
+    str_content = '{"query": "apply_patch", "result": "ok", "success": true}'
+    path = _tool_result_trace(
+        tmp_path,
+        {"type": "tool_result", "tool_use_id": "tc-1", "content": str_content},
+    )
+
+    trace = load_trace(path)
+
+    assert trace.tool_calls[0].result_content == str_content
+    assert isinstance(trace.tool_calls[0].result_content, str)
+
+
+def test_missing_content_key_defaults_to_empty_str(tmp_path: Path) -> None:
+    # The item.get("content", "") default fires ONLY when the key is entirely
+    # absent, yielding a str "" (a valid ToolResultContent the oracle abstains
+    # on) -- pins the deliberate "leave the default unchanged" decision.
+    path = _tool_result_trace(
+        tmp_path,
+        {"type": "tool_result", "tool_use_id": "tc-1"},
+    )
+
+    trace = load_trace(path)
+
+    assert trace.tool_calls[0].result_content == ""
+
+
+@pytest.mark.parametrize("trace_path", _ALL_EXAMPLE_TRACES, ids=lambda p: p.name)
+def test_all_committed_example_traces_load_with_no_dropped_items(
+    trace_path: Path,
+) -> None:
+    # Every committed example trace (incl. the 4 live captures carrying
+    # list-content) loads with nothing the loader could not model -- the concrete
+    # "runtime unchanged" pin at the loader level for the R3 widening.
+    trace = load_trace(trace_path)
+
+    assert trace.dropped_items == ()

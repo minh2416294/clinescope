@@ -141,10 +141,10 @@ def _apply_call_json(
     return ToolCall(
         id=call_id,
         name="apply_patch",
-        # arg-type: result_content is deliberately widened to list/None here to
-        # feed the oracle non-str content and prove it fails closed (the loader's
-        # own annotation is str | None; a real trace can carry a list, per R3).
-        result_content=result_content,  # type: ignore[arg-type]
+        # A list is type-legal here: ToolCall.result_content is ToolResultContent
+        # | None (str | list[object] | None) since R3, matching a real read_files
+        # list shape -- so the oracle's isinstance(str) abstain path can be tested.
+        result_content=result_content,
         input={"input": patch_text},
         is_error=None,
     )
