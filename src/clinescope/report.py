@@ -50,6 +50,7 @@ def render_report(
     diff_coherence: DiffCoherenceScore | None = None,
     diff_minimality: DiffMinimalityScore | None = None,
     apply_recovery: ApplyRecoveryScore | None = None,
+    expected_provided: bool = True,
     verbose: bool = False,
 ) -> str:
     if verbose:
@@ -68,6 +69,7 @@ def render_report(
         diff_coherence=diff_coherence,
         diff_minimality=diff_minimality,
         apply_recovery=apply_recovery,
+        expected_provided=expected_provided,
     )
 
 
@@ -82,11 +84,12 @@ def _render_summary(
     diff_coherence: DiffCoherenceScore | None,
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
+    expected_provided: bool,
 ) -> str:
     sid = session_id if session_id is not None else "<unknown>"
     lines = [
         f"clinescope report - session {sid} ({len(trace.tool_calls)} tool calls)",
-        _render_summary_tool_selection(score),
+        _render_summary_tool_selection(score, expected_provided),
     ]
     if diff_coherence is not None:
         lines.append(
@@ -94,6 +97,7 @@ def _render_summary(
                 "diff_coherence",
                 _render_score_out_of_100(diff_coherence.score),
                 _summary_verdict(diff_coherence.score),
+                _summary_reason_diff_coherence(diff_coherence),
             )
         )
     if diff_minimality is not None:
@@ -102,14 +106,36 @@ def _render_summary(
                 "diff_minimality",
                 _render_score_out_of_100(diff_minimality.score),
                 _summary_verdict(diff_minimality.score),
+                _summary_reason_diff_minimality(diff_minimality),
             )
         )
     if apply_recovery is not None:
         lines.append(_render_summary_apply_recovery(apply_recovery))
+    footer = _summary_footer(
+        score,
+        expected_provided,
+        diff_coherence,
+        diff_minimality,
+        apply_recovery,
+    )
+    if footer is not None:
+        lines.append(footer)
     return "\n".join(lines)
 
 
-def _render_summary_tool_selection(score: ToolSelectionScore) -> str:
+def _render_summary_tool_selection(
+    score: ToolSelectionScore, expected_provided: bool
+) -> str:
+    # Opt-in: with no --expected there is nothing to recall against, so the old
+    # vacuous 100/100 PASS was a false positive. Show n/a + how to enable it
+    # instead (mirrors the abstaining scorers), never a fake pass.
+    if not expected_provided:
+        return _render_summary_line(
+            "tool_selection",
+            "n/a",
+            "",
+            "(pass --expected <tools> to score tool selection)",
+        )
     # tool_selection is a recall metric with no threshold, so a sub-100 score
     # gets NO PASS/FAIL word -- just the number and the actionable missing tools.
     # The gate (clinescope.gate) is the thing that turns a score into a verdict.
@@ -125,19 +151,77 @@ def _render_summary_tool_selection(score: ToolSelectionScore) -> str:
 
 def _render_summary_apply_recovery(score: ApplyRecoveryScore) -> str:
     # Only when the metric applies (something failed) do we report the N/M count;
-    # a clean run with nothing to recover abstains (n/a) with no extra.
-    extra = (
-        f"({score.confirmed_recovered_pairs}/{score.total_failed_pairs} "
-        "failed patches recovered)"
-        if score.applicable
-        else ""
-    )
+    # a clean run with nothing to recover abstains (n/a) -- but say WHY it abstained
+    # (nothing failed vs no verdicts in the trace) so bare "n/a" is never cryptic.
+    if score.applicable:
+        extra = (
+            f"({score.confirmed_recovered_pairs}/{score.total_failed_pairs} "
+            "failed patches recovered)"
+        )
+    else:
+        extra = _summary_reason_apply_recovery(score)
     return _render_summary_line(
         "apply_recovery",
         _render_score_out_of_100(score.score),
         _summary_verdict(score.score),
         extra,
     )
+
+
+def _summary_reason_diff_coherence(score: DiffCoherenceScore) -> str:
+    # diff_coherence never abstains (no apply_patch is a hard 0.0, not n/a), so a
+    # reason is only useful to name WHY a hard-zero happened -- the first violation.
+    if score.score == 0.0 and score.violations:
+        return f"({score.violations[0]})"
+    return ""
+
+
+def _summary_reason_diff_minimality(score: DiffMinimalityScore) -> str:
+    # n/a here means "no apply_patch to shape-check"; spell that out so the bare
+    # n/a is self-explaining (U2). A hard-zero names its first violation.
+    if not score.applicable:
+        return "(no apply_patch - nothing to check)"
+    if score.score == 0.0 and score.violations:
+        return f"({score.violations[0]})"
+    return ""
+
+
+def _summary_reason_apply_recovery(score: ApplyRecoveryScore) -> str:
+    # The two honest n/a sub-cases (see apply_recovery's verdict_coverage): a
+    # genuine clean run vs a trace that carried no pass/fail verdict at all.
+    if score.apply_patch_call_count == 0:
+        return "(no apply_patch - nothing to recover)"
+    if score.verdict_coverage == 0:
+        return "(no pass/fail verdicts in trace - nothing to score)"
+    return "(no failed patches - nothing to recover)"
+
+
+def _summary_footer(
+    score: ToolSelectionScore,
+    expected_provided: bool,
+    diff_coherence: DiffCoherenceScore | None,
+    diff_minimality: DiffMinimalityScore | None,
+    apply_recovery: ApplyRecoveryScore | None,
+) -> str | None:
+    # A positive takeaway on a clean run (U1): if nothing scored below its bar,
+    # say so plainly rather than leaving the reader to eyeball four lines. A
+    # scorer that abstained (n/a) is neutral -- it neither passes nor fails, so it
+    # does not block the clean verdict. tool_selection counts only when scored.
+    tool_ok = (not expected_provided) or not score.missing
+    coherence_ok = diff_coherence is None or diff_coherence.score == 1.0
+    minimality_ok = (
+        diff_minimality is None
+        or not diff_minimality.applicable
+        or diff_minimality.score == 1.0
+    )
+    recovery_ok = (
+        apply_recovery is None
+        or not apply_recovery.applicable
+        or apply_recovery.score == 1.0
+    )
+    if tool_ok and coherence_ok and minimality_ok and recovery_ok:
+        return "clean run - nothing to fix"
+    return None
 
 
 def _render_summary_line(name: str, cell: str, verdict: str, extra: str = "") -> str:
