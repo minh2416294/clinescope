@@ -13,6 +13,7 @@ dependencies = []
 
 [project.scripts]
 clinescope = "clinescope.__main__:main"
+clinescope-gate = "clinescope.gate:main"
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff", "mypy"]
