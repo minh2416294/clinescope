@@ -424,7 +424,7 @@ def test_report_contains_diff_coherence_section() -> None:
     diff_score = score_diff_coherence(trace)
 
     report = render_report(
-        trace, tool_score, diff_coherence=diff_score, session_id="s1"
+        trace, tool_score, diff_coherence=diff_score, session_id="s1", verbose=True
     )
 
     assert "[diff_coherence]" in report
@@ -455,7 +455,9 @@ APPLY_PATCH_EXAMPLE = (
 def test_cli_end_to_end_on_apply_patch_trace(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    exit_code = main([str(APPLY_PATCH_EXAMPLE), "--expected", "apply_patch"])
+    exit_code = main(
+        [str(APPLY_PATCH_EXAMPLE), "--expected", "apply_patch", "--verbose"]
+    )
 
     assert exit_code == 0
     out = capsys.readouterr().out
@@ -491,7 +493,7 @@ MULTI_OP_EXAMPLE = (
 def test_cli_end_to_end_on_multi_op_trace(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    exit_code = main([str(MULTI_OP_EXAMPLE), "--expected", "apply_patch"])
+    exit_code = main([str(MULTI_OP_EXAMPLE), "--expected", "apply_patch", "--verbose"])
 
     assert exit_code == 0
     out = capsys.readouterr().out

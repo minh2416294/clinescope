@@ -1,10 +1,12 @@
 """Thin CLI for the walking skeleton: load -> score -> EMIT.
 
 Usage:
-    python -m clinescope <trace.json> --expected read_files [write_file ...]
+    python -m clinescope <trace.json> --expected read_files [write_file ...] [--verbose]
 
 Loads a Cline World-A trace, scores tool selection against the expected tool
-names, renders the report, and prints it. The heavy lifting lives in
+names, renders the report, and prints it. The default is a one-line-per-scorer
+summary; ``--verbose`` emits the full per-scorer debug dump instead. The heavy
+lifting lives in
 :func:`clinescope.report.render_report` (a pure ``str``-returning
 function) so the report is testable WITHOUT a subprocess; this module is only
 argument parsing plus glue.
@@ -47,6 +49,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="TOOL",
         help="Expected tool name(s), space-separated (e.g. --expected read_files write_file)",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Emit the full per-scorer debug dump instead of the one-line summary",
+    )
     return parser.parse_args(argv)
 
 
@@ -66,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
             diff_coherence=diff_score,
             diff_minimality=minimality_score,
             apply_recovery=recovery_score,
+            verbose=args.verbose,
         )
     )
     return 0
