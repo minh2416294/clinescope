@@ -213,7 +213,7 @@ def test_apply_fail_other_scorers() -> None:
 def test_cli_end_to_end_apply_fail_shows_real_recovery_score(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    exit_code = main([str(APPLY_FAIL), "--expected", "apply_patch"])
+    exit_code = main([str(APPLY_FAIL), "--expected", "apply_patch", "--verbose"])
 
     assert exit_code == 0
     out = capsys.readouterr().out

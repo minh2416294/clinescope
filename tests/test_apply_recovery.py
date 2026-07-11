@@ -437,7 +437,9 @@ def test_report_shows_recovered_by_line() -> None:
     tool_score = score_tool_selection(trace, {"apply_patch"})
     rec_score = score_apply_recovery(trace)
 
-    report = render_report(trace, tool_score, apply_recovery=rec_score, session_id="s1")
+    report = render_report(
+        trace, tool_score, apply_recovery=rec_score, session_id="s1", verbose=True
+    )
 
     assert "recovered_by:" in report
     assert "src/auth.py @ call 0->1" in report
@@ -690,7 +692,9 @@ def test_report_contains_apply_recovery_section() -> None:
     tool_score = score_tool_selection(trace, {"apply_patch"})
     rec_score = score_apply_recovery(trace)
 
-    report = render_report(trace, tool_score, apply_recovery=rec_score, session_id="s1")
+    report = render_report(
+        trace, tool_score, apply_recovery=rec_score, session_id="s1", verbose=True
+    )
 
     assert "[apply_recovery]" in report
     assert "score:          1.0000" in report
@@ -722,7 +726,9 @@ def test_report_shows_not_applicable_when_score_none() -> None:
     tool_score = score_tool_selection(trace, {"read_files"})
     rec_score = score_apply_recovery(trace)
 
-    report = render_report(trace, tool_score, apply_recovery=rec_score, session_id="s1")
+    report = render_report(
+        trace, tool_score, apply_recovery=rec_score, session_id="s1", verbose=True
+    )
 
     assert "[apply_recovery]" in report
     assert "n/a" in report.lower()
@@ -740,7 +746,7 @@ RECOVERY_EXAMPLE = EXAMPLES / "apply-recovery-trace.json"
 def test_cli_end_to_end_on_recovery_trace(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    exit_code = main([str(RECOVERY_EXAMPLE), "--expected", "apply_patch"])
+    exit_code = main([str(RECOVERY_EXAMPLE), "--expected", "apply_patch", "--verbose"])
 
     assert exit_code == 0
     out = capsys.readouterr().out

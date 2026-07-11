@@ -358,7 +358,7 @@ def test_report_contains_diff_minimality_section() -> None:
     min_score = score_diff_minimality(trace)
 
     report = render_report(
-        trace, tool_score, diff_minimality=min_score, session_id="s1"
+        trace, tool_score, diff_minimality=min_score, session_id="s1", verbose=True
     )
 
     assert "[diff_minimality]" in report
@@ -381,7 +381,7 @@ def test_report_shows_not_applicable_when_score_none() -> None:
     min_score = score_diff_minimality(trace)
 
     report = render_report(
-        trace, tool_score, diff_minimality=min_score, session_id="s1"
+        trace, tool_score, diff_minimality=min_score, session_id="s1", verbose=True
     )
 
     assert "[diff_minimality]" in report
@@ -401,7 +401,7 @@ ADD_FILE_EXAMPLE = EXAMPLES / "apply-patch-trace.json"
 def test_cli_end_to_end_on_multi_op_trace(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    exit_code = main([str(MULTI_OP_EXAMPLE), "--expected", "apply_patch"])
+    exit_code = main([str(MULTI_OP_EXAMPLE), "--expected", "apply_patch", "--verbose"])
 
     assert exit_code == 0
     out = capsys.readouterr().out
