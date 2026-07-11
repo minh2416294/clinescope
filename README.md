@@ -17,7 +17,7 @@ Optionally, it also checks its own AI judge against human ratings.
 
 > Clinescope is an independent, unofficial tool - not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used only to describe compatibility.
 
-<p align="center"><img src="docs/demo.png" alt="clinescope scoring a Cline trace where the agent used the wrong tools and never recovered a failed patch" width="640"></p>
+<p align="center"><img src="docs/demo.png" alt="clinescope scoring a failing Cline run and, with --advice, coaching how to fix the agent's prompt for each failing scorer" width="640"></p>
 
 ## Get started
 
