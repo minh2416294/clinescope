@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hardcase-02",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Switch the fetch request from JSON to form-encoded content type and accept header."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "web/src/request.js"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "export function buildRequest(payload) {\n  return {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'Accept': 'application/json',\n      'X-Client': 'web',\n    },\n    body: encode(payload),\n  };\n}\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: web/src/request.js\n@@ export function buildRequest(payload) {\n     headers: {\n-      'Content-Type': 'application/json',\n-      'Accept': 'application/json',\n+      'Content-Type': 'application/x-www-form-urlencoded',\n+      'Accept': 'text/plain',\n       'X-Client': 'web',\n     },\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\nweb/src/request.js",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hardcase-17",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Rewrite the body of normalize_scores() to clamp then rescale instead of the old min-max."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "src/scoring/normalize.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "def normalize_scores(raw):\n    total = sum(raw)\n    if total == 0:\n        return [0.0 for _ in raw]\n    lo = min(raw)\n    hi = max(raw)\n    span = hi - lo\n    out = [(x - lo) / span for x in raw]\n    return out\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: src/scoring/normalize.py\n@@ def normalize_scores(raw):\n     total = sum(raw)\n     if total == 0:\n         return [0.0 for _ in raw]\n-    lo = min(raw)\n-    hi = max(raw)\n-    span = hi - lo\n     out = [(x - lo) / span for x in raw]\n+    clamped = [max(0.0, min(1.0, x)) for x in raw]\n+    denom = sum(clamped) or 1.0\n+    out = [c / denom for c in clamped]\n     return out\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\nsrc/scoring/normalize.py",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}

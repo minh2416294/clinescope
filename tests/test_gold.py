@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from clinescope.gold import (
+    GOLD_LABELS,
     GoldItem,
     GoldMalformedPatchError,
     GoldNoApplyPatchError,
@@ -375,14 +376,17 @@ def test_load_resolved_parses_and_resolves_every_item(tmp_path: Path) -> None:
 # ---- the committed seed file loads -------------------------------------------
 
 
-def test_committed_seed_file_loads_and_is_unlabeled() -> None:
+def test_committed_gold_file_loads_and_resolves() -> None:
+    # After S3 the committed gold set is HUMAN-labeled (each label the user's own, a
+    # legal GOLD_LABELS value); before S3 it shipped unlabeled. Either way it must load,
+    # every item must resolve to a real first apply_patch, and any present label must be
+    # legal. (The pre-S3 "seed is unlabeled" assertion is now stale -- superseded by the
+    # labeled corpus S3 produces; the harness/loader guarantee is load+resolve+valid.)
     seed = _REPO_ROOT / "gold" / "diff_minimality.gold.jsonl"
     items = gold_load_items(seed, repo_root=_REPO_ROOT)
     assert len(items) >= 1
-    # The seed carries NO human labels -- those are the user's own (S3).
-    assert all(item.human_label is None for item in items)
-    # And every seed item resolves to a real first apply_patch (the pointers are valid).
     for item in items:
+        assert item.human_label is None or item.human_label in GOLD_LABELS
         resolved = gold_resolve_item(item, repo_root=_REPO_ROOT)
         assert resolved.apply_patch_call_count >= 1
 

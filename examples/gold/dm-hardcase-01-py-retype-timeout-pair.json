@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hardcase-01",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Bump the HTTP client's connect and read timeouts to 30 seconds."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "src/apiclient/client.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "import httpx\n\n\ndef make_client(base_url: str) -> httpx.Client:\n    timeout = httpx.Timeout(\n        connect=10.0,\n        read=10.0,\n        write=10.0,\n        pool=5.0,\n    )\n    return httpx.Client(base_url=base_url, timeout=timeout)\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: src/apiclient/client.py\n@@ def make_client(base_url: str) -> httpx.Client:\n     timeout = httpx.Timeout(\n-        connect=10.0,\n-        read=10.0,\n+        connect=30.0,\n+        read=30.0,\n         write=10.0,\n         pool=5.0,\n     )\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\nsrc/apiclient/client.py",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hardcase-24",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Raise maxAttempts in the retry policy from 3 to 5."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "src/net/retryPolicy.js"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "export const retryPolicy = {\n  // Exponential-backoff retry policy shared by every outbound fetch wrapper.\n  // Tune these together: attempts x maxDelayMs bounds the worst-case latency.\n  enabled: true,\n  maxAttempts: 3,\n  baseDelayMs: 200,\n  maxDelayMs: 5000,\n  jitter: true,\n  jitterFactor: 0.3,\n  retryOn: [408, 425, 429, 500, 502, 503, 504],\n  respectRetryAfter: true,\n  timeoutMs: 10000,\n  circuitBreaker: false,\n};\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: src/net/retryPolicy.js\n@@ export const retryPolicy = {\n   enabled: true,\n-  maxAttempts: 3,\n+  maxAttempts: 5,\n   baseDelayMs: 200,\n   maxDelayMs: 5000,\n   jitter: true,\n   jitterFactor: 0.3,\n   retryOn: [408, 425, 429, 500, 502, 503, 504],\n   respectRetryAfter: true,\n   timeoutMs: 10000,\n   circuitBreaker: false,\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\nsrc/net/retryPolicy.js",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hardcase-12",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Scale the deployment: change replicas from 2 to 4 and update the matching resource-tier label."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "deploy/api.yaml"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: api\n  labels:\n    tier: small\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: api\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: deploy/api.yaml\n@@\n   labels:\n-    tier: small\n-  name: api\n+    tier: medium\n+  name: api\n spec:\n-  replicas: 2\n+  replicas: 4\n   selector:\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\ndeploy/api.yaml",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}

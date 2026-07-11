@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hardcase-15",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Rewrite the rate-limit defaults and separately bump the burst constant."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "internal/ratelimit/config.go"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "package ratelimit\n\nvar defaults = Limits{\n\tRequestsPerSecond: 10,\n\tBurst:             20,\n\tWindowSeconds:     60,\n\tMaxQueueDepth:     100,\n\tRejectOnFull:      false,\n}\n\nconst burstCeiling = 50\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: internal/ratelimit/config.go\n@@ var defaults = Limits{\n-\tRequestsPerSecond: 10,\n-\tBurst:             20,\n-\tWindowSeconds:     60,\n-\tMaxQueueDepth:     100,\n-\tRejectOnFull:      false,\n+\tRequestsPerSecond: 25,\n+\tBurst:             40,\n+\tWindowSeconds:     30,\n+\tMaxQueueDepth:     250,\n+\tRejectOnFull:      true,\n@@ const burstCeiling = 50\n-const burstCeiling = 50\n+const burstCeiling = 80\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\ninternal/ratelimit/config.go",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}
