@@ -10,12 +10,12 @@ Clinescope scores four things from the log: whether the agent used the right too
 
 > Clinescope is an independent, unofficial tool - not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used only to describe compatibility.
 
-<!-- Demo GIF goes here: record a run of `clinescope <trace.json>` and add it as ![demo](docs/demo.gif) once docs/demo.gif exists. -->
+<p align="center"><img src="docs/demo.gif" alt="clinescope scoring a Cline trace" width="800"></p>
 
 
 ## Get started
 
-Requires Python 3.11+.
+Requires Python 3.11+. Installing into a virtual environment is recommended.
 
 ```bash
 pip install "git+https://github.com/minh2416294/clinescope.git"
