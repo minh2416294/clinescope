@@ -10,7 +10,7 @@ Clinescope scores four things from the log: whether the agent used the right too
 
 > Clinescope is an independent, unofficial tool - not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used only to describe compatibility.
 
-<p align="center"><img src="docs/demo.gif" alt="clinescope scoring a Cline trace" width="800"></p>
+<p align="center"><img src="docs/demo.gif" alt="clinescope scoring a Cline trace" width="640"></p>
 
 
 ## Get started
