@@ -70,7 +70,9 @@ def test_committed_corpus_has_at_least_one_real_failing_and_one_clean() -> None:
 def test_committed_corpus_covers_the_real_failure_modes() -> None:
     # The corpus is evidence only if it covers real failure MODES, not a count.
     # These three are captured from REAL weak-model runs; guard that a future
-    # corpus edit cannot silently drop coverage of a mode it once had.
+    # corpus edit cannot silently drop coverage of a mode it once had. The 4th
+    # mode (blind_rewrite) is an honestly-stated gap -- see examples/corpus/
+    # README.md; the local model set could not emit a valid-but-bloated patch.
     report = run_corpus(CORPUS_MANIFEST)
     covered = {
         a.label.value for item in report.items for a in item.actual_advice.values()
