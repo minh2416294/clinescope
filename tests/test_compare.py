@@ -59,6 +59,31 @@ def _single_trace_summary_lines(
     return lines
 
 
+# The verdict words the single-trace summary can print after the cell; any other
+# token in that slot is the start of the "(...)" extra, not a verdict.
+_VERDICT_WORDS = frozenset({"PASS", "FAIL", "n/a"})
+
+
+def _single_trace_cell_verdict(name: str, line: str) -> tuple[str, str]:
+    """Parse the EXACT (cell, verdict) tokens out of a single-trace summary line.
+
+    The line is ``name  cell  [verdict]  [(extra)]`` with whitespace-justified
+    columns (see report._render_summary_line). Splitting on whitespace, token[0]
+    is the scorer name, token[1] is the cell (e.g. ``100/100`` / ``0/100`` /
+    ``n/a``), and token[2] is the verdict ONLY when it is one of PASS/FAIL/n-a --
+    otherwise it is the first word of the ``(...)`` extra, so the verdict is "".
+
+    Returning the exact tokens lets the caller compare with ``==`` instead of a
+    substring test, so a divergence like ``10/100`` vs ``100/100`` (a substring of
+    the other) cannot slip past.
+    """
+    tokens = line.split()
+    assert tokens[0] == name, f"expected line for {name!r}, got {line!r}"
+    cell = tokens[1]
+    verdict = tokens[2] if len(tokens) > 2 and tokens[2] in _VERDICT_WORDS else ""
+    return cell, verdict
+
+
 @pytest.mark.parametrize("trace_path", _EXAMPLE_TRACES, ids=lambda p: p.stem)
 def test_compare_row_reproduces_single_trace_cells(trace_path: Path) -> None:
     # ANTI-DRIFT: with no label (tool_selection n/a, as single-trace with no
@@ -70,14 +95,11 @@ def test_compare_row_reproduces_single_trace_cells(trace_path: Path) -> None:
 
     for name in _SCORERS:
         cell = row.cells[name]
-        line = single[name]
-        assert cell.cell in line, (
-            f"{trace_path.stem} {name}: cell {cell.cell!r} not in {line!r}"
+        expected = _single_trace_cell_verdict(name, single[name])
+        assert (cell.cell, cell.verdict) == expected, (
+            f"{trace_path.stem} {name}: compare {(cell.cell, cell.verdict)!r} "
+            f"!= single-trace {expected!r} (line {single[name]!r})"
         )
-        if cell.verdict:
-            assert cell.verdict in line, (
-                f"{trace_path.stem} {name}: verdict {cell.verdict!r} not in {line!r}"
-            )
 
 
 def test_compare_row_reproduces_single_trace_cells_with_expected_tools() -> None:
@@ -91,10 +113,11 @@ def test_compare_row_reproduces_single_trace_cells_with_expected_tools() -> None
     single = _single_trace_summary_lines(trace_path, expected_tools=expected)
 
     ts = row.cells["tool_selection"]
-    assert ts.cell in single["tool_selection"]
     # apply_patch is used in this trace -> perfect recall -> PASS, matching single-trace.
     assert ts.verdict == "PASS"
-    assert "PASS" in single["tool_selection"]
+    assert (ts.cell, ts.verdict) == _single_trace_cell_verdict(
+        "tool_selection", single["tool_selection"]
+    )
 
 
 def test_compare_tool_selection_sub_perfect_recall_matches_single_trace() -> None:
@@ -111,9 +134,11 @@ def test_compare_tool_selection_sub_perfect_recall_matches_single_trace() -> Non
 
     ts = row.cells["tool_selection"]
     assert ts.cell == "67/100"
-    assert ts.cell in single["tool_selection"]
     # Sub-perfect recall gets NO verdict word (not FAIL) -- matching single-trace.
     assert ts.verdict == ""
+    assert (ts.cell, ts.verdict) == _single_trace_cell_verdict(
+        "tool_selection", single["tool_selection"]
+    )
     assert "FAIL" not in single["tool_selection"]
 
 
