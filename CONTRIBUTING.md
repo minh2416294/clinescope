@@ -69,3 +69,22 @@ The gotcha only bites `python -m clinescope` (and editor type-checkers), which d
   agreement on the approach saves a rewrite.
 - Keep behavior changes and refactors in separate commits where you can; explain *why* in the PR body,
   not just *what*.
+
+## Releasing (maintainer only)
+
+Releases publish to PyPI automatically via **Trusted Publishing** (OIDC) — there is no PyPI API token
+stored in the repo. `.github/workflows/release.yml` builds the sdist + wheel and uploads them when a
+**GitHub Release is published** (not on a tag alone, and never on a PR).
+
+To cut a release:
+
+1. Bump `version` in `pyproject.toml` (and anywhere else it's mirrored), and land it on `main` via PR.
+2. On GitHub, **Releases → Draft a new release**, create a tag matching the version (e.g. `v1.0.1`), and
+   **Publish**. The `Release` workflow runs and uploads to PyPI.
+3. Verify the new version renders at <https://pypi.org/project/clinescope/> and installs cleanly into a
+   fresh venv (`pip install clinescope` → `clinescope-corpus` exits 0).
+
+One-time setup (already configured; documented here for the record) — on PyPI, **Account → Publishing →
+Add a pending publisher** with: PyPI Project Name `clinescope`, Owner `minh2416294`, Repository name
+`clinescope`, Workflow name `release.yml`, Environment name `pypi`; and a GitHub repo Environment named
+`pypi` (Settings → Environments), where an optional required-reviewer gate can be added.
