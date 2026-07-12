@@ -147,8 +147,8 @@ def _render_summary(
         lines.append(
             _render_summary_line(
                 "diff_coherence",
-                _render_score_out_of_100(diff_coherence.score),
-                _summary_verdict(diff_coherence.score),
+                render_score_out_of_100(diff_coherence.score),
+                summary_verdict(diff_coherence.score),
                 _summary_reason_diff_coherence(diff_coherence),
             )
         )
@@ -156,8 +156,8 @@ def _render_summary(
         lines.append(
             _render_summary_line(
                 "diff_minimality",
-                _render_score_out_of_100(diff_minimality.score),
-                _summary_verdict(diff_minimality.score),
+                render_score_out_of_100(diff_minimality.score),
+                summary_verdict(diff_minimality.score),
                 _summary_reason_diff_minimality(diff_minimality),
             )
         )
@@ -175,27 +175,50 @@ def _render_summary(
     return "\n".join(lines)
 
 
+def tool_selection_cell_verdict(
+    score: ToolSelectionScore, expected_provided: bool
+) -> tuple[str, str]:
+    """The canonical (cell, verdict) pair for tool_selection -- the ONE source.
+
+    tool_selection does NOT go through :func:`summary_verdict`: it is a recall
+    metric with no threshold, so it is deliberately asymmetric --
+
+    * no ``--expected`` (``expected_provided`` False) -> cell ``"n/a"``, verdict ``""``.
+    * expected given, perfect recall (``score == 1.0``) -> ``"PASS"``.
+    * expected given, sub-perfect recall -> verdict ``""`` (a BLANK word, never
+      ``"FAIL"`` -- the gate is what turns a score into a fail).
+
+    Both the single-trace summary line and the ``compare`` table call this, so a
+    compare row's tool_selection cell/verdict is byte-identical to the single-trace
+    one by construction.
+    """
+    if not expected_provided:
+        return "n/a", ""
+    verdict = "PASS" if score.score == 1.0 else ""
+    return render_score_out_of_100(score.score), verdict
+
+
 def _render_summary_tool_selection(
     score: ToolSelectionScore, expected_provided: bool
 ) -> str:
     # Opt-in: with no --expected there is nothing to recall against, so the old
     # vacuous 100/100 PASS was a false positive. Show n/a + how to enable it
     # instead (mirrors the abstaining scorers), never a fake pass.
+    cell, verdict = tool_selection_cell_verdict(score, expected_provided)
     if not expected_provided:
         return _render_summary_line(
             "tool_selection",
-            "n/a",
-            "",
+            cell,
+            verdict,
             "(pass --expected <tools> to score tool selection)",
         )
     # tool_selection is a recall metric with no threshold, so a sub-100 score
     # gets NO PASS/FAIL word -- just the number and the actionable missing tools.
     # The gate (clinescope.gate) is the thing that turns a score into a verdict.
-    verdict = "PASS" if score.score == 1.0 else ""
     extra = f"(missing: {_render_names(score.missing)})" if score.missing else ""
     return _render_summary_line(
         "tool_selection",
-        _render_score_out_of_100(score.score),
+        cell,
         verdict,
         extra,
     )
@@ -214,8 +237,8 @@ def _render_summary_apply_recovery(score: ApplyRecoveryScore) -> str:
         extra = _summary_reason_apply_recovery(score)
     return _render_summary_line(
         "apply_recovery",
-        _render_score_out_of_100(score.score),
-        _summary_verdict(score.score),
+        render_score_out_of_100(score.score),
+        summary_verdict(score.score),
         extra,
     )
 
@@ -285,7 +308,7 @@ def _render_summary_line(name: str, cell: str, verdict: str, extra: str = "") ->
     return line
 
 
-def _render_score_out_of_100(score: float | None) -> str:
+def render_score_out_of_100(score: float | None) -> str:
     # None means the scorer abstained (metric undefined for this trace) -> "n/a";
     # a real 0.0 float (e.g. diff_coherence's hard-zero) still renders "0/100".
     # Round-half-up: int(x*100 + 0.5), the single source of the NN/100 rounding.
@@ -294,7 +317,7 @@ def _render_score_out_of_100(score: float | None) -> str:
     return f"{int(score * 100 + 0.5)}/100"
 
 
-def _summary_verdict(score: float | None) -> str:
+def summary_verdict(score: float | None) -> str:
     if score is None:
         return "n/a"
     return "PASS" if score == 1.0 else "FAIL"

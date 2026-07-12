@@ -6,7 +6,7 @@ from clinescope.__main__ import main
 from clinescope.apply_recovery import ApplyRecoveryScore
 from clinescope.diff_coherence import DiffCoherenceScore
 from clinescope.diff_minimality import DiffMinimalityScore
-from clinescope.report import _render_score_out_of_100, render_report
+from clinescope.report import render_report, render_score_out_of_100
 from clinescope.tool_selection import score_tool_selection
 from clinescope.world_a import ToolCall, Trace, load_trace
 
@@ -250,7 +250,7 @@ def test_summary_apply_recovery_reports_recovered_count() -> None:
 def test_render_score_out_of_100_rounds_half_up(
     value: float | None, expected: str
 ) -> None:
-    assert _render_score_out_of_100(value) == expected
+    assert render_score_out_of_100(value) == expected
 
 
 def _summary_line(report: str, scorer_name: str) -> str:
