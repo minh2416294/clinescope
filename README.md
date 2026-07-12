@@ -47,6 +47,14 @@ Clinescope reads a Cline log and scores four things:
     clinescope path/to/messages.json --expected read_files apply_patch --advice
     ```
 
+    **Compare several runs side by side:**
+
+    Run the same task against different models (or Cline versions) and score them all in one table:
+    ```bash
+    python -m clinescope.compare run-a.json run-b.json run-c.json
+    ```
+    Each row is one run; the columns are the four scorers. To score `tool_selection` per run (each task expects different tools), pass a `--labels manifest.json` mapping each trace path to its `{"display": "...", "expected_tools": [...]}`.
+
 ## Contributing
 
 Small, discussed-first changes are welcome - see [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, tests, and what a scorer change needs.
