@@ -1,0 +1,98 @@
+{
+  "examples/corpus/live-gpt-oss-trace.json": {
+    "display": "gpt-oss:20b update-1hunk (clean)",
+    "model": "gpt-oss:20b",
+    "task": "single-hunk update to an existing file",
+    "source": "real",
+    "kind": "clean",
+    "expected_tools": ["read_files", "apply_patch"],
+    "scorers": {
+      "tool_selection": {"expected_cell": "100/100"},
+      "diff_coherence": {"expected_cell": "100/100"},
+      "diff_minimality": {"expected_cell": "100/100", "applicable": true},
+      "apply_recovery": {"expected_cell": "n/a", "score_is_none": true, "applicable": false}
+    },
+    "expected_failure_labels": [],
+    "evidence_tokens": []
+  },
+  "examples/corpus/live-gpt-oss-add-file.json": {
+    "display": "gpt-oss:20b add-file (clean)",
+    "model": "gpt-oss:20b",
+    "task": "create a new file via apply_patch add-file",
+    "source": "real",
+    "kind": "clean",
+    "expected_tools": ["read_files", "apply_patch", "run_commands"],
+    "scorers": {
+      "tool_selection": {"expected_cell": "100/100"},
+      "diff_coherence": {"expected_cell": "100/100"},
+      "diff_minimality": {"expected_cell": "100/100", "applicable": true},
+      "apply_recovery": {"expected_cell": "n/a", "score_is_none": true, "applicable": false}
+    },
+    "expected_failure_labels": [],
+    "evidence_tokens": []
+  },
+  "examples/corpus/live-gpt-oss-update-2hunk.json": {
+    "display": "gpt-oss:20b update-2hunk (clean)",
+    "model": "gpt-oss:20b",
+    "task": "two-hunk update to an existing file",
+    "source": "real",
+    "kind": "clean",
+    "expected_tools": ["read_files", "apply_patch"],
+    "scorers": {
+      "tool_selection": {"expected_cell": "100/100"},
+      "diff_coherence": {"expected_cell": "100/100"},
+      "diff_minimality": {"expected_cell": "100/100", "applicable": true},
+      "apply_recovery": {"expected_cell": "n/a", "score_is_none": true, "applicable": false}
+    },
+    "expected_failure_labels": [],
+    "evidence_tokens": []
+  },
+  "examples/corpus/live-gpt-oss-apply-fail.json": {
+    "display": "gpt-oss:20b apply-fail (no recovery)",
+    "model": "gpt-oss:20b",
+    "task": "edit validator.py; the first apply_patch failed and was never recovered",
+    "source": "real",
+    "kind": "failing",
+    "expected_tools": ["read_files", "apply_patch"],
+    "scorers": {
+      "tool_selection": {"expected_cell": "100/100"},
+      "diff_coherence": {"expected_cell": "100/100"},
+      "diff_minimality": {"expected_cell": "100/100", "applicable": true},
+      "apply_recovery": {"expected_cell": "0/100", "score_is_none": false, "applicable": true}
+    },
+    "expected_failure_labels": ["no_apply_recovery"],
+    "evidence_tokens": ["validator.py"]
+  },
+  "examples/corpus/qwen-missing-tools.json": {
+    "display": "qwen2.5-coder:1.5b hallucinated-tool (no apply_patch)",
+    "model": "qwen2.5-coder:1.5b",
+    "task": "change max age 150->120 in validator.py; model emitted a hallucinated JSON tool, never a real Cline tool call",
+    "source": "real",
+    "kind": "failing",
+    "expected_tools": ["read_files", "apply_patch"],
+    "scorers": {
+      "tool_selection": {"expected_cell": "0/100"},
+      "diff_coherence": {"expected_cell": "0/100", "score_is_none": false},
+      "diff_minimality": {"expected_cell": "n/a", "score_is_none": true, "applicable": false},
+      "apply_recovery": {"expected_cell": "n/a", "score_is_none": true, "applicable": false}
+    },
+    "expected_failure_labels": ["missing_tools", "malformed_patch"],
+    "evidence_tokens": ["apply_patch", "read_files", "no apply_patch tool call in trace"]
+  },
+  "examples/corpus/llama-code-dump.json": {
+    "display": "llama3.1:8b code-dump (no apply_patch)",
+    "model": "llama3.1:8b",
+    "task": "add two validation checks to validator.py; model dumped a rewritten file as plain-text markdown, never a tool call",
+    "source": "real",
+    "kind": "failing",
+    "expected_tools": ["read_files", "apply_patch"],
+    "scorers": {
+      "tool_selection": {"expected_cell": "0/100"},
+      "diff_coherence": {"expected_cell": "0/100", "score_is_none": false},
+      "diff_minimality": {"expected_cell": "n/a", "score_is_none": true, "applicable": false},
+      "apply_recovery": {"expected_cell": "n/a", "score_is_none": true, "applicable": false}
+    },
+    "expected_failure_labels": ["missing_tools", "malformed_patch"],
+    "evidence_tokens": ["apply_patch", "read_files", "no apply_patch tool call in trace"]
+  }
+}
