@@ -16,7 +16,7 @@ Clinescope reads a Cline log and scores four things:
 
 <p align="center"><img src="docs/demo.png" alt="clinescope scoring a failing Cline run and, with --advice, coaching how to fix the agent's prompt for each failing scorer" width="640"></p>
 
-## Get started
+## Get Started
 
 1. **Install Clinescope**
 
@@ -54,7 +54,7 @@ Clinescope reads a Cline log and scores four things:
     ```
     Each row is one run; the columns are the four scorers. To score `tool_selection` per run (each task expects different tools), pass a `--labels manifest.json` mapping each trace path to its `{"display": "...", "expected_tools": [...]}`.
 
-## Validation corpus
+## Validation Corpus
 
 Clinescope ships a corpus of **real captured Cline runs** in [`examples/corpus/`](examples/corpus/), each hand-labeled in [`corpus.json`](examples/corpus/corpus.json) with its expected score profile, failure taxonomy, and the evidence its advice should name. A runner scores every trace, checks it against its label, prints a summary table, and **exits non-zero if any trace fails its label** — so the corpus is a real regression gate, not a demo:
 
