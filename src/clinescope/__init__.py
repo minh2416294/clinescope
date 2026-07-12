@@ -6,4 +6,4 @@ render a report; see :mod:`clinescope.world_a`,
 with :mod:`clinescope.__main__` as the CLI entry point.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
