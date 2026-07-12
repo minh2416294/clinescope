@@ -226,25 +226,25 @@ def test_compare_label_matches_by_resolved_path_not_spelling() -> None:
 def test_compare_conflicting_same_path_labels_raise() -> None:
     # Two DIFFERENT-string keys that resolve to the SAME path with DIFFERENT labels
     # must fail loud, not silently collapse (last-write-wins would score the wrong
-    # expected set). Forward-slash vs OS-native spellings are distinct strings.
-    trace = EXAMPLES / "apply-patch-trace.json"
-    key_native = str(trace)
-    key_fwd = trace.as_posix()
-    assert key_native != key_fwd  # guard: they are genuinely different strings
+    # expected set). A bare key vs a "./"-prefixed key are distinct strings on
+    # EVERY OS (unlike a backslash/forward-slash pair, which coincides on POSIX).
+    bare = EXAMPLES.as_posix() + "/apply-patch-trace.json"
+    dotted = "./" + bare
+    assert bare != dotted  # guard: genuinely different strings on any platform
     labels = {
-        key_native: TraceLabel(display="a", expected_tools=("apply_patch",)),
-        key_fwd: TraceLabel(display="b", expected_tools=("read_files",)),
+        bare: TraceLabel(display="a", expected_tools=("apply_patch",)),
+        dotted: TraceLabel(display="b", expected_tools=("read_files",)),
     }
 
     with pytest.raises(LabelError, match="resolve to the same path"):
-        run_compare([trace], labels)
+        run_compare([EXAMPLES / "apply-patch-trace.json"], labels)
 
 
 def test_compare_identical_same_path_labels_are_allowed() -> None:
     # A redundant (identical) dupe for the same path is harmless -> no error.
     trace = EXAMPLES / "apply-patch-trace.json"
     same = TraceLabel(display="a", expected_tools=("apply_patch",))
-    labels = {str(trace): same, trace.as_posix(): same}
+    labels = {trace.as_posix(): same, "./" + trace.as_posix(): same}
 
     report = run_compare([trace], labels)
 
@@ -308,11 +308,13 @@ def test_compare_cli_conflicting_labels_exits_2(
 ) -> None:
     trace = EXAMPLES / "apply-patch-trace.json"
     manifest = tmp_path / "labels.json"
+    # Bare vs "./"-prefixed keys differ as strings on every OS but resolve alike.
+    bare = trace.as_posix()
     manifest.write_text(
         json.dumps(
             {
-                str(trace): {"expected_tools": ["apply_patch"]},
-                trace.as_posix(): {"expected_tools": ["read_files"]},
+                bare: {"expected_tools": ["apply_patch"]},
+                "./" + bare: {"expected_tools": ["read_files"]},
             }
         ),
         encoding="utf-8",
