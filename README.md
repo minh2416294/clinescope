@@ -4,7 +4,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)
 
-Clinescope is an AI evaluation tool that lives in your development workflow, reads your Cline logs, and helps you ship better prompts by checking tool choices, catching messy block rewrites, and ensuring updates don't break past work.
+Clinescope is an AI evaluation tool that lives in your Cline development workflow, reads your logs, and helps you write better prompts by checking tool choices, catching messy code rewrites, and ensuring updates don't break past work.
 
 Clinescope reads a Cline log and scores four things:
 
@@ -13,41 +13,39 @@ Clinescope reads a Cline log and scores four things:
 - **`diff_minimality`**: are its edits small and focused, not bloated rewrites?
 - **`apply_recovery`**: when a patch failed, did the agent fix it?
 
-Optionally, it also checks its own AI judge against human ratings.
-
 > Clinescope is an independent, unofficial tool - not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used only to describe compatibility.
 
 <p align="center"><img src="docs/demo.png" alt="clinescope scoring a failing Cline run and, with --advice, coaching how to fix the agent's prompt for each failing scorer" width="640"></p>
 
 ## Get started
 
-Requires Python 3.11+. Installing into a virtual environment is recommended.
+1. **Install Clinescope**
 
-```bash
-pip install "git+https://github.com/minh2416294/clinescope.git"
-```
+    Requires Python 3.11+. Installing into a virtual environment is recommended.
 
-Every time Cline finishes a task, it saves a log of what it did (a `messages.json` file). Point Clinescope at that file to score the run:
+    ```bash
+    pip install "git+https://github.com/minh2416294/clinescope.git"
+    ```
 
-```bash
-clinescope path/to/messages.json --expected read_files apply_patch
-```
+2. **Use Clinescope**
 
-After `--expected`, list the tools you think the task needed (here: read a file, then edit it). Clinescope checks whether the agent actually used them and scores the rest of the run automatically. It reads the log only, and never changes your files.
+    **Get the score:**
+  
+    Point Clinescope at the Cline log file to score the run:
+    ```bash
+    clinescope path/to/messages.json --expected read_files apply_patch
+    ```
+    After `--expected`, list the tools you think the task needed. Clinescope checks whether the agent actually used them and scores the rest of the run automatically. Not sure which tool names to use? Run `clinescope --list-tools` to print the ones Clinescope knows.
 
-Not sure which tool names to use? Run `clinescope --list-tools` to print the ones Clinescope knows. If you omit `--expected` entirely, tool selection is skipped (shown as `n/a`) rather than scored, and the other three scorers still run.
+    **Get full breakdown of every scorer:**
+    ```bash
+    clinescope path/to/messages.json --expected read_files apply_patch --verbose
+    ```
 
-By default it prints a one-line summary per scorer. For the full breakdown of every scorer (gates, counters, evidence), add `--verbose`:
-
-```bash
-clinescope path/to/messages.json --expected read_files apply_patch --verbose
-```
-
-To turn a low score into a concrete next step, add `--advice`. For each failing scorer it prints a short failure label and what to change (usually a prompt fix), quoting the run's own evidence — the missing tool, the malformed patch line, the unrecovered file. A clean run prints no advice.
-
-```bash
-clinescope path/to/messages.json --expected read_files apply_patch --advice
-```
+    **Get advice to improve prompting:**
+    ```bash
+    clinescope path/to/messages.json --expected read_files apply_patch --advice
+    ```
 
 ## Contributing
 
