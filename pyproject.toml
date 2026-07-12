@@ -57,8 +57,8 @@ testpaths = ["tests"]
 # Coverage settings. The `--cov` flags are passed on the CI command line (see
 # ci.yml), NOT in addopts, so a bare `pytest -q` still runs for a contributor who
 # installed only base pytest. `--cov-fail-under=90` is the gate: coverage measured
-# at 94% on the current suite, with headroom so a small unrelated change doesn't
-# trip CI, while a real regression (a big block of untested code) does.
+# at ~93% on the current suite (93.16% on CI), with headroom so a small unrelated
+# change doesn't trip CI, while a real regression (a big block of untested code) does.
 [tool.coverage.run]
 source = ["clinescope"]
 branch = false
