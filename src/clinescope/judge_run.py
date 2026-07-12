@@ -556,7 +556,26 @@ def _judge_run_parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _judge_run_force_utf8_stdout() -> None:
+    """Best-effort switch stdout/stderr to UTF-8 so the κ report never crashes.
+
+    The report prints κ / → / § / ≥. On a Windows console the default stdout codec is
+    cp1252, which cannot encode those and raises ``UnicodeEncodeError`` mid-print -- so
+    the exact ``python -m clinescope.judge_run --report-only`` command the README points
+    at would crash for a Windows user. Reconfiguring the text stream to UTF-8 fixes the
+    console encoding (the report content is fine; only the boundary was wrong).
+
+    Guarded: a stream swapped for one without ``reconfigure`` (a plain pipe wrapper, a
+    test's ``StringIO``) simply keeps its own encoding -- this never raises.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
+    _judge_run_force_utf8_stdout()
     args = _judge_run_parse_args(argv)
     if not args.report_only:
         result = judge_run_over_gold(

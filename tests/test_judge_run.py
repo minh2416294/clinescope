@@ -11,7 +11,9 @@ cache writer is filesystem-only, and the κ report is computed from an authored 
 
 from __future__ import annotations
 
+import io
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -357,3 +359,36 @@ def test_kappa_report_tripwire_text_appears_below_floor() -> None:
     report = judge_kappa_report(inputs)
     assert "ADVISORY-ONLY" in report
     assert "protocol §7" in report
+
+
+def test_report_only_does_not_crash_on_a_cp1252_stdout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The κ report prints κ / → / § / ≥. On a Windows console stdout defaults to cp1252,
+    # which cannot encode those -> UnicodeEncodeError mid-print. main() reconfigures the
+    # stream to UTF-8 first; without that the exact README command crashes. Reproduce a
+    # cp1252 console with a strict TextIOWrapper and assert the run survives + emits κ.
+    from clinescope.judge_run import main
+
+    raw = io.BytesIO()
+    cp1252_stdout = io.TextIOWrapper(raw, encoding="cp1252", errors="strict")
+    monkeypatch.setattr(sys, "stdout", cp1252_stdout)
+
+    exit_code = main(
+        [
+            "--report-only",
+            "--gold",
+            str(_REPO_ROOT / "gold" / "diff_minimality.gold.jsonl"),
+            "--cache",
+            str(_REPO_ROOT / "gold" / "diff_minimality.judge.jsonl"),
+            "--repo-root",
+            str(_REPO_ROOT),
+        ]
+    )
+
+    assert exit_code == 0
+    cp1252_stdout.flush()
+    printed = raw.getvalue().decode("utf-8")
+    # The fix flipped the stream to UTF-8, so the κ glyph survives round-trip.
+    assert "κ report" in printed
+    assert "cohen_kappa:" in printed
