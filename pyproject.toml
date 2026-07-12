@@ -10,6 +10,22 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = []
+keywords = ["cline", "eval", "llm", "agent", "coding-agent", "diff", "regression"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/minh2416294/clinescope"
+Repository = "https://github.com/minh2416294/clinescope"
+Issues = "https://github.com/minh2416294/clinescope/issues"
 
 [project.scripts]
 clinescope = "clinescope.__main__:main"
@@ -21,6 +37,18 @@ dev = ["pytest", "ruff", "mypy"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/clinescope"]
+
+# Ship the committed data (real-trace corpus + the human-labeled gold set + judge cache)
+# alongside the package so `clinescope-corpus` and the judge tooling work from a pip
+# install, not only from a source checkout. The default-data resolver (_datafiles.py)
+# finds these at site-packages/{examples,gold} when installed.
+[tool.hatch.build.targets.wheel.force-include]
+"examples" = "examples"
+"gold" = "gold"
+
+[tool.hatch.build.targets.sdist.force-include]
+"examples" = "examples"
+"gold" = "gold"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
