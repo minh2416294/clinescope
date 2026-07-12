@@ -29,30 +29,35 @@ run against real captured Cline traces (see the [validation corpus](#validation-
 
 An eval tool that uses an LLM to judge quality has to answer one question honestly: **does the judge
 agree with a human?** Clinescope measures this the way a rigorous eval reader expects — chance-corrected
-inter-rater agreement (**Cohen's κ**) between the LLM judge and a small **human-labeled** gold set, with
-a bootstrap confidence interval. The result on the current gold set (a free local `gpt-oss:20b` judge vs.
-26 blind human labels):
+inter-rater agreement (**Cohen's κ**) between the LLM judge and a **human-labeled** gold set, with a
+bootstrap confidence interval. The result on the current 50-item gold set (a free local `gpt-oss:20b`
+judge vs. 50 blind human labels):
 
 ```
-cohen_kappa:  0.2353    95% CI: [0.0000, 0.5229]    N = 26
+cohen_kappa:  0.0496    95% CI: [-0.1200, 0.2175]    N = 50
 confusion (rows = human, cols = judge):
-  human WASTEFUL      →  2 agree / 8 missed
-  human NOT-WASTEFUL  → 16 agree / 0 missed
+  human WASTEFUL      →  3 agree / 21 missed
+  human NOT-WASTEFUL  → 24 agree /  2 missed
 ```
 
-Because **κ = 0.24 is below the 0.5 floor, the judge is deliberately treated as advisory-only and kept
+The confusion matrix tells the story: the free 20B judge is **strongly NOT-WASTEFUL-biased** — it calls
+almost everything "fine," so on a balanced set it catches only 3 of 24 genuinely wasteful patches.
+Because **κ ≈ 0 is far below the 0.5 floor, the judge is deliberately treated as advisory-only and kept
 *out* of the CI gate** — `clinescope-gate` fires only on the deterministic scorers, never on a judge that
-measured near chance level. That negative result is the point: Clinescope gates on the signals it trusts
+measured at chance level. That negative result is the point: Clinescope gates on the signals it trusts
 and, provably, not on the one it doesn't. Recompute it yourself with no model call:
 
 ```bash
-python -m clinescope.judge_run --report-only   # reads the committed cache; prints κ + CI
+python -m clinescope.judge_run --report-only        # reads the committed cache; prints κ + CI
+python -m clinescope.judge_multidraw --report-only  # how much κ moves across repeated draws
 ```
 
-*Honest caveats:* N is small so the CI is wide (its lower bound is literally 0), the judge is one free
-local model on small edits, and a single-draw κ isn't reproducible to the digit (the model flips labels
-run-to-run even at temperature 0). Robustness across models and a lifted N are on the roadmap — this
-number is a floor, stated plainly, not a marketing figure.
+*Honest caveats:* N is still small so the CI is wide (it straddles zero), the judge is one free local
+model on small edits, and a single-draw κ isn't reproducible to the digit — `gpt-oss:20b` flips labels
+run-to-run even at temperature 0, which `judge_multidraw` measures directly (per-draw κ spread + Fleiss'
+self-consistency). Growing the gold set from 26 to 50 harder, balanced, blind-labeled cases *lowered* the
+measured κ — an honest floor, not a marketing figure. Robustness across multiple/frontier judge models
+is on the roadmap.
 
 ## Get Started
 

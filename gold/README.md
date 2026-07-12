@@ -11,10 +11,16 @@ correct" number an eval reader looks for.
 > loader, the future judge wiring, and the κ computation all depend on the exact field
 > set. Changing a field is a `schema_version` bump, never a silent edit.
 
-Today only one gold set exists: `diff_minimality.gold.jsonl`. Its seed items are
-**unlabeled** (`"label": null`) — real labels are added by a human (see the protocol
-below), never machine-generated, or the κ measures the judge against itself instead of
-against a human, which is not validation.
+Today one gold set exists: `diff_minimality.gold.jsonl` (**50 items**, all human-labeled).
+New items are always committed as **unlabeled seeds** (`"label": null`) first — real labels
+are added by a human (see the protocol below), never machine-generated, or the κ measures the
+judge against itself instead of against a human, which is not validation.
+
+Two agreement views are computed over this set: `python -m clinescope.judge_run` reports the
+single-draw human-vs-judge **Cohen's κ**, and `python -m clinescope.judge_multidraw` reports how
+much that κ moves across repeated judge draws (per-draw spread) plus the judge's **Fleiss' κ**
+self-consistency (draws treated as raters) — because the model flips labels run-to-run even at
+temperature 0.
 
 ## Format — one JSON object per line (JSONL)
 

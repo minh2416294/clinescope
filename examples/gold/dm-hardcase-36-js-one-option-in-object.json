@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hc-36-js-one-option-in-object|context-drag",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Enable credentials in the fetch options object."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "web/src/api.js"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "const options = {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  cache: 'no-store',\n  credentials: 'omit',\n  redirect: 'follow',\n  keepalive: true,\n};\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: web/src/api.js\n@@ const options = {\n   method: 'POST',\n   headers: { 'Content-Type': 'application/json' },\n   cache: 'no-store',\n-  credentials: 'omit',\n+  credentials: 'include',\n   redirect: 'follow',\n   keepalive: true,\n };\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\nweb/src/api.js",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}

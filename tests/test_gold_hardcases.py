@@ -46,11 +46,16 @@ _CAUGHT_BLIND_REWRITE_SLUGS = frozenset(
         "dm-hardcase-14-blind-retype-js-retry-config",
         "dm-hardcase-15-blind-retype-go-limits-mixed",
         "dm-hardcase-16-blind-retype-yaml-ci-matrix",
+        # P3b additions (dm-hc-41..44): four more caught blind rewrites.
+        "dm-hardcase-41-blind-retype-py-config-block",
+        "dm-hardcase-42-blind-retype-go-struct-literal",
+        "dm-hardcase-43-blind-retype-yaml-service",
+        "dm-hardcase-44-blind-retype-js-handlers",
     }
 )
 
-_EXPECTED_HARDCASE_COUNT = 24
-_EXPECTED_TOTAL_GOLD_ITEMS = 26  # 2 seed + 24 hard cases
+_EXPECTED_HARDCASE_COUNT = 48
+_EXPECTED_TOTAL_GOLD_ITEMS = 50  # 2 seed + 48 hard cases
 
 
 def _hardcase_trace_paths() -> list[Path]:
