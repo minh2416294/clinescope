@@ -1,8 +1,7 @@
 # Clinescope
 
-[![CI](https://github.com/minh2416294/clinescope/actions/workflows/ci.yml/badge.svg)](https://github.com/minh2416294/clinescope/actions/workflows/ci.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg?style=flat-square)
 
 Clinescope is an AI evaluation tool that lives in your Cline development workflow, reads your logs, and helps you write better prompts by checking tool choices, catching messy code rewrites, and ensuring updates don't break past work.
 
@@ -65,9 +64,9 @@ python -m clinescope.corpus
 
 This is the un-fakeable evidence that Clinescope catches real agent failures (and stays quiet on clean runs): the traces are real, the failures are real, and the runner proves Clinescope reproduces every labeled outcome.
 
-## Contributing
+## Reporting Bugs
 
-Small, discussed-first changes are welcome - see [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, tests, and what a scorer change needs.
+Small, discussed-first changes are welcome -- see [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, tests, and what a scorer change needs. You can file a [GitHub issue](https://github.com/minh2416294/clinescope/issues).
 
 ## License
 
