@@ -120,3 +120,99 @@ def test_labels_load_rejects_invalid_json(tmp_path: Path) -> None:
 
     with pytest.raises(LabelError, match="not valid JSON"):
         labels_load(manifest)
+
+
+# --- Corpus-superset fields ---------------------------------------------------
+
+
+def test_labels_load_parses_corpus_superset_fields(tmp_path: Path) -> None:
+    manifest = _write(
+        tmp_path / "m.json",
+        {
+            "examples/a.json": {
+                "display": "gpt-oss apply-fail",
+                "model": "gpt-oss:20b",
+                "task": "edit validator.py",
+                "source": "real",
+                "kind": "failing",
+                "expected_tools": ["read_files", "apply_patch"],
+                "scorers": {
+                    "apply_recovery": {
+                        "expected_cell": "0/100",
+                        "score_is_none": False,
+                        "applicable": True,
+                    }
+                },
+                "expected_failure_labels": ["no_apply_recovery"],
+                "evidence_tokens": ["validator.py"],
+            }
+        },
+    )
+
+    label = labels_load(manifest)["examples/a.json"]
+
+    assert label.model == "gpt-oss:20b"
+    assert label.source == "real"
+    assert label.kind == "failing"
+    assert label.expected_failure_labels == ("no_apply_recovery",)
+    assert label.evidence_tokens == ("validator.py",)
+    assert label.scorers["apply_recovery"].expected_cell == "0/100"
+    assert label.scorers["apply_recovery"].score_is_none is False
+    assert label.scorers["apply_recovery"].applicable is True
+
+
+def test_labels_absent_corpus_fields_default_cleanly(tmp_path: Path) -> None:
+    # A minimal compare-style label (no corpus fields) is still valid: the corpus
+    # superset fields default to None/empty, so labels_load stays backward-compatible.
+    manifest = _write(tmp_path / "m.json", {"examples/a.json": {"display": "x"}})
+
+    label = labels_load(manifest)["examples/a.json"]
+
+    assert label.model is None
+    assert label.kind is None
+    assert label.source is None
+    assert label.scorers == {}
+    assert label.expected_failure_labels == ()
+    assert label.evidence_tokens == ()
+
+
+def test_labels_load_rejects_unknown_kind(tmp_path: Path) -> None:
+    # A typo'd kind ("cleen") must fail LOUD, not be silently accepted -- an item
+    # mislabeled "cleen" would silently skip the no-false-positive corpus check.
+    manifest = _write(tmp_path / "m.json", {"examples/a.json": {"kind": "cleen"}})
+
+    with pytest.raises(LabelError, match="'kind'.*must be one of"):
+        labels_load(manifest)
+
+
+def test_labels_load_rejects_unknown_source(tmp_path: Path) -> None:
+    manifest = _write(tmp_path / "m.json", {"examples/a.json": {"source": "synthetic"}})
+
+    with pytest.raises(LabelError, match="'source'.*must be one of"):
+        labels_load(manifest)
+
+
+def test_labels_load_accepts_valid_kind_and_source(tmp_path: Path) -> None:
+    for kind in ("clean", "failing"):
+        manifest = _write(tmp_path / f"{kind}.json", {"a.json": {"kind": kind}})
+        assert labels_load(manifest)["a.json"].kind == kind
+    for source in ("real", "authored"):
+        manifest = _write(tmp_path / f"{source}.json", {"a.json": {"source": source}})
+        assert labels_load(manifest)["a.json"].source == source
+
+
+def test_labels_load_rejects_non_object_scorers(tmp_path: Path) -> None:
+    manifest = _write(tmp_path / "m.json", {"a.json": {"scorers": ["not", "obj"]}})
+
+    with pytest.raises(LabelError, match="'scorers'.*must be an object"):
+        labels_load(manifest)
+
+
+def test_labels_load_rejects_non_bool_score_is_none(tmp_path: Path) -> None:
+    manifest = _write(
+        tmp_path / "m.json",
+        {"a.json": {"scorers": {"apply_recovery": {"score_is_none": "yes"}}}},
+    )
+
+    with pytest.raises(LabelError, match="score_is_none.*must be a boolean"):
+        labels_load(manifest)
