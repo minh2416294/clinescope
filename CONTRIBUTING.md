@@ -17,7 +17,7 @@ python -m venv .venv && source .venv/Scripts/activate   # Windows Git Bash; use 
 pip install -e ".[dev]"
 ```
 
-The `[dev]` extra pulls in `pytest`, `ruff`, and `mypy` — the same tools CI runs.
+The `[dev]` extra pulls in `pytest`, `pytest-cov`, `ruff`, and `mypy` — the same tools CI runs.
 
 ## Running the tests and linters
 
@@ -32,6 +32,16 @@ mypy src                  # type-check
 
 `pytest` is install-independent — `pyproject.toml` sets `[tool.pytest.ini_options] pythonpath = ["src"]`,
 so `pytest -q` finds the package whether or not it's installed.
+
+CI additionally runs the suite under coverage and **fails if line coverage drops below 90%**
+(measured at 94%). To reproduce that gate locally:
+
+```bash
+pytest -q --cov=clinescope --cov-report=term-missing --cov-fail-under=90
+```
+
+A bare `pytest -q` still works without the coverage plugin — the `--cov` flags live on the CI command
+line, not in `addopts`, so base pytest isn't required to run the tests.
 
 ## The multi-worktree editable-install gotcha (read this if you use git worktrees)
 
