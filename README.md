@@ -17,48 +17,11 @@ Clinescope reads a Cline log and scores four things:
 
 <p align="center"><img src="https://raw.githubusercontent.com/minh2416294/clinescope/main/docs/demo.png" alt="clinescope scoring a failing Cline run and, with --advice, coaching how to fix the agent's prompt for each failing scorer" width="640"></p>
 
-## Why Clinescope (the wedge)
+## Why Clinescope
 
-Most eval frameworks score chatbot Q&A. Clinescope scores **coding-agent execution traces** — and it
-ships the one thing the incumbents leave to "write your own custom scorer": a **code-diff-quality
-scorer**. DeepEval scores tool selection but not code patches or diffs; promptfoo, Langfuse, and
-Braintrust hand the diff scorer to you; UK AISI's Inspect *runs* SWE agents but ships no diff-quality
-scorer. Clinescope's `diff_coherence` / `diff_minimality` / `apply_recovery` scorers **are** that layer,
-run against real captured Cline traces (see the [validation corpus](#validation-corpus)).
+Clinescope scores **coding-agent execution traces** and ships a **code-diff-quality scorer**. DeepEval scores tool selection but not code patches or diffs; promptfoo, Langfuse, and Braintrust hand the diff scorer to you; UK AISI's Inspect runs SWE agents but ships no diff-quality scorer. Clinescope's `diff_coherence` / `diff_minimality` / `apply_recovery` scorers are that layer, run against real captured Cline traces (see the [validation corpus](#validation-corpus)).
 
-## Is the LLM judge any good? (judge validation)
-
-An eval tool that uses an LLM to judge quality has to answer one question honestly: **does the judge
-agree with a human?** Clinescope measures this the way a rigorous eval reader expects — chance-corrected
-inter-rater agreement (**Cohen's κ**) between the LLM judge and a **human-labeled** gold set, with a
-bootstrap confidence interval. The result on the current 50-item gold set (a free local `gpt-oss:20b`
-judge vs. 50 blind human labels):
-
-```
-cohen_kappa:  0.0496    95% CI: [-0.1200, 0.2175]    N = 50
-confusion (rows = human, cols = judge):
-  human WASTEFUL      →  3 agree / 21 missed
-  human NOT-WASTEFUL  → 24 agree /  2 missed
-```
-
-The confusion matrix tells the story: the free 20B judge is **strongly NOT-WASTEFUL-biased** — it calls
-almost everything "fine," so on a balanced set it catches only 3 of 24 genuinely wasteful patches.
-Because **κ ≈ 0 is far below the 0.5 floor, the judge is deliberately treated as advisory-only and kept
-*out* of the CI gate** — `clinescope-gate` fires only on the deterministic scorers, never on a judge that
-measured at chance level. That negative result is the point: Clinescope gates on the signals it trusts
-and, provably, not on the one it doesn't. Recompute it yourself with no model call:
-
-```bash
-python -m clinescope.judge_run --report-only        # reads the committed cache; prints κ + CI
-python -m clinescope.judge_multidraw --report-only  # how much κ moves across repeated draws
-```
-
-*Honest caveats:* N is still small so the CI is wide (it straddles zero), the judge is one free local
-model on small edits, and a single-draw κ isn't reproducible to the digit — `gpt-oss:20b` flips labels
-run-to-run even at temperature 0, which `judge_multidraw` measures directly (per-draw κ spread + Fleiss'
-self-consistency). Growing the gold set from 26 to 50 harder, balanced, blind-labeled cases *lowered* the
-measured κ — an honest floor, not a marketing figure. Robustness across multiple/frontier judge models
-is on the roadmap.
+Clinescope also validates its own optional LLM judge against human labels — and, finding it agrees only at chance level, deliberately keeps it out of the pass/fail gate. See [`docs/judge-validation.md`](docs/judge-validation.md).
 
 ## Get Started
 
@@ -70,29 +33,27 @@ is on the roadmap.
     pip install clinescope
     ```
 
-    Zero runtime dependencies (pure stdlib). The bundled sample traces, the real-trace
-    validation corpus, and the human-labeled judge gold set all ship with the install, so
-    `clinescope-corpus` and `python -m clinescope.judge_run --report-only` work out of the box —
-    no `git clone` needed.
-
 2. **Use Clinescope**
 
     **Get the score:**
 
-    Point Clinescope at a Cline log file (a `messages.json` trace) to score the run — replace
-    `path/to/messages.json` below with your own. (Cloned the repo instead of `pip install`? The
-    same commands run as-is against the bundled [`examples/sample-trace.json`](examples/sample-trace.json).)
+    Point Clinescope at a Cline log file (a `messages.json` trace) to score the run - replace
+    `path/to/messages.json` below with your own.
+
     ```bash
     clinescope path/to/messages.json --expected read_files apply_patch
     ```
-    After `--expected`, list the tools you think the task needed. Clinescope checks whether the agent actually used them and scores the rest of the run automatically. Not sure which tool names to use? Run `clinescope --list-tools` to print the ones Clinescope knows.
+
+    After `--expected`, list the tools you think the task needed. Run `clinescope --list-tools` to print the tools in Clinescope.
 
     **Get full breakdown of every scorer:**
+
     ```bash
     clinescope path/to/messages.json --expected read_files apply_patch --verbose
     ```
 
     **Get advice to improve prompting:**
+
     ```bash
     clinescope path/to/messages.json --expected read_files apply_patch --advice
     ```
@@ -100,20 +61,28 @@ is on the roadmap.
     **Compare several runs side by side:**
 
     Run the same task against different models (or Cline versions) and score them all in one table:
+
     ```bash
     python -m clinescope.compare run-a.json run-b.json run-c.json
     ```
-    Each row is one run; the columns are the four scorers. To score `tool_selection` per run (each task expects different tools), pass a `--labels manifest.json` mapping each trace path to its `{"display": "...", "expected_tools": [...]}`.
+
+    **Gate a run in CI (exit non-zero on a bad score):**
+
+    ```bash
+    clinescope-gate path/to/messages.json --min-diff-coherence 0.8
+    ```
 
 ## Validation Corpus
 
-Clinescope ships a corpus of **real captured Cline runs** in [`examples/corpus/`](examples/corpus/), each hand-labeled in [`corpus.json`](examples/corpus/corpus.json) with its expected score profile, failure taxonomy, and the evidence its advice should name. A runner scores every trace, checks it against its label, prints a summary table, and **exits non-zero if any trace fails its label** — so the corpus is a real regression gate, not a demo. It ships with the install, so it runs anywhere:
+Clinescope ships a corpus of **real captured Cline runs** in [`examples/corpus/`](examples/corpus/), each hand-labeled in [`corpus.json`](examples/corpus/corpus.json) with its expected score profile, failure taxonomy, and the evidence its advice should name. The runner scores every trace and exits non-zero if any trace misses its label, so the corpus is a regression gate, not a demo.
+
+**See Clinescope corpus:**
 
 ```bash
 clinescope-corpus            # or: python -m clinescope.corpus
 ```
 
-This is the un-fakeable evidence that Clinescope catches real agent failures (and stays quiet on clean runs): the traces are real, the failures are real, and the runner proves Clinescope reproduces every labeled outcome. Six real traces cover three of the four failure modes; the fourth (`blind_rewrite`) is an honestly-stated gap — see [`examples/corpus/README.md`](examples/corpus/README.md) for the coverage table and why no local model produced it.
+Coverage, the failure taxonomy, and the one honestly-stated gap are documented in [`examples/corpus/README.md`](examples/corpus/README.md).
 
 ## Reporting Bugs
 
