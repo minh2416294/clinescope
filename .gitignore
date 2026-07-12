@@ -34,3 +34,7 @@ artifacts/
 
 # Windows folder settings
 desktop.ini
+
+# Coverage data file (pytest-cov / coverage.py)
+.coverage
+htmlcov/

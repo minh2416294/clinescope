@@ -33,5 +33,5 @@ jobs:
         run: ruff format --check .
       - name: Type-check
         run: mypy src
-      - name: Test
-        run: pytest -q
+      - name: Test (with coverage gate)
+        run: pytest -q --cov=clinescope --cov-report=term-missing --cov-fail-under=90
