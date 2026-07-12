@@ -2,14 +2,14 @@
 
 ## Supported Versions
 
-clinescope is pre-1.0 and maintained by a single author. Security fixes land on `main` and in the
+clinescope is at 1.x and maintained by a single author. Security fixes land on `main` and in the
 latest tagged release only; older tags are not patched.
 
-| Version        | Supported |
-| -------------- | --------- |
-| latest release | ✅        |
-| `main`         | ✅        |
-| older tags     | ❌        |
+| Version              | Supported |
+| -------------------- | --------- |
+| latest 1.x release   | ✅        |
+| `main`               | ✅        |
+| older tags (< latest)| ❌        |
 
 ## Reporting a Vulnerability
 
