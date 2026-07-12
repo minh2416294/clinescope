@@ -62,7 +62,7 @@ Clinescope ships a corpus of **real captured Cline runs** in [`examples/corpus/`
 python -m clinescope.corpus
 ```
 
-This is the un-fakeable evidence that Clinescope catches real agent failures (and stays quiet on clean runs): the traces are real, the failures are real, and the runner proves Clinescope reproduces every labeled outcome.
+This is the un-fakeable evidence that Clinescope catches real agent failures (and stays quiet on clean runs): the traces are real, the failures are real, and the runner proves Clinescope reproduces every labeled outcome. Six real traces cover three of the four failure modes; the fourth (`blind_rewrite`) is an honestly-stated gap — see [`examples/corpus/README.md`](examples/corpus/README.md) for the coverage table and why no local model produced it.
 
 ## Reporting Bugs
 
