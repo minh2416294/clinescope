@@ -362,13 +362,33 @@ def test_kappa_report_tripwire_text_appears_below_floor() -> None:
 
 
 def test_report_only_does_not_crash_on_a_cp1252_stdout(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     # The κ report prints κ / → / § / ≥. On a Windows console stdout defaults to cp1252,
     # which cannot encode those -> UnicodeEncodeError mid-print. main() reconfigures the
     # stream to UTF-8 first; without that the exact README command crashes. Reproduce a
     # cp1252 console with a strict TextIOWrapper and assert the run survives + emits κ.
+    # Uses a SELF-CONTAINED authored gold+cache (not the committed set) so the test does
+    # not couple to the evolving gold-set size -- it validates stdout encoding, nothing else.
     from clinescope.judge_run import main
+
+    traces = ["examples/apply-patch-trace.json", "examples/multi-op-trace.json"]
+    gold = tmp_path / "g.jsonl"
+    cache = tmp_path / "c.jsonl"
+    _write_gold(
+        gold,
+        [
+            _gold_item("x", traces[0], "NOT-WASTEFUL"),
+            _gold_item("y", traces[1], "WASTEFUL"),
+        ],
+    )
+    _write_gold(
+        cache,
+        [
+            _cache_row("x", _sha_of_trace(traces[0]), "NOT-WASTEFUL"),
+            _cache_row("y", _sha_of_trace(traces[1]), "WASTEFUL"),
+        ],
+    )
 
     raw = io.BytesIO()
     cp1252_stdout = io.TextIOWrapper(raw, encoding="cp1252", errors="strict")
@@ -378,9 +398,9 @@ def test_report_only_does_not_crash_on_a_cp1252_stdout(
         [
             "--report-only",
             "--gold",
-            str(_REPO_ROOT / "gold" / "diff_minimality.gold.jsonl"),
+            str(gold),
             "--cache",
-            str(_REPO_ROOT / "gold" / "diff_minimality.judge.jsonl"),
+            str(cache),
             "--repo-root",
             str(_REPO_ROOT),
         ]
