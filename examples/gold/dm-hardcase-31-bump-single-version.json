@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hc-31-bump-single-version|tight-surgical",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Bump the package version to 2.1.0."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "pyproject.toml"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "[project]\nname = \"widget\"\nversion = \"2.0.0\"\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: pyproject.toml\n@@ [project]\n name = \"widget\"\n-version = \"2.0.0\"\n+version = \"2.1.0\"\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\npyproject.toml",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}

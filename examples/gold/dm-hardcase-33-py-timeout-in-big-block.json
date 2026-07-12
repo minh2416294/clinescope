@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hc-33-py-timeout-in-big-block|context-drag",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Change the default connect timeout to 30 in client.py."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "src/client.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "def make_client():\n    opts = {}\n    opts['host'] = 'db'\n    opts['port'] = 5432\n    opts['user'] = 'svc'\n    opts['pool'] = 10\n    opts['timeout'] = 5\n    opts['retries'] = 3\n    return connect(opts)\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: src/client.py\n@@ def make_client():\n     opts = {}\n     opts['host'] = 'db'\n     opts['port'] = 5432\n     opts['user'] = 'svc'\n     opts['pool'] = 10\n-    opts['timeout'] = 5\n+    opts['timeout'] = 30\n     opts['retries'] = 3\n     return connect(opts)\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\nsrc/client.py",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}

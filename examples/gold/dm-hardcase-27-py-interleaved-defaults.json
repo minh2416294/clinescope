@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hc-27-py-interleaved-defaults|interleaved",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Update the three default settings in defaults.py."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "src/defaults.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "RETRIES = 1\nTIMEOUT = 5\nBACKOFF = 1.0\nDEBUG = False\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: src/defaults.py\n@@\n-RETRIES = 1\n+RETRIES = 3\n-TIMEOUT = 5\n+TIMEOUT = 30\n-BACKOFF = 1.0\n+BACKOFF = 2.0\n DEBUG = False\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\nsrc/defaults.py",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}

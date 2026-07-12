@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "sessionId": "dm-hc-28-go-interleaved-consts|interleaved",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Bump the three pool constants in pool.go."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-1",
+          "name": "read_files",
+          "input": {
+            "path": "internal/pool/pool.go"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-1",
+          "content": "const (\n\tMinConns = 1\n\tMaxConns = 8\n\tIdleSec  = 30\n)\n",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "call-2",
+          "name": "apply_patch",
+          "input": {
+            "input": "*** Begin Patch\n*** Update File: internal/pool/pool.go\n@@ const (\n-\tMinConns = 1\n+\tMinConns = 2\n-\tMaxConns = 8\n+\tMaxConns = 16\n-\tIdleSec  = 30\n+\tIdleSec  = 60\n )\n*** End Patch"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call-2",
+          "content": "Successfully applied patch to the following files:\ninternal/pool/pool.go",
+          "is_error": false
+        }
+      ]
+    }
+  ]
+}
