@@ -378,13 +378,11 @@ def _judge_multidraw_parse_args(argv: list[str] | None) -> argparse.Namespace:
             "self-consistency (opt-in; the default clinescope CLI stays keyless)."
         ),
     )
-    parser.add_argument(
-        "--gold", type=Path, default=Path("gold/diff_minimality.gold.jsonl")
-    )
-    parser.add_argument(
-        "--cache", type=Path, default=Path("gold/diff_minimality.multidraw.jsonl")
-    )
-    parser.add_argument("--repo-root", type=Path, default=Path.cwd())
+    # None defaults resolved in main() against the bundled data root (works from a pip
+    # install); an explicit --gold/--cache/--repo-root always wins.
+    parser.add_argument("--gold", type=Path, default=None)
+    parser.add_argument("--cache", type=Path, default=None)
+    parser.add_argument("--repo-root", type=Path, default=None)
     parser.add_argument("--model", default="gpt-oss:20b")
     parser.add_argument("--base-url", default="http://localhost:11434")
     parser.add_argument("--draws", type=int, default=5)
@@ -399,22 +397,44 @@ def _judge_multidraw_parse_args(argv: list[str] | None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     _judge_multidraw_force_utf8_stdout()
     args = _judge_multidraw_parse_args(argv)
-    resolved = gold_load_resolved(args.gold, repo_root=args.repo_root)
+    from clinescope._datafiles import DataFilesNotFound, datafiles_path, datafiles_root
+
+    try:
+        repo_root = args.repo_root if args.repo_root is not None else datafiles_root()
+        gold = (
+            args.gold
+            if args.gold is not None
+            else datafiles_path("gold", "diff_minimality.gold.jsonl")
+        )
+        cache = (
+            args.cache
+            if args.cache is not None
+            else datafiles_path("gold", "diff_minimality.multidraw.jsonl")
+        )
+    except DataFilesNotFound as err:
+        print(f"error: {err}", file=sys.stderr)
+        return 2
+    resolved = gold_load_resolved(gold, repo_root=repo_root)
     human_labels = {r.item.item_id: r.item.human_label for r in resolved}
     model_id = args.model
     if not args.report_only:
         result = judge_multidraw_run(
-            args.gold,
-            repo_root=args.repo_root,
+            gold,
+            repo_root=repo_root,
             model_id=args.model,
             base_url=args.base_url,
             n_draws=args.draws,
             now_iso=judge_run_now_iso(),
         )
-        judge_multidraw_write_cache(result, args.cache)
+        judge_multidraw_write_cache(result, cache)
         model_id = result.model_id
-        print(f"judged {result.n_items} items x {result.n_draws} draws -> {args.cache}")
-    ratings = judge_multidraw_load_cache(args.cache)
+        print(f"judged {result.n_items} items x {result.n_draws} draws -> {cache}")
+    try:
+        ratings = judge_multidraw_load_cache(cache)
+    except ValueError as err:
+        # e.g. --report-only before any run: a clean actionable message, not a traceback.
+        print(f"error: {err}", file=sys.stderr)
+        return 2
     stats = judge_multidraw_stats(ratings, human_labels)
     print(judge_multidraw_report(stats, model_id))
     return 0

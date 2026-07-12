@@ -67,10 +67,15 @@ from clinescope.report import (
     summary_verdict,
     tool_selection_cell_verdict,
 )
+from clinescope._datafiles import DataFilesNotFound, datafiles_path, datafiles_root
 from clinescope.tool_selection import score_tool_selection
 from clinescope.world_a import load_trace
 
-_DEFAULT_MANIFEST = Path("examples/corpus/corpus.json")
+
+def _default_manifest() -> Path:
+    """The bundled corpus manifest, resolved from source-checkout OR installed wheel."""
+    return datafiles_path("examples", "corpus", "corpus.json")
+
 
 _SCORER_COLUMNS = (
     "tool_selection",
@@ -145,17 +150,24 @@ class CorpusReport:
     exit_code: int
 
 
-def run_corpus(manifest_path: Path) -> CorpusReport:
+def run_corpus(manifest_path: Path, *, base_dir: Path | None = None) -> CorpusReport:
     """Load the manifest, score + check every corpus trace. Pure: no printing.
+
+    Each manifest key is a trace path resolved against ``base_dir`` (default: the current
+    working directory, the historical behaviour). :func:`main` passes the data root for
+    the bundled corpus so its ``examples/corpus/...`` keys resolve from a pip install too.
 
     Raises nothing for a per-trace load failure (it becomes an unloaded item and
     forces exit 2); only a malformed MANIFEST propagates as :class:`LabelError`,
     which :func:`main` turns into exit 2.
     """
+    root = base_dir if base_dir is not None else Path.cwd()
     labels = labels_load(manifest_path)
     if not labels:
         return CorpusReport(items=(), exit_code=_EXIT_USAGE)
-    items = tuple(_check_item(key, label) for key, label in labels.items())
+    items = tuple(
+        _check_item(key, label, base_dir=root) for key, label in labels.items()
+    )
     return CorpusReport(items=items, exit_code=_corpus_exit_code(items))
 
 
@@ -167,7 +179,7 @@ def _corpus_exit_code(items: tuple[CorpusItemResult, ...]) -> int:
     return _EXIT_OK
 
 
-def _check_item(key: str, label: TraceLabel) -> CorpusItemResult:
+def _check_item(key: str, label: TraceLabel, *, base_dir: Path) -> CorpusItemResult:
     display = label.display if label.display is not None else Path(key).stem
     expected_cells = {
         name: exp.expected_cell
@@ -175,7 +187,7 @@ def _check_item(key: str, label: TraceLabel) -> CorpusItemResult:
         if exp.expected_cell is not None
     }
     try:
-        scored = _score_trace(Path(key), label)
+        scored = _score_trace(base_dir / key, label)
     except Exception as err:  # noqa: BLE001 -- deliberate per-trace load boundary
         return CorpusItemResult(
             key=key,
@@ -429,11 +441,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         "manifest",
         type=Path,
         nargs="?",
-        default=_DEFAULT_MANIFEST,
+        default=None,
         metavar="MANIFEST",
         help=(
-            "The corpus manifest (JSON: trace path -> label). "
-            f"Defaults to {_DEFAULT_MANIFEST}."
+            "The corpus manifest (JSON: trace path -> label). Defaults to the bundled "
+            "examples/corpus/corpus.json (works from a source checkout or a pip install)."
         ),
     )
     return parser.parse_args(argv)
@@ -447,14 +459,27 @@ def main(argv: list[str] | None = None) -> int:
     malformed manifest).
     """
     args = _parse_args(argv)
+    # Default manifest -> the bundled corpus, whose trace keys are relative to the data
+    # root (so they resolve from a pip install too). A user-supplied manifest keeps the
+    # historical cwd-relative resolution for its keys.
+    if args.manifest is None:
+        try:
+            manifest = _default_manifest()
+            base_dir = datafiles_root()
+        except DataFilesNotFound as err:
+            print(f"error: {err}", file=sys.stderr)
+            return _EXIT_USAGE
+    else:
+        manifest = args.manifest
+        base_dir = Path.cwd()
     try:
-        report = run_corpus(args.manifest)
+        report = run_corpus(manifest, base_dir=base_dir)
     except LabelError as err:
-        print(f"error: invalid corpus manifest {args.manifest}: {err}", file=sys.stderr)
+        print(f"error: invalid corpus manifest {manifest}: {err}", file=sys.stderr)
         return _EXIT_USAGE
     except OSError as err:
         print(
-            f"error: could not read corpus manifest {args.manifest}: {err}",
+            f"error: could not read corpus manifest {manifest}: {err}",
             file=sys.stderr,
         )
         return _EXIT_USAGE

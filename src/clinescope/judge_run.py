@@ -534,13 +534,12 @@ def _judge_run_parse_args(argv: list[str] | None) -> argparse.Namespace:
             "vs the human labels (opt-in; the default clinescope CLI stays keyless)."
         ),
     )
-    parser.add_argument(
-        "--gold", type=Path, default=Path("gold/diff_minimality.gold.jsonl")
-    )
-    parser.add_argument(
-        "--cache", type=Path, default=Path("gold/diff_minimality.judge.jsonl")
-    )
-    parser.add_argument("--repo-root", type=Path, default=Path.cwd())
+    # Defaults are None here and resolved in main() against the bundled data root, so the
+    # committed gold set + cache are found from a source checkout AND a pip install. An
+    # explicit --gold/--cache/--repo-root always wins.
+    parser.add_argument("--gold", type=Path, default=None)
+    parser.add_argument("--cache", type=Path, default=None)
+    parser.add_argument("--repo-root", type=Path, default=None)
     parser.add_argument("--model", default="gpt-oss:20b")
     parser.add_argument("--base-url", default="http://localhost:11434")
     parser.add_argument(
@@ -574,25 +573,56 @@ def _judge_run_force_utf8_stdout() -> None:
             reconfigure(encoding="utf-8")
 
 
+def _judge_run_resolve_paths(
+    args: argparse.Namespace,
+) -> tuple[Path, Path, Path]:
+    """Resolve (gold, cache, repo_root) from args, defaulting to the bundled data root.
+
+    An explicit flag always wins; an unset flag falls back to the packaged location so
+    the committed gold set + cache resolve from a pip install, not just a source checkout.
+    """
+    from clinescope._datafiles import datafiles_path, datafiles_root
+
+    repo_root = args.repo_root if args.repo_root is not None else datafiles_root()
+    gold = (
+        args.gold
+        if args.gold is not None
+        else datafiles_path("gold", "diff_minimality.gold.jsonl")
+    )
+    cache = (
+        args.cache
+        if args.cache is not None
+        else datafiles_path("gold", "diff_minimality.judge.jsonl")
+    )
+    return gold, cache, repo_root
+
+
 def main(argv: list[str] | None = None) -> int:
     _judge_run_force_utf8_stdout()
     args = _judge_run_parse_args(argv)
+    from clinescope._datafiles import DataFilesNotFound
+
+    try:
+        gold, cache, repo_root = _judge_run_resolve_paths(args)
+    except DataFilesNotFound as err:
+        print(f"error: {err}", file=sys.stderr)
+        return 2
     if not args.report_only:
         result = judge_run_over_gold(
-            args.gold,
-            repo_root=args.repo_root,
+            gold,
+            repo_root=repo_root,
             model_id=args.model,
             base_url=args.base_url,
             now_iso=judge_run_now_iso(),
         )
-        judge_run_write_cache(result, args.cache)
+        judge_run_write_cache(result, cache)
         print(
             f"judged {result.n_attempted} items "
             f"({result.n_verdicts} verdicts, {result.n_unparseable} unparseable, "
-            f"{result.n_error} error) -> {args.cache}"
+            f"{result.n_error} error) -> {cache}"
         )
     if args.report or args.report_only:
-        inputs = judge_kappa_load_pairs(args.gold, args.cache, repo_root=args.repo_root)
+        inputs = judge_kappa_load_pairs(gold, cache, repo_root=repo_root)
         print(judge_kappa_report(inputs))
     return 0
 

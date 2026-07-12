@@ -14,7 +14,7 @@ Clinescope reads a Cline log and scores four things:
 
 > Clinescope is an independent, unofficial tool - not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used only to describe compatibility.
 
-<p align="center"><img src="docs/demo.png" alt="clinescope scoring a failing Cline run and, with --advice, coaching how to fix the agent's prompt for each failing scorer" width="640"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/minh2416294/clinescope/main/docs/demo.png" alt="clinescope scoring a failing Cline run and, with --advice, coaching how to fix the agent's prompt for each failing scorer" width="640"></p>
 
 ## Why Clinescope (the wedge)
 
@@ -66,45 +66,50 @@ is on the roadmap.
     Requires Python 3.11+. Installing into a virtual environment is recommended.
 
     ```bash
-    pip install "git+https://github.com/minh2416294/clinescope.git"
+    pip install clinescope
     ```
+
+    Zero runtime dependencies (pure stdlib). The bundled sample traces, the real-trace
+    validation corpus, and the human-labeled judge gold set all ship with the install, so
+    `clinescope-corpus` and `python -m clinescope.judge_run --report-only` work out of the box —
+    no `git clone` needed.
 
 2. **Use Clinescope**
 
     **Get the score:**
 
-    Point Clinescope at the Cline log file to score the run. The commands below use a
-    bundled sample trace ([`examples/sample-trace.json`](examples/sample-trace.json)) so
-    they run as-is after a `git clone` — swap in your own `messages.json` when you have one:
+    Point Clinescope at a Cline log file (a `messages.json` trace) to score the run — replace
+    `path/to/messages.json` below with your own. (Cloned the repo instead of `pip install`? The
+    same commands run as-is against the bundled [`examples/sample-trace.json`](examples/sample-trace.json).)
     ```bash
-    clinescope examples/sample-trace.json --expected read_files apply_patch
+    clinescope path/to/messages.json --expected read_files apply_patch
     ```
     After `--expected`, list the tools you think the task needed. Clinescope checks whether the agent actually used them and scores the rest of the run automatically. Not sure which tool names to use? Run `clinescope --list-tools` to print the ones Clinescope knows.
 
     **Get full breakdown of every scorer:**
     ```bash
-    clinescope examples/sample-trace.json --expected read_files apply_patch --verbose
+    clinescope path/to/messages.json --expected read_files apply_patch --verbose
     ```
 
     **Get advice to improve prompting:**
     ```bash
-    clinescope examples/sample-trace.json --expected read_files apply_patch --advice
+    clinescope path/to/messages.json --expected read_files apply_patch --advice
     ```
 
     **Compare several runs side by side:**
 
-    Run the same task against different models (or Cline versions) and score them all in one table (again using bundled traces so it runs as-is):
+    Run the same task against different models (or Cline versions) and score them all in one table:
     ```bash
-    python -m clinescope.compare examples/sample-trace.json examples/multi-op-trace.json examples/live-gpt-oss-apply-fail.json
+    python -m clinescope.compare run-a.json run-b.json run-c.json
     ```
     Each row is one run; the columns are the four scorers. To score `tool_selection` per run (each task expects different tools), pass a `--labels manifest.json` mapping each trace path to its `{"display": "...", "expected_tools": [...]}`.
 
 ## Validation Corpus
 
-Clinescope ships a corpus of **real captured Cline runs** in [`examples/corpus/`](examples/corpus/), each hand-labeled in [`corpus.json`](examples/corpus/corpus.json) with its expected score profile, failure taxonomy, and the evidence its advice should name. A runner scores every trace, checks it against its label, prints a summary table, and **exits non-zero if any trace fails its label** — so the corpus is a real regression gate, not a demo:
+Clinescope ships a corpus of **real captured Cline runs** in [`examples/corpus/`](examples/corpus/), each hand-labeled in [`corpus.json`](examples/corpus/corpus.json) with its expected score profile, failure taxonomy, and the evidence its advice should name. A runner scores every trace, checks it against its label, prints a summary table, and **exits non-zero if any trace fails its label** — so the corpus is a real regression gate, not a demo. It ships with the install, so it runs anywhere:
 
 ```bash
-python -m clinescope.corpus
+clinescope-corpus            # or: python -m clinescope.corpus
 ```
 
 This is the un-fakeable evidence that Clinescope catches real agent failures (and stays quiet on clean runs): the traces are real, the failures are real, and the runner proves Clinescope reproduces every labeled outcome. Six real traces cover three of the four failure modes; the fourth (`blind_rewrite`) is an honestly-stated gap — see [`examples/corpus/README.md`](examples/corpus/README.md) for the coverage table and why no local model produced it.
