@@ -43,31 +43,13 @@ Clinescope validates its own optional LLM judge against human labels and, findin
 
     After `--expected`, list the tools you think the task needed. Run `clinescope --list-tools` to print the tools in Clinescope.
 
-    **Get full breakdown of every scorer:**
-
-    ```bash
-    clinescope path/to/messages.json --expected read_files apply_patch --verbose
-    ```
-
-    **Get advice to improve prompting:**
+    **Improve your prompt:**
 
     ```bash
     clinescope path/to/messages.json --expected read_files apply_patch --advice
     ```
 
-    **Compare several runs side by side:**
-
-    Run the same task against different models (or Cline versions) and score them all in one table:
-
-    ```bash
-    python -m clinescope.compare run-a.json run-b.json run-c.json
-    ```
-
-    **Gate a run in CI (exit non-zero on a bad score):**
-
-    ```bash
-    clinescope-gate path/to/messages.json --min-diff-coherence 0.8
-    ```
+Learn more in the [usage guide](docs/usage.md).
 
 ## Validation Corpus
 
