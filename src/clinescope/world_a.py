@@ -97,6 +97,17 @@ class Trace:
 
 def load_trace(path: str | Path) -> Trace:
     raw = _world_a_read_json(Path(path))
+    return load_trace_from_dict(raw)
+
+
+def load_trace_from_dict(raw: dict[str, Any]) -> Trace:
+    """Normalize an already-parsed World-A trace dict into a ``Trace``.
+
+    The from-dict half of ``load_trace`` (version gate, turn parse, tool join),
+    so a caller that already holds the ``{version, messages, ...}`` object -- for
+    example an adapter that built the envelope in memory -- can reuse the loader
+    without round-tripping through a file.
+    """
     _world_a_check_version(raw)
     turns, dropped_items = _world_a_parse_turns(raw.get("messages", []))
     tool_calls = _world_a_join_tool_calls(turns)

@@ -8,6 +8,7 @@ from clinescope.world_a import (
     TraceVersionError,
     WorldATraceError,
     load_trace,
+    load_trace_from_dict,
 )
 
 
@@ -204,6 +205,31 @@ def test_rejects_non_object_top_level(tmp_path: Path) -> None:
 
     with pytest.raises(WorldATraceError):
         load_trace(path)
+
+
+def test_load_trace_from_dict_matches_load_trace(tmp_path: Path) -> None:
+    # The from-dict seam and the file path both go through the same normalize
+    # body, so an equivalent dict yields an equivalent Trace.
+    payload = {
+        "version": 1,
+        "sessionId": "fixture-success-01",
+        "messages": _golden_messages(),
+    }
+
+    from_file = load_trace(_write(tmp_path, payload))
+    from_dict = load_trace_from_dict(payload)
+
+    assert from_dict == from_file
+    # Pin the normalize output too, not just file-vs-dict equality, so the test
+    # would catch a regression in load_trace_from_dict's body (not only in I/O).
+    assert from_dict.version == 1
+    assert len(from_dict.tool_calls) == 1
+    assert from_dict.tool_calls[0].name == "read_files"
+
+
+def test_load_trace_from_dict_version_gates(tmp_path: Path) -> None:
+    with pytest.raises(TraceVersionError):
+        load_trace_from_dict({"version": 2, "messages": _golden_messages()})
 
 
 # --- R3: honest, tested tool_result content-type contract -------------------
