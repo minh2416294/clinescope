@@ -1,0 +1,66 @@
+[
+  {
+    "role": "user",
+    "content": [
+      {
+        "type": "text",
+        "text": "Create note.txt containing the word hello."
+      }
+    ]
+  },
+  {
+    "id": "msg_ext_01",
+    "ts": 1783823285576,
+    "role": "assistant",
+    "modelInfo": { "provider": "anthropic", "model": "claude-sonnet-4" },
+    "content": [
+      {
+        "type": "thinking",
+        "thinking": "Check the directory first, then add the file with apply_patch."
+      },
+      {
+        "type": "tool_use",
+        "id": "call-1",
+        "name": "read_files",
+        "input": { "path": "note.txt" }
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "content": [
+      {
+        "type": "tool_result",
+        "tool_use_id": "call-1",
+        "content": "Error: file not found",
+        "is_error": true
+      }
+    ]
+  },
+  {
+    "id": "msg_ext_02",
+    "ts": 1783823291001,
+    "role": "assistant",
+    "content": [
+      {
+        "type": "tool_use",
+        "id": "call-2",
+        "name": "apply_patch",
+        "input": {
+          "input": "*** Begin Patch\n*** Add File: note.txt\n+hello\n*** End Patch"
+        }
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "content": [
+      {
+        "type": "tool_result",
+        "tool_use_id": "call-2",
+        "content": "Successfully applied patch to the following files:\nnote.txt",
+        "is_error": false
+      }
+    ]
+  }
+]

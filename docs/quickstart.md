@@ -8,7 +8,7 @@ Clinescope is pure Python and runs on macOS, Linux, and Windows. The `cline` com
 
 Everything here runs **on your machine**. On the default path Clinescope makes no network calls and needs no API key. The only part that ever touches the network is the optional LLM judge, and even that talks to a local Ollama, never a remote API. Your Cline trace, your code, and your prompts never leave your computer.
 
-**Today this works with the Cline CLI**, which writes the trace format Clinescope reads. The VS Code extension writes a different on-disk format that Clinescope does not load yet (see [Extension support](#extension-support-roadmap)).
+**The `clinescope` command works with the Cline CLI**, which writes the trace format it reads. The VS Code extension writes a different on-disk format; it is not read by the command line yet, but a library adapter scores it today (see [Extension support](#extension-support-library-api-today-cli-wiring-next)).
 
 ## See it work first (no Cline, no Ollama, no key)
 
@@ -76,7 +76,7 @@ cline history --json
 
 Each entry has a `messagesPath` field pointing straight at the trace. Copy the one for the run you just did; that is the file you pass to Clinescope.
 
-> **Using the VS Code extension?** It stores a task in a different on-disk format that Clinescope cannot load yet. Use the Cline CLI for now (see [Extension support](#extension-support-roadmap)).
+> **Using the VS Code extension?** It stores a task in a different on-disk format the `clinescope` command does not read yet, though a library adapter scores it today. Use the Cline CLI for the command-line flow (see [Extension support](#extension-support-library-api-today-cli-wiring-next)).
 
 For reference, the CLI writes each session to `~/.cline/data/sessions/<sessionId>/<sessionId>.messages.json` (on Windows, `C:\Users\<you>\.cline\data\sessions\...`). If you set `CLINE_DATA_DIR` or ran `cline --data-dir <path>`, it lives under that directory instead.
 
@@ -127,9 +127,21 @@ advice (how to improve the agent):
 
 Then edit your prompt per the advice, re-run the Cline task, and score again. A clean run (every applicable scorer passing) is the goal.
 
-## Extension support (roadmap)
+## Extension support (library API today, CLI wiring next)
 
-The Cline VS Code extension stores a task's history as `api_conversation_history.json` and `ui_messages.json` under its global storage, not as the versioned World-A trace (`{version: 1, messages: [...], ...}`) the CLI writes. Clinescope loads the CLI format only, so extension sessions are not scoreable yet. A World-A export from the extension (or a converter) is on the roadmap.
+The Cline VS Code extension stores a task's history as `api_conversation_history.json` (a bare JSON array of messages) and `ui_messages.json` under its global storage, not as the versioned World-A trace (`{version: 1, messages: [...], ...}`) the CLI writes. The `clinescope` command reads the World-A (CLI) format only, so `clinescope path/to/api_conversation_history.json` does not work directly.
+
+There is now a library adapter that scores an extension file. In Python:
+
+```python
+from clinescope.cline_extension import load_extension_trace
+from clinescope.diff_coherence import score_diff_coherence
+
+trace = load_extension_trace("path/to/api_conversation_history.json")
+print(score_diff_coherence(trace))
+```
+
+`load_extension_trace` wraps the bare array in the World-A envelope and runs it through the same loader and scorers, so every scorer works on an extension session. Wiring this into the `clinescope` command line (so extension users can run it without Python) is the next step.
 
 One more honest note: a trace that includes image or file attachment blocks still loads and scores fine, but those blocks are not shown in the report (the four scorers work on tool calls and their results).
 
