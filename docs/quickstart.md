@@ -138,3 +138,4 @@ One more honest note: a trace that includes image or file attachment blocks stil
 - [Usage guide](usage.md) - every command and flag.
 - [Validation corpus](../examples/corpus/README.md) - the six real traces behind `clinescope-corpus` (three of four failure modes covered; `blind_rewrite` is a stated gap).
 - [Judge validation](judge-validation.md) - why the optional LLM judge is advisory-only.
+- [Share feedback](https://github.com/minh2416294/clinescope/issues/new/choose) - you ran it on your own trace; tell me what broke or confused you.

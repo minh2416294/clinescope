@@ -100,6 +100,23 @@ def _warn_unknown_expected(expected: list[str]) -> None:
         print(f"warning: unknown tool '{name}'{hint}", file=sys.stderr)
 
 
+_FEEDBACK_URL = "https://github.com/minh2416294/clinescope/issues/new/choose"
+
+
+def _maybe_print_feedback_footer() -> None:
+    # A one-line, zero-egress nudge shown only to a human at a terminal. It fires
+    # right after someone scored their OWN trace (the highest-intent moment to
+    # ask). To stderr so it never pollutes a piped/redirected stdout report, and
+    # only when stdout is a TTY so pipes, CI, and tool consumers never see it --
+    # the same convention the typo warnings above already use (file=sys.stderr).
+    if not sys.stdout.isatty():
+        return
+    print(
+        f"\nRan this on your own Cline trace? Tell me how it went: {_FEEDBACK_URL}",
+        file=sys.stderr,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     # Opt-in tool_selection: distinguish "--expected was omitted" (None -> skip
@@ -145,6 +162,7 @@ def main(argv: list[str] | None = None) -> int:
             verbose=args.verbose,
         )
     )
+    _maybe_print_feedback_footer()
     return 0
 
 
