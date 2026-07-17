@@ -51,6 +51,8 @@ Clinescope validates its own optional LLM judge against human labels and, findin
 
 Learn more in the [usage guide](docs/usage.md).
 
+New to this? The [quickstart](docs/quickstart.md) walks you from installing Cline to scoring your own session.
+
 ## Validation Corpus
 
 Clinescope ships a corpus of **real captured Cline runs** in [`examples/corpus/`](examples/corpus/), each hand-labeled in [`corpus.json`](examples/corpus/corpus.json) with its expected score profile, failure taxonomy, and the evidence its advice should name. The runner scores every trace and exits non-zero if any trace misses its label, so the corpus is a regression gate.
