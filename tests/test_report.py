@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import pytest
@@ -412,3 +413,50 @@ def test_cli_valid_trace_still_scores_and_exits_0(
     assert exit_code == 0
     assert "clinescope report - session" in captured.out
     assert captured.err == ""
+
+
+# --- The in-CLI feedback footer: a one-line, zero-egress, TTY-only nudge -------
+# It fires right after someone scored their own trace (the highest-intent moment).
+# To STDERR so it never pollutes a piped/redirected stdout report; only when
+# stdout is a real terminal, so pipes, CI, and tool consumers never see it.
+
+FEEDBACK_URL_FRAGMENT = "issues/new/choose"
+
+
+@pytest.mark.skipif(
+    not RECOVERY_EXAMPLE.exists(), reason="apply-recovery example trace not present"
+)
+def test_feedback_footer_prints_to_stderr_when_tty(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Under pytest, capsys makes stdout a non-TTY buffer, so the footer is
+    # normally suppressed -- forcing isatty True is what makes this assertion go
+    # red before the footer exists, and green after.
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+
+    exit_code = main([str(RECOVERY_EXAMPLE), "--expected", "read_files"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    # The nudge is on stderr...
+    assert FEEDBACK_URL_FRAGMENT in captured.err
+    # ...and NEVER on stdout, so a piped/redirected report stays machine-clean.
+    assert FEEDBACK_URL_FRAGMENT not in captured.out
+
+
+@pytest.mark.skipif(
+    not RECOVERY_EXAMPLE.exists(), reason="apply-recovery example trace not present"
+)
+def test_feedback_footer_silent_when_stdout_not_a_tty(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A pipe / redirect / CI run: stdout is not a terminal, so the footer must
+    # stay silent on BOTH streams (no noise for tool consumers).
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: False)
+
+    exit_code = main([str(RECOVERY_EXAMPLE), "--expected", "read_files"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert FEEDBACK_URL_FRAGMENT not in captured.err
+    assert FEEDBACK_URL_FRAGMENT not in captured.out

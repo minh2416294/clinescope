@@ -1,0 +1,47 @@
+name: Share feedback
+description: You ran Clinescope on your own Cline trace. Tell me how it went.
+title: "[feedback]: "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying Clinescope. The most useful thing you can tell me is what happened when you
+        ran it on your OWN Cline session: what worked, what confused you, what you wished it did. This
+        form is for impressions, rough edges, and "would I use this again". For a reproducible scorer
+        or CLI bug, the Bug report form is a better fit.
+  - type: dropdown
+    id: ran-it
+    attributes:
+      label: Did you run it on your own Cline trace?
+      options:
+        - "Yes, on a real Cline CLI session of mine"
+        - "Yes, on the bundled examples / clinescope-corpus only"
+        - "No, I just read the docs / repo"
+    validations:
+      required: true
+  - type: textarea
+    id: first-impression
+    attributes:
+      label: Your first-run impression
+      description: What was your reaction after the first scored run? Did the output make sense? Did you trust the scores? What worked, and what did not?
+      placeholder: "e.g. I scored a qwen2.5-coder run; the advice for diff_coherence made sense, but I was not sure what 'blind rewrite' meant or whether to trust the number."
+    validations:
+      required: true
+  - type: textarea
+    id: confusing
+    attributes:
+      label: What was confusing or missing
+      description: Anything unclear, any scorer you did not trust, anything you wished it did.
+    validations:
+      required: false
+  - type: dropdown
+    id: use-again
+    attributes:
+      label: Would you use it again?
+      options:
+        - "Yes"
+        - "Maybe, if it did X (say what in the boxes above)"
+        - "Probably not"
+    validations:
+      required: false
