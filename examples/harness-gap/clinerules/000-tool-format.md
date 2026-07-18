@@ -31,17 +31,18 @@ Inside, use one action header per file (keep the trailing colon and space exactl
   an unchanged context line, `-` to remove a line, `+` to add a line.
 - `*** Delete File: path/to/old.py` to remove a file.
 
-A correct patch that adds a function to an existing file looks exactly like this:
+A correct patch that adds a function to an existing file looks exactly like this (an
+illustrative example, not the answer to any particular task):
 
 ```
 *** Begin Patch
-*** Update File: calc.py
+*** Update File: greeter.py
 @@
- def add(a, b):
-     return a + b
+ def greet(name):
+     return f"hello {name}"
 +
-+def sub(a, b):
-+    return a - b
++def farewell(name):
++    return f"bye {name}"
 *** End Patch
 ```
 

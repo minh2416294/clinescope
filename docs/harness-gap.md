@@ -13,9 +13,11 @@ experiment.
 
 ## What the harness is
 
-The "with harness" runs add one file, [`examples/harness-gap/clinerules/000-tool-format.md`](../examples/harness-gap/clinerules/000-tool-format.md),
-to the workspace's `.clinerules/`. It is short and general (a tool-format harness, not tuned to the
-task). It does three things Cline's default prompt does not:
+The "with harness" runs add one specimen file, [`examples/harness-gap/clinerules/000-tool-format.md`](../examples/harness-gap/clinerules/000-tool-format.md),
+to the workspace's `.clinerules/` (an experiment artifact you copy into a Cline workspace, not
+something Clinescope ships or runs). It is short and general (a tool-format harness, with a worked
+example that is illustrative, not the answer to this task). It does three things Cline's default
+prompt does not:
 
 1. Tells the model to edit with `apply_patch` and not to answer in prose.
 2. Teaches the exact `*** Begin Patch` grammar with one worked example (verified to score
@@ -48,9 +50,10 @@ scorers**. But the scores hide the interesting part. Without the harness, qwen r
 tool choice. In both runs, though, qwen wrote the tool call as JSON inside its prose rather than
 emitting a real tool call, so Cline recorded zero tool calls and every scorer stayed at zero.
 
-That is the honest answer to their question, and it matches their own prediction: for a model this
-size, the failure is a **model-capability ceiling**, not a harness gap. A rules file can change what a
-model intends to do, but it cannot give a model the ability to emit a valid tool call it cannot emit.
+That is the honest answer to their question, and it matches what they predicted for a small model: at
+the 7B class, the failure is a **model-capability ceiling**, not a harness gap. A rules file can change
+what a model intends to do, but it cannot give a model the ability to emit a valid tool call it cannot
+emit.
 
 The contrast case is the other half of the answer. gpt-oss:20b with the same harness made real tool
 calls, emitted a grammar-valid `apply_patch` that succeeded, and actually edited the file: a clean
@@ -65,15 +68,23 @@ tool path an eval grades; it cannot manufacture tool-calling ability a weak mode
 - **There is no fair gpt-oss:20b bare baseline.** That run did not produce a first token inside Cline's
   local 30-second Ollama request timeout, so its trace is empty. It is kept as an honest record, not
   scored as a model behavior. So the gpt-oss column shows the harness path working, not a within-model
-  before-and-after.
+  before-and-after. (Scoring the empty trace prints 0/100 across the board, the same all-zero shape any
+  no-tool-call trace produces; the table marks it "(empty)" because the run never started, not because
+  the model scored zero.)
 - **The harness names `apply_patch` on purpose, which is a confound worth stating.** It is a general
   tool-format harness, but it does steer toward the exact tool the diff scorers grade. That is the
   point (the scorers grade `apply_patch`; the default prompt does not teach it), but it means the
   delta measures "a tool-format harness", not "any prompt improvement".
-- **A preflight self-check would be the stronger upstream fix**, as the same community member noted: a
-  model that checks "can I name a valid tool call for each step?" before the run, rather than an
-  auditor after it. That is an upstream Cline idea, not a Clinescope feature, and it is out of scope
-  here.
+- **The captured gpt-oss:20b harnessed run used an earlier version of the harness whose worked example
+  was the task's own answer** (a patch adding `sub` to `calc.py`). So that run's 100/100 is partly
+  demonstrated-answer copying, not purely general grammar competence. The shipped specimen here has
+  since been changed to a neutral example (`greeter.py`), so a fresh capture would be a cleaner test;
+  the committed gpt-oss trace should be read as "the harness path can work end to end", not as a clean
+  measure of general apply_patch skill. The qwen result is unaffected, because qwen never emitted a
+  real tool call either way.
+- **A preflight self-check would be a stronger upstream fix than a post-hoc auditor**: a model that
+  checks "can I name a valid tool call for each step?" before the run rather than after it. That is an
+  upstream Cline idea, not a Clinescope feature, and it is out of scope here.
 
 ## Reproduce the scoring
 

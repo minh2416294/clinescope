@@ -14,7 +14,14 @@ Cline community feedback. The full writeup is in [`docs/harness-gap.md`](../../d
 file used in the "with harness" runs. It forces the model to edit via `apply_patch`, teaches
 the exact `*** Begin Patch` grammar with one worked example (verified to score `diff_coherence`
 1.0), steers toward minimal anchored edits, and adds a "verify the file changed after
-apply_patch" rule. It is a general tool-format harness, not tuned to this task.
+apply_patch" rule. It is a general tool-format harness; its worked example is illustrative
+(`greeter.py`), not the answer to this experiment's task.
+
+Note: the committed gpt-oss harnessed trace below was captured with an earlier version of this
+file whose worked example WAS the task's answer (a `sub`/`calc.py` patch), so that run's 100/100
+is partly demonstrated-answer copying. The example has since been changed to a neutral one; a
+fresh capture would be a cleaner test. The qwen result is unaffected (it never emitted a real
+tool call). See the caveats in [`docs/harness-gap.md`](../../docs/harness-gap.md).
 
 It is a SPECIMEN, not an active harness for this repo. To use it, copy it into a Cline
 workspace at `.clinerules/000-tool-format.md` (it loads first because rules are sorted by name).
