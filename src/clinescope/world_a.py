@@ -139,10 +139,33 @@ def _world_a_parse_turns(
     turns = []
     dropped: list[dict[str, Any]] = []
     for message in messages:
-        content, message_dropped = _world_a_parse_content(message.get("content", []))
+        items, message_dropped = _world_a_normalize_content(message)
+        content, item_dropped = _world_a_parse_content(items)
         turns.append(Turn(role=message.get("role", ""), content=content))
         dropped.extend(message_dropped)
+        dropped.extend(item_dropped)
     return tuple(turns), tuple(dropped)
+
+
+def _world_a_normalize_content(
+    message: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Coerce a message's ``content`` into the block list the parser expects.
+
+    Anthropic's ``MessageParam.content`` is ``str | ContentBlock[]``: a bare
+    string is a valid message body (the shape Cline builds in memory, e.g.
+    ``{"role": "user", "content": "Fix the bug"}``). A str is wrapped as a single
+    ``text`` block so it is treated AS the text, not iterated character by
+    character. A missing key defaults to no content. Any other non-list value is
+    a shape the parser cannot model: the WHOLE message is surfaced on
+    ``dropped_items`` (fail loud, never swallow) and its content is empty.
+    """
+    content = message.get("content", [])
+    if isinstance(content, str):
+        return [{"type": "text", "text": content}], []
+    if isinstance(content, list):
+        return content, []
+    return [], [message]
 
 
 def _world_a_parse_content(
