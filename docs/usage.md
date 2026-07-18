@@ -35,9 +35,10 @@ Flags for `--vscode`:
 - `--all` shows every session in the picker instead of only the most recent.
 
 The diff scorers grade `apply_patch` grammar. When an extension session edits with `write_to_file` or
-`replace_in_file`, `tool_selection` still scores and the three diff scorers abstain (`n/a`). Exit codes:
-`0` a report printed, `1` a session could not load, `2` a usage problem (no session found, or a non-TTY
-with no `--latest` / `--path`).
+`replace_in_file`, `tool_selection` still scores; `diff_coherence` reports a hard `0/100` (it found no
+`apply_patch` to grade), and `diff_minimality` / `apply_recovery` abstain (`n/a`). Exit codes: `0` a
+report printed, `1` a session could not load, `2` a usage problem (no session found, or a non-TTY with
+no `--latest` / `--path`).
 
 ## Improve your prompt
 

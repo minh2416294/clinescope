@@ -65,7 +65,7 @@ clinescope --vscode --expected apply_patch read_file
 
 That auto-discovers the extension's storage for your OS, lists your recent sessions newest-first, and scores the one you pick. To skip the picker, add `--latest` for the newest session, or `--path <task-dir>` to point at one explicitly. Run `clinescope --list-tools` to see the tool names for `--expected` (the extension uses `write_to_file` / `read_file` where the CLI uses `apply_patch` / `read_files`).
 
-One honest note: the diff scorers (`diff_coherence` / `diff_minimality` / `apply_recovery`) grade `apply_patch` grammar. When an extension session edits with `write_to_file` / `replace_in_file` instead, `tool_selection` still scores, and those three abstain (`n/a`) rather than guess. A diff-quality scorer for `write_to_file` grammar is on the roadmap.
+One honest note: the diff scorers grade `apply_patch` grammar. When an extension session edits with `write_to_file` / `replace_in_file` instead, `tool_selection` still scores; `diff_coherence` reports a hard `0/100` (it found no `apply_patch` to grade), and `diff_minimality` / `apply_recovery` abstain (`n/a`). A diff-quality scorer for `write_to_file` grammar is on the roadmap.
 
 ## Validation Corpus
 
