@@ -76,4 +76,5 @@ clinescope-gate path/to/messages.json --min-diff-coherence 0.8
 
 - [Validation corpus](../examples/corpus/README.md): the real-trace regression suite.
 - [Judge validation](judge-validation.md): how the optional LLM judge is measured (and why it's advisory-only).
+- [The harness gap](harness-gap.md): an A/B experiment on whether a `.clinerules` harness prevents a failure or hits a model ceiling.
 - [Share feedback](https://github.com/minh2416294/clinescope/issues/new/choose) - you ran it on your own trace; tell me what broke or confused you.
