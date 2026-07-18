@@ -6,7 +6,7 @@
 
 > Clinescope is an independent, unofficial tool - not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used only to describe compatibility.
 
-**Clinescope runs on both the Cline CLI and the VS Code extension.** Point it at a CLI trace, or run `clinescope --vscode` to auto-discover and score a VS Code extension session (see [Score a VS Code extension session](#score-a-vs-code-extension-session)).
+**Clinescope runs on both the Cline CLI and the VS Code extension.** Point it at a CLI trace, or run `clinescope --vscode` to auto-discover and score a VS Code extension session (see [Score a VS Code extension session](docs/usage.md#score-a-vs-code-extension-session)).
 
 Clinescope is an AI evaluation tool that lives in your Cline development workflow, reads your logs, and helps you write better prompts by checking tool choices, catching messy code rewrites, and ensuring updates don't break past work. Clinescope reads a Cline log and scores four things:
 
@@ -19,7 +19,7 @@ Clinescope is an AI evaluation tool that lives in your Cline development workflo
 
 ## Why Clinescope
 
-Clinescope scores **coding-agent execution traces** and ships a **code-diff-quality scorer**. DeepEval scores tool selection but not code patches or diffs; promptfoo, Langfuse, and Braintrust hand the diff scorer to you; UK AISI's Inspect runs SWE agents but ships no diff-quality scorer. Clinescope's `diff_coherence` / `diff_minimality` / `apply_recovery` scorers are that layer, run against real captured Cline traces (see the [validation corpus](#validation-corpus)).
+Clinescope scores **coding-agent execution traces** and ships a **code-diff-quality scorer**. DeepEval scores tool selection but not code patches or diffs; promptfoo, Langfuse, and Braintrust hand the diff scorer to you; UK AISI's Inspect runs SWE agents but ships no diff-quality scorer. Clinescope's `diff_coherence` / `diff_minimality` / `apply_recovery` scorers are that layer, run against real captured Cline traces (see the [validation corpus](examples/corpus/README.md)).
 
 Clinescope validates its own optional LLM judge against human labels and, finding it agrees only at chance level, deliberately keeps it out of the pass/fail gate. See [`docs/judge-validation.md`](docs/judge-validation.md).
 
@@ -55,29 +55,10 @@ Learn more in the [usage guide](docs/usage.md).
 
 New to this? The [quickstart](docs/quickstart.md) walks you from installing Cline to scoring your own session.
 
-## Score a VS Code extension session
+## More
 
-Most Cline users are on the VS Code extension, which stores each task in its own on-disk format (not the CLI `messages.json`). Clinescope reads those too. To pick a recent extension session interactively:
-
-```bash
-clinescope --vscode --expected apply_patch read_file
-```
-
-That auto-discovers the extension's storage for your OS, lists your recent sessions newest-first, and scores the one you pick. To skip the picker, add `--latest` for the newest session, or `--path <task-dir>` to point at one explicitly. Run `clinescope --list-tools` to see the tool names for `--expected` (the extension uses `write_to_file` / `read_file` where the CLI uses `apply_patch` / `read_files`).
-
-One honest note: the diff scorers grade `apply_patch` grammar. When an extension session edits with `write_to_file` / `replace_in_file` instead, `tool_selection` still scores; `diff_coherence` reports a hard `0/100` (it found no `apply_patch` to grade), and `diff_minimality` / `apply_recovery` abstain (`n/a`). A diff-quality scorer for `write_to_file` grammar is on the roadmap.
-
-## Validation Corpus
-
-Clinescope ships a corpus of **real captured Cline runs** in [`examples/corpus/`](examples/corpus/), each hand-labeled in [`corpus.json`](examples/corpus/corpus.json) with its expected score profile, failure taxonomy, and the evidence its advice should name. The runner scores every trace and exits non-zero if any trace misses its label, so the corpus is a regression gate.
-
-**See Clinescope corpus:**
-
-```bash
-clinescope-corpus
-```
-
-See coverage, the failure taxonomy, and the one honestly-stated gap in [`examples/corpus/README.md`](examples/corpus/README.md).
+- **[Score a VS Code extension session](docs/usage.md#score-a-vs-code-extension-session)**: most Cline users are on the extension. `clinescope --vscode` auto-discovers its storage, lists your recent sessions, and scores the one you pick.
+- **[Validation corpus](examples/corpus/README.md)**: the real captured Cline runs behind `clinescope-corpus`, hand-labeled and run as a regression gate (three of four failure modes covered, with one honestly-stated gap).
 
 ## Feedback
 
