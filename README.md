@@ -23,8 +23,6 @@ Clinescope scores **coding-agent execution traces** and ships a **code-diff-qual
 
 Clinescope validates its own optional LLM judge against human labels and, finding it agrees only at chance level, deliberately keeps it out of the pass/fail gate. See [`docs/judge-validation.md`](docs/judge-validation.md).
 
-A community question ("are these failures a model gap or a harness gap?") turned into a small A/B experiment: the same task, same model, with and without a `.clinerules` harness. The [harness-gap writeup](docs/harness-gap.md) reports what moved and what did not.
-
 ## Get Started
 
 1. **Install Clinescope**
