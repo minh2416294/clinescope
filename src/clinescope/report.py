@@ -54,6 +54,7 @@ def render_report(
     score: ToolSelectionScore,
     *,
     session_id: str | None = None,
+    session_label: str | None = None,
     diff_coherence: DiffCoherenceScore | None = None,
     diff_minimality: DiffMinimalityScore | None = None,
     apply_recovery: ApplyRecoveryScore | None = None,
@@ -61,11 +62,16 @@ def render_report(
     advice: bool = False,
     verbose: bool = False,
 ) -> str:
+    # session_label, when given, replaces the "session <id>" phrase in the header
+    # verbatim (e.g. an "extension session <taskId> \"title\" [Code]" line for a
+    # VS Code extension trace, which has no World-A sessionId). When None the
+    # header is unchanged, so every existing caller is byte-identical.
     if verbose:
         return _render_verbose(
             trace,
             score,
             session_id=session_id,
+            session_label=session_label,
             diff_coherence=diff_coherence,
             diff_minimality=diff_minimality,
             apply_recovery=apply_recovery,
@@ -74,6 +80,7 @@ def render_report(
         trace,
         score,
         session_id=session_id,
+        session_label=session_label,
         diff_coherence=diff_coherence,
         diff_minimality=diff_minimality,
         apply_recovery=apply_recovery,
@@ -133,14 +140,15 @@ def _render_summary(
     score: ToolSelectionScore,
     *,
     session_id: str | None,
+    session_label: str | None = None,
     diff_coherence: DiffCoherenceScore | None,
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
     expected_provided: bool,
 ) -> str:
-    sid = session_id if session_id is not None else "<unknown>"
+    subject = _header_subject(session_id, session_label)
     lines = [
-        f"clinescope report - session {sid} ({len(trace.tool_calls)} tool calls)",
+        f"clinescope report - {subject} ({len(trace.tool_calls)} tool calls)",
         _render_summary_tool_selection(score, expected_provided),
     ]
     if diff_coherence is not None:
@@ -326,18 +334,33 @@ def summary_verdict(score: float | None) -> str:
 # --- Verbose rendering (the full debug dump; unchanged byte-for-byte) ---------
 
 
+def _header_subject(session_id: str | None, session_label: str | None) -> str:
+    # An explicit label (e.g. an extension session's taskId + title + variant) wins;
+    # otherwise fall back to the World-A "session <id>" phrasing, unchanged.
+    if session_label is not None:
+        return session_label
+    sid = session_id if session_id is not None else "<unknown>"
+    return f"session {sid}"
+
+
 def _render_verbose(
     trace: Trace,
     score: ToolSelectionScore,
     *,
     session_id: str | None,
+    session_label: str | None = None,
     diff_coherence: DiffCoherenceScore | None,
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
 ) -> str:
-    lines = [
-        "=== clinescope report ===",
-        f"sessionId:      {session_id if session_id is not None else '<unknown>'}",
+    lines = ["=== clinescope report ==="]
+    if session_label is not None:
+        lines.append(f"session:        {session_label}")
+    else:
+        lines.append(
+            f"sessionId:      {session_id if session_id is not None else '<unknown>'}"
+        )
+    lines += [
         f"trace.version:  {trace.version}",
         f"turns:          {len(trace.turns)}",
         f"tool_calls:     {len(trace.tool_calls)}",
