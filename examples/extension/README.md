@@ -21,15 +21,33 @@ fields `id`, `ts`, `modelInfo`, `metrics`). The extra Cline-specific fields
 (`id`, `ts`, `modelInfo`) are included on purpose: the adapter and loader must
 ignore them, and this fixture proves they do.
 
-## Stated gap: a real captured extension trace
+## Real captured extension traces
 
-Following the same "real over synthetic" discipline as the validation corpus
-(`examples/corpus/README.md`), a **real** captured
-`api_conversation_history.json` from an actual VS Code extension task is the
-stronger evidence and is queued. It is not committed yet because capturing one
-requires running the extension on a real repo and locating its global-storage
-file. When captured, drop it in here and add it to
-`tests/test_cline_extension.py` as a `skipif`-gated end-to-end pin, exactly like
-the live-capture corpus traces. The adapter logic is identical for the real and
-constructed shapes, since the delta from the CLI format is only the missing
-envelope.
+Following the "real over synthetic" discipline of the validation corpus
+(`examples/corpus/README.md`), two traces here are **real** captures from actual
+Cline VS Code extension (`saoudrizwan.claude-dev` 4.0.9) tasks against a local
+Ollama model, pinned by `skipif`-gated tests in
+`tests/test_extension_real_capture.py`:
+
+- `api_conversation_history.real.json` (+ its `ui_messages.real.json`): the model
+  said it would create `calc.py` but only emitted `plan_mode_respond` and never
+  called an edit tool. The "said done, did nothing" catch on a real extension
+  session: zero tool calls, every scorer reports the gap.
+- `api_conversation_history.write-file.json` (+ `ui_messages.write-file.json`): the
+  model actually created `calc.py`, via `write_to_file`. A real successful edit.
+
+### Finding: the extension's edit tool differs from the CLI's
+
+The CLI emits `apply_patch` (World-A grammar), which Clinescope's `diff_coherence`
+/ `diff_minimality` / `apply_recovery` scorers grade. This extension build (with a
+local Ollama model) reported `apply_patch` unavailable and used `write_to_file`
+instead. Clinescope handles that honestly: `tool_selection` scores the extension's
+own tools (both `write_to_file` and `read_file` are in the pinned vocab), and the
+three `apply_patch`-based diff scorers **abstain** (`n/a` / a hard zero) rather than
+crash. A diff-quality scorer for `write_to_file` / `replace_in_file` grammar is a
+roadmap item, not shipped.
+
+## `api_conversation_history.constructed.json`
+
+An always-on **constructed** fixture (list-content messages), so the core adapter
+tests run even without the real captures present.

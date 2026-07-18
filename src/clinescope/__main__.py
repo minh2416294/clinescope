@@ -2,12 +2,14 @@
 
 Usage:
     python -m clinescope <trace.json> --expected read_files [write_file ...] [--verbose]
+    python -m clinescope --vscode [--path DIR | --latest] [--expected ...]
 
-Loads a Cline World-A trace, scores tool selection against the expected tool
-names, renders the report, and prints it. The default is a one-line-per-scorer
-summary; ``--verbose`` emits the full per-scorer debug dump instead. The heavy
-lifting lives in
-:func:`clinescope.report.render_report` (a pure ``str``-returning
+Two input sources, one scoring path. Without ``--vscode`` it loads a Cline CLI
+World-A trace (``{version:1, messages:[...]}``). With ``--vscode`` it reads a
+Cline VS Code *extension* session instead: it auto-discovers the extension's
+per-OS global storage, lists recent sessions with a picker (or takes ``--path`` /
+``--latest``), and scores the chosen one through the same four scorers. Both
+paths render via :func:`clinescope.report.render_report` (a pure ``str``-returning
 function) so the report is testable WITHOUT a subprocess; this module is only
 argument parsing plus glue.
 
@@ -17,7 +19,8 @@ lifted here with one cheap read and passed through to the emitter.
 
 A trace that cannot be loaded (missing path, unsupported version, malformed or
 non-object JSON) prints a single ``error: ...`` line to stderr and exits 1 --
-never a raw Python traceback.
+never a raw Python traceback. A ``--vscode`` usage problem (no session selected
+in a non-TTY, or no extension storage found) exits 2.
 """
 
 from __future__ import annotations
@@ -25,15 +28,31 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
-from clinescope.apply_recovery import score_apply_recovery
-from clinescope.diff_coherence import score_diff_coherence
-from clinescope.diff_minimality import score_diff_minimality
+from clinescope.apply_recovery import ApplyRecoveryScore, score_apply_recovery
+from clinescope.cline_extension import load_extension_trace
+from clinescope.diff_coherence import DiffCoherenceScore, score_diff_coherence
+from clinescope.diff_minimality import DiffMinimalityScore, score_diff_minimality
+from clinescope.extension_discovery import (
+    ExtensionSession,
+    ExtensionStorageNotFound,
+    discover_sessions,
+    enumerate_sessions,
+)
 from clinescope.report import render_report
 from clinescope.tool_selection import score_tool_selection
-from clinescope.tool_vocab import CLINE_WORLD_A_TOOLS, tool_vocab_check
-from clinescope.world_a import load_trace
+from clinescope.tool_vocab import CLINE_KNOWN_TOOLS, tool_vocab_check
+from clinescope.world_a import Trace, load_trace
+
+# Exit codes: 0 = report emitted; 1 = a trace could not be loaded; 2 = a --vscode
+# usage problem (no session selected in a non-TTY, or no extension storage found).
+_EXIT_OK = 0
+_EXIT_LOAD_ERROR = 1
+_EXIT_USAGE = 2
+
+_PICKER_DEFAULT_LIMIT = 20
 
 
 class _ListToolsAction(argparse.Action):
@@ -45,7 +64,7 @@ class _ListToolsAction(argparse.Action):
     """
 
     def __call__(self, parser, namespace, values, option_string=None):  # type: ignore[no-untyped-def]
-        for name in sorted(CLINE_WORLD_A_TOOLS):
+        for name in sorted(CLINE_KNOWN_TOOLS):
             print(name)
         parser.exit(0)
 
@@ -59,7 +78,11 @@ def _read_session_id(path: Path) -> str | None:
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="clinescope")
     parser.add_argument(
-        "trace", type=Path, help="Path to a Cline World-A messages.json trace"
+        "trace",
+        type=Path,
+        nargs="?",
+        default=None,
+        help="Path to a Cline World-A messages.json trace (omit with --vscode)",
     )
     parser.add_argument(
         "--expected",
@@ -88,6 +111,44 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help="Emit the full per-scorer debug dump instead of the one-line summary",
     )
+
+    vscode = parser.add_argument_group("VS Code extension sessions")
+    vscode.add_argument(
+        "--vscode",
+        "--extension",
+        dest="vscode",
+        action="store_true",
+        help="Score a Cline VS Code extension session (auto-discover + pick)",
+    )
+    vscode.add_argument(
+        "--path",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help=(
+            "With --vscode: an explicit task dir, its api_conversation_history.json, "
+            "or a globalStorage root, instead of auto-discovery"
+        ),
+    )
+    vscode.add_argument(
+        "--latest",
+        action="store_true",
+        help="With --vscode: score the newest session without prompting",
+    )
+    vscode.add_argument(
+        "--variant",
+        default=None,
+        metavar="NAME",
+        help="With --vscode: limit discovery to one product (Code, Cursor, ...)",
+    )
+    vscode.add_argument(
+        "--all",
+        action="store_true",
+        help="With --vscode: list every session in the picker, not just the newest few",
+    )
+    # Test hooks: inject the OS/home so discovery can run against a fake tree.
+    vscode.add_argument("--home", type=Path, default=None, help=argparse.SUPPRESS)
+    vscode.add_argument("--platform", default=None, help=argparse.SUPPRESS)
     return parser.parse_args(argv)
 
 
@@ -117,24 +178,33 @@ def _maybe_print_feedback_footer() -> None:
     )
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None, *, input_fn: Callable[[str], str] = input
+) -> int:
     args = _parse_args(argv)
-    # Opt-in tool_selection: distinguish "--expected was omitted" (None -> skip
-    # scoring it, show n/a) from "--expected with no names" so an omitted flag no
-    # longer prints a vacuous 100/100 PASS. Validate the given names for typos.
     expected_provided = args.expected is not None
     expected = args.expected if expected_provided else []
     if expected_provided:
         _warn_unknown_expected(expected)
 
+    if args.vscode:
+        return _run_extension_flow(args, expected, expected_provided, input_fn)
+    return _run_world_a_flow(args, expected, expected_provided)
+
+
+# --- World-A (Cline CLI) flow: unchanged output -------------------------------
+
+
+def _run_world_a_flow(
+    args: argparse.Namespace, expected: list[str], expected_provided: bool
+) -> int:
+    if args.trace is None:
+        print("error: a trace path is required (or use --vscode)", file=sys.stderr)
+        return _EXIT_USAGE
     # Load boundary: a bad path / bad version / malformed or non-object JSON must
-    # print a clean one-line error, NOT a raw Python traceback. The loader raises
-    # a whole family of failures beyond its own WorldATraceError: OSError from a
-    # missing/unreadable file, json.JSONDecodeError from bad JSON, and even an
-    # AttributeError/TypeError when JSON-parseable-but-structurally-invalid input
-    # trips the parser. Catch broadly here so every load failure normalizes to the
-    # same clean stderr line + exit 1 -- this is the deliberate load boundary (the
-    # sibling `clinescope.gate` CLI does the same), not swallowed application logic.
+    # print a clean one-line error, NOT a raw Python traceback. Catch broadly so
+    # every load failure normalizes to the same clean stderr line + exit 1 -- the
+    # deliberate load boundary (the sibling `clinescope.gate` CLI does the same).
     try:
         trace = load_trace(args.trace)
         session_id = _read_session_id(args.trace)
@@ -143,27 +213,201 @@ def main(argv: list[str] | None = None) -> int:
             f"error: could not load trace {args.trace}: {type(err).__name__}: {err}",
             file=sys.stderr,
         )
-        return 1
+        return _EXIT_LOAD_ERROR
 
-    score = score_tool_selection(trace, set(expected))
-    diff_score = score_diff_coherence(trace)
-    minimality_score = score_diff_minimality(trace)
-    recovery_score = score_apply_recovery(trace)
     print(
-        render_report(
-            trace,
-            score,
-            session_id=session_id,
-            diff_coherence=diff_score,
-            diff_minimality=minimality_score,
-            apply_recovery=recovery_score,
-            expected_provided=expected_provided,
-            advice=args.advice,
-            verbose=args.verbose,
+        _score_and_render(
+            trace, expected, expected_provided, args, session_id=session_id
         )
     )
     _maybe_print_feedback_footer()
-    return 0
+    return _EXIT_OK
+
+
+# --- VS Code extension flow ---------------------------------------------------
+
+
+def _run_extension_flow(
+    args: argparse.Namespace,
+    expected: list[str],
+    expected_provided: bool,
+    input_fn: Callable[[str], str],
+) -> int:
+    try:
+        session = _select_extension_session(args, input_fn)
+    except ExtensionStorageNotFound as err:
+        print(f"error: {err}", file=sys.stderr)
+        return _EXIT_USAGE
+    except _NoSelection as err:
+        print(f"error: {err}", file=sys.stderr)
+        return _EXIT_USAGE
+    if session is None:
+        return _EXIT_OK  # the user quit the picker -- a clean, deliberate exit
+
+    try:
+        trace = load_extension_trace(session.api_history_path)
+    except Exception as err:  # noqa: BLE001 -- same deliberate load boundary as above
+        print(
+            f"error: could not load extension session {session.api_history_path}: "
+            f"{type(err).__name__}: {err}",
+            file=sys.stderr,
+        )
+        return _EXIT_LOAD_ERROR
+
+    print(
+        _score_and_render(
+            trace,
+            expected,
+            expected_provided,
+            args,
+            session_label=_extension_label(session),
+        )
+    )
+    _maybe_print_feedback_footer()
+    return _EXIT_OK
+
+
+class _NoSelection(Exception):
+    """A --vscode run reached a state where no session could be chosen."""
+
+
+def _select_extension_session(
+    args: argparse.Namespace, input_fn: Callable[[str], str]
+) -> ExtensionSession | None:
+    if args.path is not None:
+        return _session_from_explicit_path(args.path)
+
+    sessions = discover_sessions(
+        platform=args.platform,
+        home=args.home,
+        variant=args.variant,
+    )
+    if not sessions:
+        raise _NoSelection(
+            "No Cline extension sessions found. Run a Cline task first, or pass "
+            "--path <task-dir-or-file>."
+        )
+    if args.latest:
+        return sessions[0]
+    if not sys.stdin.isatty():
+        raise _NoSelection(
+            "No TTY and no session selected. Pass --latest for the newest session, "
+            "or --path <dir> to point at one explicitly."
+        )
+    return _prompt_for_session(sessions, show_all=args.all, input_fn=input_fn)
+
+
+def _session_from_explicit_path(path: Path) -> ExtensionSession:
+    """Resolve --path (a raw api file, a task dir, or a globalStorage root)."""
+    if path.is_file():
+        return _session_for_task_dir(path.parent, path)
+    api_file = path / "api_conversation_history.json"
+    if api_file.is_file():
+        return _session_for_task_dir(path, api_file)
+    # A globalStorage / extension root: enumerate and take the newest.
+    sessions = enumerate_sessions(path)
+    if sessions:
+        return sessions[0]
+    raise _NoSelection(
+        f"No Cline extension session at {path}. Expected a task dir with an "
+        "api_conversation_history.json, that file itself, or a globalStorage root."
+    )
+
+
+def _session_for_task_dir(task_dir: Path, api_file: Path) -> ExtensionSession:
+    return ExtensionSession(
+        task_id=task_dir.name,
+        task_dir=task_dir,
+        api_history_path=api_file,
+        variant="path",
+        title=None,
+        timestamp_ms=None,
+    )
+
+
+def _prompt_for_session(
+    sessions: list[ExtensionSession],
+    *,
+    show_all: bool,
+    input_fn: Callable[[str], str],
+) -> ExtensionSession | None:
+    shown = sessions if show_all else sessions[:_PICKER_DEFAULT_LIMIT]
+    print(f"Found {len(sessions)} Cline extension session(s):\n", file=sys.stderr)
+    for i, session in enumerate(shown, start=1):
+        print(f"  {i:>3}  {_picker_line(session)}", file=sys.stderr)
+    if len(shown) < len(sessions):
+        print(
+            f"  ... {len(sessions) - len(shown)} older (use --all or --path)",
+            file=sys.stderr,
+        )
+    print("  [Enter = 1 (newest), q = quit]", file=sys.stderr)
+
+    while True:
+        try:
+            raw = input_fn("Select a session: ").strip()
+        except EOFError:
+            return None
+        if raw in ("q", "quit"):
+            return None
+        if raw == "":
+            return shown[0]
+        if raw.isdigit() and 1 <= int(raw) <= len(shown):
+            return shown[int(raw) - 1]
+        print("Enter a number from the list, or q to quit.", file=sys.stderr)
+
+
+def _picker_line(session: ExtensionSession) -> str:
+    when = _format_ts(session.timestamp_ms)
+    title = session.title or "(no title)"
+    if len(title) > 48:
+        title = title[:47] + "…"
+    return f"{when}  {title:<48}  [{session.variant}] {session.task_id}"
+
+
+def _format_ts(timestamp_ms: int | None) -> str:
+    if timestamp_ms is None:
+        return "(no date)        "
+    from datetime import datetime
+
+    return datetime.fromtimestamp(timestamp_ms / 1000).strftime("%Y-%m-%d %H:%M")
+
+
+def _extension_label(session: ExtensionSession) -> str:
+    # Honest header: the real folder taskId, the human title when known, and the
+    # variant tag, clearly marked "extension session" so it is never mistaken for a
+    # World-A sessionId (which an extension trace does not have).
+    title = f' "{session.title}"' if session.title else ""
+    return f"extension session {session.task_id}{title} [{session.variant}]"
+
+
+# --- shared scoring + rendering -----------------------------------------------
+
+
+def _score_and_render(
+    trace: Trace,
+    expected: list[str],
+    expected_provided: bool,
+    args: argparse.Namespace,
+    *,
+    session_id: str | None = None,
+    session_label: str | None = None,
+) -> str:
+    score = score_tool_selection(trace, set(expected))
+    diff_score: DiffCoherenceScore = score_diff_coherence(trace)
+    minimality_score: DiffMinimalityScore = score_diff_minimality(trace)
+    recovery_score: ApplyRecoveryScore = score_apply_recovery(trace)
+    return render_report(
+        trace,
+        score,
+        session_id=session_id,
+        session_label=session_label,
+        diff_coherence=diff_score,
+        diff_minimality=minimality_score,
+        apply_recovery=recovery_score,
+        expected_provided=expected_provided,
+        advice=args.advice,
+        verbose=args.verbose,
+    )
 
 
 if __name__ == "__main__":

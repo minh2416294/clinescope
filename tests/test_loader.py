@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from clinescope.world_a import (
+    TextItem,
     ToolResultItem,
     TraceVersionError,
     WorldATraceError,
@@ -306,6 +307,42 @@ def test_missing_content_key_defaults_to_empty_str(tmp_path: Path) -> None:
     trace = load_trace(path)
 
     assert trace.tool_calls[0].result_content == ""
+
+
+def test_bare_string_message_content_becomes_one_text_item() -> None:
+    # Anthropic's MessageParam.content may be a bare string, not a block list
+    # (the shape Cline builds in memory, e.g. {"role":"user","content":"Fix bug"}).
+    # The loader must treat that string AS the text, not iterate it character by
+    # character (which raised AttributeError: 'str' object has no attribute 'get').
+    trace = load_trace_from_dict(
+        {"version": 1, "messages": [{"role": "user", "content": "Fix the bug"}]}
+    )
+
+    assert len(trace.turns) == 1
+    assert trace.turns[0].content == (TextItem(text="Fix the bug"),)
+    assert trace.dropped_items == ()
+
+
+def test_empty_string_message_content_becomes_empty_text_item() -> None:
+    # An empty string used to "pass" by accident (iterating "" yields nothing ->
+    # zero content items). Pin the intended behavior explicitly: one empty
+    # TextItem, so the str path is uniform and not length-dependent.
+    trace = load_trace_from_dict(
+        {"version": 1, "messages": [{"role": "user", "content": ""}]}
+    )
+
+    assert trace.turns[0].content == (TextItem(text=""),)
+
+
+def test_non_list_non_str_message_content_is_surfaced_not_crashed() -> None:
+    # A content that is neither a block list nor a str (a malformed shape) must be
+    # surfaced on dropped_items, never crash mid-parse -- "fail loud on bad, but
+    # do not swallow." The whole message is recorded so a caller sees what dropped.
+    message = {"role": "user", "content": 42}
+    trace = load_trace_from_dict({"version": 1, "messages": [message]})
+
+    assert trace.turns[0].content == ()
+    assert trace.dropped_items == (message,)
 
 
 @pytest.mark.parametrize("trace_path", _ALL_EXAMPLE_TRACES, ids=lambda p: p.name)
