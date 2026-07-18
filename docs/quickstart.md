@@ -8,7 +8,7 @@ Clinescope is pure Python and runs on macOS, Linux, and Windows. The `cline` com
 
 Everything here runs **on your machine**. On the default path Clinescope makes no network calls and needs no API key. The only part that ever touches the network is the optional LLM judge, and even that talks to a local Ollama, never a remote API. Your Cline trace, your code, and your prompts never leave your computer.
 
-**The `clinescope` command works with the Cline CLI**, which writes the trace format it reads. The VS Code extension writes a different on-disk format; it is not read by the command line yet, but a library adapter scores it today (see [Extension support](#extension-support-library-api-today-cli-wiring-next)).
+**The `clinescope` command works with both the Cline CLI and the VS Code extension.** The two store sessions in different on-disk formats; Clinescope reads both. This guide uses the CLI. On the extension, run `clinescope --vscode` instead (see [Score a VS Code extension session](#score-a-vs-code-extension-session)).
 
 ## See it work first (no Cline, no Ollama, no key)
 
@@ -76,7 +76,7 @@ cline history --json
 
 Each entry has a `messagesPath` field pointing straight at the trace. Copy the one for the run you just did; that is the file you pass to Clinescope.
 
-> **Using the VS Code extension?** It stores a task in a different on-disk format the `clinescope` command does not read yet, though a library adapter scores it today. Use the Cline CLI for the command-line flow (see [Extension support](#extension-support-library-api-today-cli-wiring-next)).
+> **Using the VS Code extension?** It stores a task in a different on-disk format, and `clinescope --vscode` reads it directly (auto-discovery + a session picker), so you can skip the CLI steps below (see [Score a VS Code extension session](#score-a-vs-code-extension-session)).
 
 For reference, the CLI writes each session to `~/.cline/data/sessions/<sessionId>/<sessionId>.messages.json` (on Windows, `C:\Users\<you>\.cline\data\sessions\...`). If you set `CLINE_DATA_DIR` or ran `cline --data-dir <path>`, it lives under that directory instead.
 
@@ -127,21 +127,23 @@ advice (how to improve the agent):
 
 Then edit your prompt per the advice, re-run the Cline task, and score again. A clean run (every applicable scorer passing) is the goal.
 
-## Extension support (library API today, CLI wiring next)
+## Score a VS Code extension session
 
-The Cline VS Code extension stores a task's history as `api_conversation_history.json` (a bare JSON array of messages) and `ui_messages.json` under its global storage, not as the versioned World-A trace (`{version: 1, messages: [...], ...}`) the CLI writes. The `clinescope` command reads the World-A (CLI) format only, so `clinescope path/to/api_conversation_history.json` does not work directly.
+Most Cline users are on the VS Code extension, which stores each task as `api_conversation_history.json` (a bare JSON array of messages) plus `ui_messages.json` under its global storage, not as the versioned World-A trace (`{version: 1, messages: [...], ...}`) the CLI writes. `clinescope --vscode` reads that format for you: it finds the extension's storage on your OS, lists your recent sessions with a title and timestamp, and scores the one you pick.
 
-There is now a library adapter that scores an extension file. In Python:
-
-```python
-from clinescope.cline_extension import load_extension_trace
-from clinescope.diff_coherence import score_diff_coherence
-
-trace = load_extension_trace("path/to/api_conversation_history.json")
-print(score_diff_coherence(trace))
+```bash
+clinescope --vscode --expected apply_patch read_file
 ```
 
-`load_extension_trace` wraps the bare array in the World-A envelope and runs it through the same loader and scorers, so every scorer works on an extension session. Wiring this into the `clinescope` command line (so extension users can run it without Python) is the next step.
+That opens an interactive picker (newest first; press Enter for the newest, `q` to quit). To skip the picker:
+
+- `clinescope --vscode --latest` scores the newest session without prompting (also the right choice in a script or CI, where there is no terminal to prompt).
+- `clinescope --vscode --path <task-dir>` points at one session explicitly (a task directory, its `api_conversation_history.json`, or the extension's `globalStorage` root).
+- `clinescope --vscode --variant Cursor` limits discovery to one editor when you have several (Code, Cursor, VSCodium, ...).
+
+The report header reads `extension session <taskId> "<title>" [<variant>]`, so it is clear you are looking at an extension run, not a CLI one.
+
+**One tool-name difference to know.** The CLI uses `apply_patch` / `read_files`; the extension often uses `write_to_file` / `replace_in_file` / `read_file` instead (it depends on your Cline and model). Run `clinescope --list-tools` to see the full set for `--expected`. The diff scorers grade `apply_patch` grammar, so on a `write_to_file` session `tool_selection` still scores but `diff_coherence` / `diff_minimality` / `apply_recovery` abstain (`n/a`) rather than guess. A diff-quality scorer for `write_to_file` grammar is on the roadmap.
 
 One more honest note: a trace that includes image or file attachment blocks still loads and scores fine, but those blocks are not shown in the report (the four scorers work on tool calls and their results).
 
