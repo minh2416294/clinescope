@@ -55,11 +55,6 @@ Learn more in the [usage guide](docs/usage.md).
 
 New to this? The [quickstart](docs/quickstart.md) walks you from installing Cline to scoring your own session.
 
-## More
-
-- **[Score a VS Code extension session](docs/usage.md#score-a-vs-code-extension-session)**: most Cline users are on the extension. `clinescope --vscode` auto-discovers its storage, lists your recent sessions, and scores the one you pick.
-- **[Validation corpus](examples/corpus/README.md)**: the real captured Cline runs behind `clinescope-corpus`, hand-labeled and run as a regression gate (three of four failure modes covered, with one honestly-stated gap).
-
 ## Feedback
 
 Ran Clinescope on your own Cline trace? Tell me how it went, what worked, or what was confusing: open a [feedback issue](https://github.com/minh2416294/clinescope/issues/new/choose) and pick "Share feedback". First-run impressions on a real trace are the single most useful thing you can send.
