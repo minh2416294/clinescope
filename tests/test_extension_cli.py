@@ -18,6 +18,18 @@ import pytest
 from clinescope.__main__ import main
 
 
+@pytest.fixture(autouse=True)
+def _isolate_discovery_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The CLI's --vscode flow injects --home / --platform but reads real env vars
+    # (XDG_CONFIG_HOME on Linux, APPDATA on Windows) for the config base. A CI
+    # runner sets XDG_CONFIG_HOME, which would send discovery to the runner's real
+    # config dir instead of the tmp_path tree these tests build -> spurious "not
+    # found" (exit 2). Clear both so the injected --home is authoritative on every
+    # OS. CLINE_DATA_DIR/CLINE_DIR would override discovery entirely, so clear those too.
+    for var in ("XDG_CONFIG_HOME", "APPDATA", "CLINE_DATA_DIR", "CLINE_DIR"):
+        monkeypatch.delenv(var, raising=False)
+
+
 def _list_content(text: str) -> list[dict]:
     return [{"role": "user", "content": [{"type": "text", "text": text}]}]
 
