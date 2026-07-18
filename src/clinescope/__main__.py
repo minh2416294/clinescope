@@ -43,7 +43,7 @@ from clinescope.extension_discovery import (
 )
 from clinescope.report import render_report
 from clinescope.tool_selection import score_tool_selection
-from clinescope.tool_vocab import CLINE_WORLD_A_TOOLS, tool_vocab_check
+from clinescope.tool_vocab import CLINE_KNOWN_TOOLS, tool_vocab_check
 from clinescope.world_a import Trace, load_trace
 
 # Exit codes: 0 = report emitted; 1 = a trace could not be loaded; 2 = a --vscode
@@ -64,7 +64,7 @@ class _ListToolsAction(argparse.Action):
     """
 
     def __call__(self, parser, namespace, values, option_string=None):  # type: ignore[no-untyped-def]
-        for name in sorted(CLINE_WORLD_A_TOOLS):
+        for name in sorted(CLINE_KNOWN_TOOLS):
             print(name)
         parser.exit(0)
 
