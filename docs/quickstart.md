@@ -2,11 +2,11 @@
 
 > Clinescope is an independent, unofficial tool - not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used only to describe compatibility.
 
-Clinescope scores a real Cline run: point it at the `messages.json` Cline writes to disk and it tells you whether the agent picked the right tools, wrote clean patches, and recovered when a patch failed. This guide takes you from zero to scoring your own Cline session.
+Use the `clinescope` tool to score your last Cline run by pointing it to the `messages.json` file that Cline saves to disk. Then, it will tell you if you used the right tools, committed patches cleanly, and recovered from failed patches successfully!
 
 Clinescope is pure Python and runs on macOS, Linux, and Windows. The `cline` commands below are identical on all three; only the shell differs (examples use PowerShell on Windows).
 
-Everything here runs **on your machine**. On the default path Clinescope makes no network calls and needs no API key. The only part that ever touches the network is the optional LLM judge, and even that talks to a local Ollama, never a remote API. Your Cline trace, your code, and your prompts never leave your computer.
+All processing takes place in your local environment. On the default deployment, there are no outbound API requests at all, and no API keys needed. The only possible connection to an external service is the optional LLM judge, which by default connects to a local Ollama instance, not an API. Your Cline trace, code, and prompts are never sent to a remote server.
 
 **The `clinescope` command works with both the Cline CLI and the VS Code extension.** The two store sessions in different on-disk formats; Clinescope reads both. This guide uses the CLI. On the extension, run `clinescope --vscode` instead (see [Score a VS Code extension session](#score-a-vs-code-extension-session)).
 
@@ -144,8 +144,6 @@ That opens an interactive picker (newest first; press Enter for the newest, `q` 
 The report header reads `extension session <taskId> "<title>" [<variant>]`, so it is clear you are looking at an extension run, not a CLI one.
 
 **One tool-name difference to know.** The CLI uses `apply_patch` / `read_files`; the extension often uses `write_to_file` / `replace_in_file` / `read_file` instead (it depends on your Cline and model). Run `clinescope --list-tools` to see the full set for `--expected` (both the CLI and extension names). The diff scorers grade `apply_patch` grammar, so on a `write_to_file` session `tool_selection` still scores; `diff_coherence` reports a hard `0/100` (it found no `apply_patch` to grade), and `diff_minimality` / `apply_recovery` abstain (`n/a`). That `0/100` means "no `apply_patch` to grade here," not "your agent wrote a broken patch." A diff-quality scorer for `write_to_file` grammar is on the roadmap.
-
-One more honest note: a trace that includes image or file attachment blocks still loads and scores fine, but those blocks are not shown in the report (the four scorers work on tool calls and their results).
 
 ## Related
 

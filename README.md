@@ -6,7 +6,7 @@
 
 > Clinescope is an independent, unofficial tool - not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used only to describe compatibility.
 
-**Clinescope runs on both the Cline CLI and the VS Code extension.** Point it at a CLI trace, or run `clinescope --vscode` to auto-discover and score a VS Code extension session (see [Score a VS Code extension session](docs/usage.md#score-a-vs-code-extension-session)).
+**Clinescope runs on the Cline CLI and the VS Code extension.** Run `clinescope --vscode` to auto-discover and score a VS Code extension session (see [Score a VS Code extension session](docs/usage.md#score-a-vs-code-extension-session)).
 
 Clinescope is an AI evaluation tool that lives in your Cline development workflow, reads your logs, and helps you write better prompts by checking tool choices, catching messy code rewrites, and ensuring updates don't break past work. Clinescope reads a Cline log and scores four things:
 
@@ -51,9 +51,7 @@ Clinescope validates its own optional LLM judge against human labels and, findin
     clinescope path/to/messages.json --expected read_files apply_patch --advice
     ```
 
-Learn more in the [usage guide](docs/usage.md).
-
-New to this? The [quickstart](docs/quickstart.md) walks you from installing Cline to scoring your own session.
+Learn more in the [usage guide](docs/usage.md). New to this? The [quickstart](docs/quickstart.md) walks you from installing Cline to scoring your own session.
 
 ## Feedback
 

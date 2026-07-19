@@ -1,8 +1,5 @@
 # Usage guide
 
-The [README](../README.md) covers installing Clinescope and the two commands you'll reach for most.
-This guide covers the rest.
-
 ## Score a run
 
 Point Clinescope at a Cline log file (a `messages.json` trace) to score the run:
