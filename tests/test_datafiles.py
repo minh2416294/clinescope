@@ -99,3 +99,14 @@ def test_corpus_run_resolves_keys_against_base_dir(tmp_path: Path) -> None:
     report = run_corpus(manifest, base_dir=tmp_path)
     assert len(report.items) == 1
     assert report.items[0].loaded  # resolved via base_dir / key, not cwd / key
+
+
+def test_demo_trace_is_reachable_via_datafiles_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # `clinescope --demo` hardcodes this filename and resolves it via datafiles_root().
+    # From a neutral cwd (the pip-install scenario) it must resolve, else the demo
+    # silently breaks for a stranger. Renaming/dropping the example turns this red.
+    monkeypatch.chdir(tmp_path)
+    demo = datafiles_root() / "examples" / "live-gpt-oss-apply-fail.json"
+    assert demo.is_file()

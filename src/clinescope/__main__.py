@@ -31,6 +31,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from clinescope._datafiles import DataFilesNotFound, datafiles_root
 from clinescope.apply_recovery import ApplyRecoveryScore, score_apply_recovery
 from clinescope.cline_extension import load_extension_trace
 from clinescope.diff_coherence import DiffCoherenceScore, score_diff_coherence
@@ -111,6 +112,14 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help="Emit the full per-scorer debug dump instead of the one-line summary",
     )
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help=(
+            "Score a bundled example trace with advice on and exit -- zero args, "
+            "zero local files. The one-liner proof-of-work."
+        ),
+    )
 
     vscode = parser.add_argument_group("VS Code extension sessions")
     vscode.add_argument(
@@ -182,6 +191,8 @@ def main(
     argv: list[str] | None = None, *, input_fn: Callable[[str], str] = input
 ) -> int:
     args = _parse_args(argv)
+    if args.demo:
+        return _emit_bundled_demo_report()
     expected_provided = args.expected is not None
     expected = args.expected if expected_provided else []
     if expected_provided:
@@ -190,6 +201,52 @@ def main(
     if args.vscode:
         return _run_extension_flow(args, expected, expected_provided, input_fn)
     return _run_world_a_flow(args, expected, expected_provided)
+
+
+# --- `clinescope --demo`: the zero-args proof-of-work -------------------------
+# One command a stranger runs (`uvx clinescope@latest --demo`) with no trace and
+# no local file: it scores a REAL bundled trace with advice ON, so the top-of-
+# README demo shows the tool CATCHING a failure (the PASS+FAIL mix on
+# live-gpt-oss-apply-fail.json), not a canned all-green screenshot. The inputs are
+# fixed (a curated, deterministic experience), so it reads NOTHING off the user's
+# args -- any --expected / --advice / --vscode / positional trace is cleanly
+# ignored (last mode wins). Resolves the trace via the same datafiles resolver the
+# corpus/gold features use, so it works from a pip/uvx install with no clone.
+
+_DEMO_TRACE_NAME = "live-gpt-oss-apply-fail.json"
+_DEMO_EXPECTED = ["read_files", "apply_patch"]
+
+
+def _emit_bundled_demo_report() -> int:
+    try:
+        trace_path = datafiles_root() / "examples" / _DEMO_TRACE_NAME
+        trace = load_trace(trace_path)
+        session_id = _read_session_id(trace_path)
+    except DataFilesNotFound as err:
+        print(f"error: {err}", file=sys.stderr)
+        return _EXIT_USAGE
+    except Exception as err:  # noqa: BLE001 -- same deliberate load boundary as the World-A flow
+        print(
+            f"error: could not load bundled demo trace: {type(err).__name__}: {err}",
+            file=sys.stderr,
+        )
+        return _EXIT_LOAD_ERROR
+
+    print(
+        f"# clinescope --demo: scoring bundled trace 'examples/{_DEMO_TRACE_NAME}' "
+        "(run `clinescope <your-trace.json> --expected ...` on your own)",
+        file=sys.stderr,
+    )
+    print(
+        _score_and_render(
+            trace,
+            _DEMO_EXPECTED,
+            True,
+            argparse.Namespace(advice=True, verbose=False),
+            session_id=session_id,
+        )
+    )
+    return _EXIT_OK
 
 
 # --- World-A (Cline CLI) flow: unchanged output -------------------------------
