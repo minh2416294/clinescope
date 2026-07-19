@@ -1,23 +1,13 @@
 # The harness gap
 
-Clinescope catches a coding agent's failures after the fact. A fair question, raised by a Cline
-community member, is whether those failures are the wrong thing to catch: if a run fails because
-Cline's default prompt never told the model how to use its tools, then the real fix is upstream, in
-the prompt, not in a post-hoc analyzer. They named it cleanly: is a given failure a **model gap** (a
-capability limit an external auditor should catch) or a **harness gap** (something a better prompt
-would have prevented)?
+Clinescope watches coding agents' failures after the fact. A fair question, raised by a Cline community member, is whether those are the wrong failures to be watching: if a run fails because Cline's default prompt never taught the model how to use its tools, then the real fix is upstream, in the prompt, not in a post-hoc analyzer. They named it cleanly: is a given failure a model gap (a capability limit an external auditor should catch) or a harness gap (something a better prompt would have prevented)?
 
-They also proposed the test: run the same task, same model, once without a `.clinerules` harness and
-once with one; the difference between the two scores is the size of the harness gap. This page is that
-experiment.
+They also proposed the test: run the same task, same model, once without a `.clinerules` harness and once with one; the difference between the two scores is the size of the harness gap. This page is that test.
 
 ## What the harness is
 
 The "with harness" runs add one specimen file, [`examples/harness-gap/clinerules/000-tool-format.md`](../examples/harness-gap/clinerules/000-tool-format.md),
-to the workspace's `.clinerules/` (an experiment artifact you copy into a Cline workspace, not
-something Clinescope ships or runs). It is short and general (a tool-format harness, with a worked
-example that is illustrative, not the answer to this task). It does three things Cline's default
-prompt does not:
+to the workspace's `.clinerules/` (an experiment artifact you copy into a Cline workspace, not something Clinescope ships or runs). It is short and general (a tool-format harness, with a worked example that is illustrative, not the answer to this task). It does three things Cline's default prompt does not:
 
 1. Tells the model to edit with `apply_patch` and not to answer in prose.
 2. Teaches the exact `*** Begin Patch` grammar with one worked example (verified to score
@@ -52,30 +42,29 @@ session, scored with `clinescope ... --expected read_files apply_patch`.
 | gpt-oss:20b | no | (empty, see note) | (empty) | (empty) | (empty) |
 | gpt-oss:20b | yes | 100/100 | 100/100 | 100/100 | n/a |
 
-On qwen2.5-coder:7b, the community member's exact recipe, the measured delta is **zero on all four
-scorers**. But the scores hide the interesting part. Without the harness, qwen reached for the default
+On qwen2.5-coder:7b, the community member's exact recipe, the measured delta is zero on all four
+scorers. But the scores hide the interesting part. Without the harness, qwen reached for the default
 `editor` tool. With the harness, it reached for `apply_patch` instead: the harness moved the model's
-tool choice. In both runs, though, qwen wrote the tool call as JSON inside its prose rather than
-emitting a real tool call, so Cline recorded zero tool calls and every scorer stayed at zero.
+tool choice. In both runs, though, qwen wrote the tool call as JSON inside its prose rather than emitting a real tool call, so Cline recorded zero tool calls and every scorer stayed at zero.
 
 That is the honest answer to their question, and it matches what they predicted for a small model: at
-the 7B class, the failure is a **model-capability ceiling**, not a harness gap. A rules file can change
+the 7B class, the failure is a model-capability ceiling, not a harness gap. A rules file can change
 what a model intends to do, but it cannot give a model the ability to emit a valid tool call it cannot
 emit.
 
 The contrast case is the other half of the answer. gpt-oss:20b with the same harness made real tool
 calls, emitted a grammar-valid `apply_patch` that succeeded, and actually edited the file: a clean
-100/100/100. So a harness is necessary but not sufficient. It can put a **capable** model onto the
+100/100/100. So a harness is necessary but not sufficient. It can put a capable model onto the
 tool path an eval grades; it cannot manufacture tool-calling ability a weak model lacks.
 
 The third model, `granite4.1:8b`, was suggested by the same community member on the theory that a
 model built with a curated, task-designed data mix might behave differently from a general model of
 the same size. It does, and the difference is the most interesting part of the result. Granite's
-per-scorer delta is also **zero on all four scorers**, the same headline as qwen, but for the
+per-scorer delta is also zero on all four scorers, the same headline as qwen, but for the
 opposite reason. Where qwen could not emit a single real tool call in either run (it wrote its edit
 as prose JSON), Granite emitted real tool calls in both runs: one `read_files` call bare (then an
 empty response before it edited), and six calls harnessed (`read_files`, `run_commands`, three
-`editor` calls) that **actually edited the file correctly**. Granite clears the "can this model emit
+`editor` calls) that actually edited the file correctly. Granite clears the "can this model emit
 a valid tool call at all" bar that stopped qwen.
 
 What it did not do is switch onto `apply_patch`. The harness tells the model, in plain words, to edit

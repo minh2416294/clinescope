@@ -11,7 +11,7 @@ bare array in the World-A envelope and feeds the existing loader unchanged.
 
 ## `api_conversation_history.constructed.json`
 
-A **constructed** fixture, not a real capture. It mirrors the extension's
+A constructed fixture, not a real capture. It mirrors the extension's
 on-disk shape verified against Cline source
 (`apps/vscode/src/core/storage/disk.ts::saveApiConversationHistory` writes
 `JSON.stringify(apiConversationHistory)` where the param is
@@ -24,7 +24,7 @@ ignore them, and this fixture proves they do.
 ## Real captured extension traces
 
 Following the "real over synthetic" discipline of the validation corpus
-(`examples/corpus/README.md`), two traces here are **real** captures from actual
+(`examples/corpus/README.md`), two traces here are real captures from actual
 Cline VS Code extension (`saoudrizwan.claude-dev` 4.0.9) tasks against a local
 Ollama model, pinned by `skipif`-gated tests in
 `tests/test_extension_real_capture.py`:
@@ -43,11 +43,11 @@ The CLI emits `apply_patch` (World-A grammar), which Clinescope's `diff_coherenc
 local Ollama model) reported `apply_patch` unavailable and used `write_to_file`
 instead. Clinescope handles that honestly: `tool_selection` scores the extension's
 own tools (both `write_to_file` and `read_file` are in the pinned vocab), and the
-three `apply_patch`-based diff scorers **abstain** (`n/a` / a hard zero) rather than
+three `apply_patch`-based diff scorers abstain (`n/a` / a hard zero) rather than
 crash. A diff-quality scorer for `write_to_file` / `replace_in_file` grammar is a
 roadmap item, not shipped.
 
 ## `api_conversation_history.constructed.json`
 
-An always-on **constructed** fixture (list-content messages), so the core adapter
+An always-on constructed fixture (list-content messages), so the core adapter
 tests run even without the real captures present.
