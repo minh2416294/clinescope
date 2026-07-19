@@ -12,10 +12,22 @@ All processing takes place in your local environment. On the default deployment,
 
 ## See it work first (no Cline, no Ollama, no key)
 
-Clinescope ships real captured Cline traces inside the package, so you can watch it score before setting anything up. From any directory:
+Clinescope ships real captured Cline traces inside the package, so you can watch it score before setting anything up. The fastest look is `clinescope --demo`, which scores one bundled trace (a real run whose patch failed and was never retried) with advice on:
 
 ```bash
 pip install clinescope
+clinescope --demo
+```
+
+To run it without installing anything first, use [uv](https://docs.astral.sh/uv/) or [pipx](https://pipx.pypa.io/) (each fetches Clinescope into a throwaway environment):
+
+```bash
+uvx clinescope@latest --demo    # or: pipx run clinescope --demo
+```
+
+For the fuller picture, `clinescope-corpus` scores all six bundled traces at once:
+
+```bash
 clinescope-corpus
 ```
 

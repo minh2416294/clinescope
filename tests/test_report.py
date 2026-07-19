@@ -460,3 +460,53 @@ def test_feedback_footer_silent_when_stdout_not_a_tty(
     assert exit_code == 0
     assert FEEDBACK_URL_FRAGMENT not in captured.err
     assert FEEDBACK_URL_FRAGMENT not in captured.out
+
+
+# --- `clinescope --demo`: the zero-args proof-of-work -------------------------
+# A stranger runs `uvx clinescope@latest --demo` with no trace and no local file.
+# It must score a bundled real trace with advice on and exit 0, showing the tool
+# CATCHING a real failure (the PASS+FAIL mix on live-gpt-oss-apply-fail.json) so
+# the top-of-README demo is instructive, not a canned all-green screenshot.
+
+DEMO_TRACE = (
+    Path(__file__).resolve().parent.parent / "examples" / "live-gpt-oss-apply-fail.json"
+)
+
+
+@pytest.mark.skipif(not DEMO_TRACE.exists(), reason="demo trace not present")
+def test_demo_scores_the_bundled_trace_and_exits_0(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = main(["--demo"])
+
+    captured = capsys.readouterr()
+    out = captured.out
+    assert exit_code == 0
+    # the four scorer names
+    assert "tool_selection" in out
+    assert "diff_coherence" in out
+    assert "diff_minimality" in out
+    assert "apply_recovery" in out
+    # the deliberate PASS+FAIL mix, exact substrings (two-space gaps are load-bearing)
+    assert "tool_selection  100/100  PASS" in out
+    assert "apply_recovery    0/100  FAIL" in out
+    assert "0/1 failed patches recovered" in out
+    # advice is forced on: the money shot is the coaching naming the unrecovered file
+    assert "advice (how to improve the agent):" in out
+    assert "[apply_recovery] no_apply_recovery" in out
+    assert "validator.py" in out
+    # never a raw traceback
+    assert "Traceback (most recent call last)" not in captured.err
+
+
+@pytest.mark.skipif(not DEMO_TRACE.exists(), reason="demo trace not present")
+def test_demo_prints_a_banner_naming_the_bundled_trace_to_stderr(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    main(["--demo"])
+
+    captured = capsys.readouterr()
+    # the orientation banner names the canned trace, on stderr...
+    assert "live-gpt-oss-apply-fail.json" in captured.err
+    # ...and never on stdout, so the piped report stays clean
+    assert "live-gpt-oss-apply-fail.json" not in captured.out

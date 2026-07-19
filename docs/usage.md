@@ -1,5 +1,19 @@
 # Usage guide
 
+## See it work first
+
+`--demo` scores a bundled real trace (a run whose patch failed and was never retried) with advice on, so you can watch Clinescope work with no Cline session, no setup, and no arguments:
+
+```bash
+clinescope --demo
+```
+
+To run it without installing first, use [uv](https://docs.astral.sh/uv/) or [pipx](https://pipx.pypa.io/):
+
+```bash
+uvx clinescope@latest --demo    # or: pipx run clinescope --demo
+```
+
 ## Score a run
 
 Point Clinescope at a Cline log file (a `messages.json` trace) to score the run:

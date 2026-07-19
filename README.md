@@ -15,7 +15,9 @@ Clinescope is an AI evaluation tool that lives in your Cline development workflo
 - **`diff_minimality`**: are its edits small and focused, not bloated rewrites?
 - **`apply_recovery`**: when a patch failed, did the agent fix it?
 
-<p align="center"><img src="https://raw.githubusercontent.com/minh2416294/clinescope/main/docs/demo.png" alt="clinescope scoring a failing Cline run and, with --advice, coaching how to fix the agent's prompt for each failing scorer" width="640"></p>
+<p align="center"><img src="docs/demo.svg" alt="clinescope scoring three real captured Cline runs: a clean run, a run whose failed patch was never retried, and a run where the model called no tools, each with advice to fix the agent" width="720"></p>
+
+<p align="center"><em>Three real captured runs; run <code>clinescope --demo</code> to score one yourself.</em></p>
 
 ## Why Clinescope
 
