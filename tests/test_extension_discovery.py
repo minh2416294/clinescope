@@ -136,6 +136,42 @@ def test_cline_data_dir_override_is_honored(tmp_path: Path) -> None:
     assert data_dir in [r.path for r in roots]
 
 
+def test_cline_dir_override_appends_data_subdir(tmp_path: Path) -> None:
+    # CLINE_DIR points at a HOST dir; the data lives under its data/ subdir, so the
+    # resolved root is <CLINE_DIR>/data (distinct from CLINE_DATA_DIR, which is exact).
+    cline_dir = tmp_path / "cline-home"
+    data_root = cline_dir / "data"
+    (data_root / "tasks").mkdir(parents=True)
+
+    roots = discover_storage_roots(
+        platform="linux", env={"CLINE_DIR": str(cline_dir)}, home=tmp_path / "home"
+    )
+
+    assert data_root in [r.path for r in roots]
+    assert roots[0].path == data_root
+    assert roots[0].variant == "cline-data-dir"
+
+
+def test_discovers_linux_xdg_config_home_override(tmp_path: Path) -> None:
+    # XDG_CONFIG_HOME set: the VS Code config base is that dir, NOT ~/.config. The
+    # resolved extension root must sit under the XDG dir, and the home fallback is
+    # ignored (an empty home/.config would otherwise be the only branch tested).
+    home = tmp_path / "home"
+    xdg = tmp_path / "xdg-config"
+    ext = _ext_root(xdg / "Code" / "User")
+    (ext / "tasks").mkdir(parents=True)
+    # A decoy under ~/.config must NOT be picked when XDG is set.
+    decoy = _ext_root(home / ".config" / "Code" / "User")
+    (decoy / "tasks").mkdir(parents=True)
+
+    roots = discover_storage_roots(
+        platform="linux", env={"XDG_CONFIG_HOME": str(xdg)}, home=home
+    )
+
+    assert [r.path for r in roots] == [ext]
+    assert decoy not in [r.path for r in roots]
+
+
 def test_no_storage_found_returns_empty(tmp_path: Path) -> None:
     roots = discover_storage_roots(
         platform="linux", env={}, home=tmp_path / "empty-home"
@@ -217,16 +253,36 @@ def test_enumerate_title_none_when_no_label_source(tmp_path: Path) -> None:
     assert sessions[0].title is None
 
 
-def test_enumerate_tolerates_corrupt_task_history(tmp_path: Path) -> None:
+def test_enumerate_tolerates_corrupt_task_history(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     ext = _ext_root(tmp_path / "User")
     tasks = ext / "tasks"
     _make_task(tasks, "9", api_history=_list_content("x"))
     (ext / "state").mkdir(parents=True)
-    (ext / "state" / "taskHistory.json").write_text("not json", encoding="utf-8")
+    corrupt = ext / "state" / "taskHistory.json"
+    corrupt.write_text("not json", encoding="utf-8")
 
-    # Corrupt history must not crash enumeration; it just yields no label.
+    # Corrupt history must not crash enumeration; it just yields no label...
     sessions = enumerate_sessions(ext)
     assert [s.task_id for s in sessions] == ["9"]
+    # ...but a present-but-corrupt file is a real anomaly, so it is NOT silent: a
+    # warning naming the unreadable file goes to stderr (fail-loud, not swallowed).
+    err = capsys.readouterr().err
+    assert f"warning: could not parse {corrupt}: JSONDecodeError" in err
+
+
+def test_enumerate_absent_task_history_is_silent(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # An ABSENT taskHistory.json is the normal case (a task run before any history
+    # was written); it must NOT warn -- only a present-but-broken file does.
+    ext = _ext_root(tmp_path / "User")
+    _make_task(ext / "tasks", "9", api_history=_list_content("x"))
+
+    sessions = enumerate_sessions(ext)
+    assert [s.task_id for s in sessions] == ["9"]
+    assert "warning:" not in capsys.readouterr().err
 
 
 def test_enumerate_empty_tasks_dir_returns_empty(tmp_path: Path) -> None:

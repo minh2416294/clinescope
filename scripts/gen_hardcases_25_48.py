@@ -21,7 +21,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 GOLD_DIR = REPO_ROOT / "examples" / "gold"
 
 
-def _trace(session_id: str, task: str, path: str, before: str, patch_body: str) -> dict:
+def _trace(
+    session_id: str, task: str, path: str, before: str, patch_body: str
+) -> dict[str, object]:
     """Build a World-A v1 trace: user task -> read_files -> apply_patch(+result)."""
     patch = f"*** Begin Patch\n{patch_body}\n*** End Patch"
     return {

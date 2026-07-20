@@ -224,8 +224,10 @@ def _read_task_history(root: Path) -> dict[str, dict[str, object]]:
 
     Cline's own source is momentarily self-contradictory on the path (a doc-block
     says ``state/taskHistory.json``, a stale comment says ``tasks/taskHistory.json``),
-    so probe both. Returns an ``{id: item}`` map; a missing or corrupt file yields
-    an empty map (never crashes enumeration).
+    so probe both. Returns an ``{id: item}`` map; a missing file yields an empty map
+    silently, and a present-but-corrupt file yields an empty map after a stderr
+    warning (see ``_read_json_list``). Enumeration never crashes either way; it just
+    proceeds without labels.
     """
     for candidate in (
         root / "state" / "taskHistory.json",
@@ -303,10 +305,31 @@ def _session_sort_key(session: ExtensionSession) -> int:
 
 
 def _read_json_list(path: Path) -> list[object] | None:
-    """Read a JSON array from ``path``; return None on missing/corrupt/non-array."""
+    """Read a JSON array from ``path``; return None if absent, unreadable, or non-array.
+
+    An ABSENT file (never written) is a normal, expected case and returns None
+    silently. A file that EXISTS but cannot be read or parsed (corrupt JSON, wrong
+    encoding, permission denied) is a real anomaly the user should know about, so it
+    warns to stderr before returning None. Either way the caller still degrades
+    gracefully (no crash), but a broken file is never mistaken for an absent one.
+    """
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        text = path.read_text(encoding="utf-8")
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    except (OSError, UnicodeDecodeError) as err:
+        print(
+            f"warning: could not read {path}: {type(err).__name__}: {err}",
+            file=sys.stderr,
+        )
+        return None
+    try:
+        raw = json.loads(text)
+    except json.JSONDecodeError as err:
+        print(
+            f"warning: could not parse {path}: {type(err).__name__}: {err}",
+            file=sys.stderr,
+        )
         return None
     return raw if isinstance(raw, list) else None
 
