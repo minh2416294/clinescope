@@ -15,8 +15,8 @@ evidence.
 
 The agent drafted code, wrote first-pass tests, ran searches across the tree, and produced draft prose. A
 human set every scorer's definition and its honest boundary, decided what was in scope for each change,
-owned every merge, and rewrote the reader-facing docs by hand (this page included; the draft an agent
-produces is a starting point, not the published text).
+owned every merge, and owned the reader-facing docs (this page included): reviewing an agent's draft,
+correcting it, and deciding the published wording, rather than letting a draft ship unread.
 
 The split is the whole point. An agent is good at the mechanical middle of a change: given a clear spec
 and a failing test, it fills in the code. It is not the right owner of the decisions that are expensive to
