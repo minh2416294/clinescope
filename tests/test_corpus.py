@@ -292,6 +292,51 @@ def test_unloadable_trace_exits_2(tmp_path: Path) -> None:
     assert main([str(manifest)]) == 2
 
 
+def test_load_failure_dominates_a_mismatch_exit_2_not_1(tmp_path: Path) -> None:
+    # A corpus with BOTH an unloadable item AND a mislabeled item must exit 2 (usage),
+    # never 1 (mismatch): a broken input is a harder failure than a wrong label, and a
+    # usage error must never be masked as a gate result. Pin the documented precedence.
+    bad = tmp_path / "not-a-trace.json"
+    bad.write_text("{not valid json", encoding="utf-8")
+    real_trace = (CORPUS_DIR / "live-gpt-oss-apply-fail.json").resolve()
+    entries = {
+        str(bad): {
+            "display": "broken",
+            "model": "x",
+            "task": "x",
+            "source": "real",
+            "kind": "clean",
+            "scorers": {},
+            "expected_failure_labels": [],
+            "evidence_tokens": [],
+        },
+        str(real_trace): {
+            "display": "deliberately mislabeled",
+            "model": "gpt-oss:20b",
+            "task": "apply-fail",
+            "source": "real",
+            "kind": "failing",
+            "expected_tools": ["read_files", "apply_patch"],
+            "scorers": {
+                "tool_selection": {"expected_cell": "100/100"},
+                "diff_coherence": {"expected_cell": "100/100"},
+                "diff_minimality": {"expected_cell": "100/100"},
+                "apply_recovery": {"expected_cell": "100/100"},
+            },
+            "expected_failure_labels": [],
+            "evidence_tokens": [],
+        },
+    }
+    manifest = _write_corpus(tmp_path, entries)
+
+    report = run_corpus(manifest)
+
+    assert report.exit_code == 2  # load failure dominates, NOT 1
+    assert any(not item.loaded for item in report.items)
+    assert any(not item.matched for item in report.items)
+    assert main([str(manifest)]) == 2
+
+
 def test_empty_corpus_exits_2(tmp_path: Path) -> None:
     manifest = _write_corpus(tmp_path, {})
 

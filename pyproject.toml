@@ -72,5 +72,8 @@ target-version = "py311"
 
 [tool.mypy]
 python_version = "3.11"
-files = ["src"]
+files = ["src", "scripts"]
 strict = true
+# Reject a bare `# type: ignore`: every suppression must name its error code (and a
+# reason), so a future ignore can never silently hide an unrelated error.
+enable_error_code = ["ignore-without-code"]

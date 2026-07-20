@@ -232,6 +232,71 @@ def test_summary_apply_recovery_reports_recovered_count() -> None:
     assert "(1/2 failed patches recovered)" in line
 
 
+def test_summary_session_label_replaces_the_header_subject_and_beats_session_id() -> (
+    None
+):
+    # An extension trace has no World-A sessionId; the CLI passes a session_label that
+    # must replace the "session <id>" phrase verbatim in the header, and win over any
+    # session_id also passed. Pin the exact header line.
+    trace = _trace("read_files")
+    score = score_tool_selection(trace, {"read_files"})
+
+    report = render_report(
+        trace,
+        score,
+        session_id="s1",
+        session_label="extension session abc123 [Code]",
+    )
+
+    assert report.splitlines()[0] == (
+        "clinescope report - extension session abc123 [Code] (1 tool calls)"
+    )
+    assert "session s1" not in report  # the label wins; the raw id is not shown
+
+
+def test_verbose_session_label_replaces_the_session_line_and_beats_session_id() -> None:
+    trace = _trace("read_files")
+    score = score_tool_selection(trace, {"read_files"})
+
+    report = render_report(
+        trace,
+        score,
+        session_id="s1",
+        session_label="extension session abc123 [Code]",
+        verbose=True,
+    )
+
+    assert "session:        extension session abc123 [Code]" in report
+    assert "sessionId:      s1" not in report  # the label replaces the id line
+
+
+def test_advice_true_on_a_clean_run_adds_no_block_and_equals_bare_summary() -> None:
+    # The None branch of _render_advice_block: a run with nothing to coach must return
+    # the summary UNCHANGED under advice=True (no trailing blank line, no header).
+    trace = _trace("read_files")
+    score = score_tool_selection(trace, {"read_files"})
+
+    bare = render_report(trace, score, session_id="s1")
+    with_advice = render_report(trace, score, session_id="s1", advice=True)
+
+    assert with_advice == bare
+
+
+def test_advice_true_on_a_failing_scorer_appends_the_advice_block() -> None:
+    # A failing scorer under advice=True appends the advice block joined by one newline
+    # after the summary. Pin the join shape and the coached evidence.
+    trace = _trace("read_files")
+    score = score_tool_selection(trace, {"read_files", "apply_patch"})
+
+    report = render_report(trace, score, session_id="s1", advice=True)
+
+    lines = report.splitlines()
+    assert lines[0] == "clinescope report - session s1 (1 tool calls)"
+    assert "advice (how to improve the agent):" in report
+    assert "  [tool_selection] missing_tools" in report
+    assert "    - The agent never called: apply_patch." in report
+
+
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -482,13 +547,12 @@ def test_demo_scores_the_bundled_trace_and_exits_0(
     captured = capsys.readouterr()
     out = captured.out
     assert exit_code == 0
-    # the four scorer names
-    assert "tool_selection" in out
-    assert "diff_coherence" in out
-    assert "diff_minimality" in out
-    assert "apply_recovery" in out
-    # the deliberate PASS+FAIL mix, exact substrings (two-space gaps are load-bearing)
+    # Pin all four scorer CELLS exactly (two-space gaps load-bearing), not bare names:
+    # the demo's whole value is this specific PASS+PASS+PASS+FAIL profile on a real
+    # trace. A silent change to any cell (e.g. diff_coherence dropping) must fail here.
     assert "tool_selection  100/100  PASS" in out
+    assert "diff_coherence  100/100  PASS" in out
+    assert "diff_minimality 100/100  PASS" in out
     assert "apply_recovery    0/100  FAIL" in out
     assert "0/1 failed patches recovered" in out
     # advice is forced on: the money shot is the coaching naming the unrecovered file
@@ -510,3 +574,46 @@ def test_demo_prints_a_banner_naming_the_bundled_trace_to_stderr(
     assert "live-gpt-oss-apply-fail.json" in captured.err
     # ...and never on stdout, so the piped report stays clean
     assert "live-gpt-oss-apply-fail.json" not in captured.out
+
+
+def test_demo_exits_2_with_a_clean_error_when_bundled_data_is_unresolvable(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # If the packaged data can't be found (a broken install), --demo must fail with the
+    # USAGE code 2 and a one-line error, never a raw traceback. Force datafiles_root to
+    # raise the same DataFilesNotFound a broken wheel would.
+    from clinescope import _datafiles
+
+    def _raise() -> Path:
+        raise _datafiles.DataFilesNotFound("no data root found")
+
+    monkeypatch.setattr("clinescope.__main__.datafiles_root", _raise)
+    exit_code = main(["--demo"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert captured.err.startswith("error: ")
+    assert "no data root found" in captured.err
+    assert "Traceback (most recent call last)" not in captured.err
+    assert captured.out == ""
+
+
+def test_demo_exits_1_with_a_clean_error_when_the_bundled_trace_is_corrupt(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # A bundled trace that exists but is malformed must fail with the LOAD code 1 and a
+    # clean one-line error naming the trace, never a raw traceback. Point datafiles_root
+    # at a tmp tree whose examples/<demo> is invalid JSON.
+    examples = tmp_path / "examples"
+    examples.mkdir()
+    (examples / "live-gpt-oss-apply-fail.json").write_text(
+        "{ not json", encoding="utf-8"
+    )
+    monkeypatch.setattr("clinescope.__main__.datafiles_root", lambda: tmp_path)
+    exit_code = main(["--demo"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.err.startswith("error: could not load bundled demo trace: ")
+    assert "Traceback (most recent call last)" not in captured.err
+    assert captured.out == ""

@@ -132,6 +132,24 @@ def test_diff_coherence_perfect_score_yields_no_advice() -> None:
     assert advice_for_diff_coherence(score) is None
 
 
+def test_diff_coherence_advice_falls_back_when_no_violation_recorded() -> None:
+    # A sub-1.0 score with an empty violations tuple (a gate failed but recorded no
+    # specific message) must still produce advice, using the generic reason so the
+    # coaching is never an empty "The patch is malformed: ." line.
+    score = DiffCoherenceScore(
+        score=0.75,
+        passed_gates=frozenset({"update_hunks_wellformed"}),
+        failed_gates=frozenset({"add_files_all_plus"}),
+        violations=(),
+        apply_patch_call_count=1,
+        cline_apply_is_error=None,
+    )
+    advice = advice_for_diff_coherence(score)
+    assert advice is not None
+    assert advice.label is FailureLabel.MALFORMED_PATCH
+    assert advice.lines[0] == "The patch is malformed: malformed apply_patch."
+
+
 # --- diff_minimality ---------------------------------------------------------
 
 
@@ -211,6 +229,34 @@ def test_apply_recovery_advice_names_the_unrecovered_file() -> None:
     blob = "\n".join(advice.lines)
     assert "note.txt" in blob  # the REAL unrecovered file
     assert "0/1" in blob  # the REAL recovered/total count
+
+
+def test_apply_recovery_advice_uses_dash_when_no_target_path_recorded() -> None:
+    # A failed pair with no recorded target path (the failure had no parseable file)
+    # must still coach, rendering the files list as "-" rather than an empty gap.
+    score = ApplyRecoveryScore(
+        score=0.0,
+        applicable=True,
+        total_failed_pairs=1,
+        confirmed_recovered_pairs=0,
+        unrecovered_pairs=1,
+        partially_recovered_failures=0,
+        same_file_refail_count=0,
+        unverified_reattempt_pairs=0,
+        verdict_coverage=1.0,
+        failed_target_paths=(),
+        recovery_pairs=(),
+        unparseable_failed_calls=0,
+        apply_patch_call_count=1,
+        violations=("unrecovered apply_patch failure ...",),
+        cline_apply_is_error=None,
+    )
+    advice = advice_for_apply_recovery(score)
+    assert advice is not None
+    assert advice.lines[0] == (
+        "The agent failed a patch and did not recover it "
+        "(0/1 recovered; unrecovered files: -)."
+    )
 
 
 def test_apply_recovery_full_recovery_yields_no_advice() -> None:

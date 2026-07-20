@@ -28,8 +28,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Any
 
 from clinescope._datafiles import DataFilesNotFound, datafiles_root
 from clinescope.apply_recovery import ApplyRecoveryScore, score_apply_recovery
@@ -64,13 +65,27 @@ class _ListToolsAction(argparse.Action):
     before ``trace`` is required (so ``clinescope --list-tools`` needs no trace).
     """
 
-    def __call__(self, parser, namespace, values, option_string=None):  # type: ignore[no-untyped-def]
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
         for name in sorted(CLINE_KNOWN_TOOLS):
             print(name)
         parser.exit(0)
 
 
 def _read_session_id(path: Path) -> str | None:
+    """Lift the World-A ``sessionId`` from the trace for the report header.
+
+    The World-A spec types ``sessionId`` as a string. An absent or non-string value
+    (a malformed trace) intentionally yields ``None`` so the header degrades to
+    ``session <unknown>`` rather than rendering a wrong-typed id; the score is
+    unaffected. Callers guard the surrounding load in a try/except, so a non-object
+    JSON here surfaces at that boundary as a clean error, not a traceback.
+    """
     raw = json.loads(path.read_text(encoding="utf-8"))
     session_id = raw.get("sessionId")
     return session_id if isinstance(session_id, str) else None

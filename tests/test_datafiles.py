@@ -110,3 +110,14 @@ def test_demo_trace_is_reachable_via_datafiles_root(
     monkeypatch.chdir(tmp_path)
     demo = datafiles_root() / "examples" / "live-gpt-oss-apply-fail.json"
     assert demo.is_file()
+
+
+def test_package_ships_a_pep561_py_typed_marker() -> None:
+    # clinescope is a library others import; without a py.typed marker (PEP 561) a
+    # downstream mypy/pyright IGNORES all of its inline annotations. This asserts the
+    # marker is resolvable as package data (the same way a type-checker discovers it),
+    # so a build that dropped it turns red.
+    import importlib.resources as resources
+
+    marker = resources.files("clinescope").joinpath("py.typed")
+    assert marker.is_file()
