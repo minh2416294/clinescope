@@ -1,5 +1,7 @@
 # Usage guide
 
+Install with `python -m pip install clinescope` (Python 3.11+). The [quickstart](quickstart.md#1-install-clinescope) covers virtual-environment setup and [install troubleshooting](quickstart.md#install-troubleshooting).
+
 ## See it work first
 
 `--demo` scores a bundled real trace (a run whose patch failed and was never retried) with advice on, so you can watch Clinescope work with no Cline session, no setup, and no arguments:

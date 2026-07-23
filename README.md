@@ -31,11 +31,13 @@ Clinescope was built largely with an AI coding agent. How it stayed correct anyw
 
 1. **Install Clinescope**
 
-    Requires Python 3.11+. Installing into a virtual environment is recommended.
+    Requires Python 3.11+ (`python --version`). Install into a virtual environment; the [quickstart](docs/quickstart.md#1-install-clinescope) has the create-and-activate steps for PowerShell, CMD, and macOS/Linux.
 
     ```bash
-    pip install clinescope
+    python -m pip install clinescope
     ```
+
+    Install trouble (a broken `pip` launcher, `command not found`, wrong Python)? See [Install troubleshooting](docs/quickstart.md#install-troubleshooting).
 
 2. **Use Clinescope**
 
