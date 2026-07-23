@@ -15,7 +15,7 @@ All processing takes place in your local environment. On the default deployment,
 Clinescope ships real captured Cline traces inside the package, so you can watch it score before setting anything up. The fastest look is `clinescope --demo`, which scores one bundled trace (a real run whose patch failed and was never retried) with advice on:
 
 ```bash
-pip install clinescope
+python -m pip install clinescope
 clinescope --demo
 ```
 
@@ -46,10 +46,81 @@ Clean runs pass; a run whose patch failed and was never retried shows `apply_rec
 
 ## 1. Install Clinescope
 
-Requires Python 3.11+ (check `python --version`). A virtual environment is recommended. On macOS/Linux you may need `pip3` / `python3 -m pip`.
+**Check your Python.** Clinescope needs Python 3.11 or newer.
 
 ```bash
-pip install clinescope
+python --version        # expect 3.11 or higher
+```
+
+On Windows the `py` launcher is the reliable check when several Pythons are installed: `py --version`, or `py --list` to see them all (use `py -3.11` to select one). On macOS and Linux the command is often `python3` (`python3 --version`). If the version is below 3.11, see [Install troubleshooting](#install-troubleshooting).
+
+**Create and activate a virtual environment.** A venv keeps Clinescope and its (zero) dependencies isolated from your system Python. Pick your shell:
+
+```powershell
+# Windows PowerShell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+If PowerShell blocks the activation script ("running scripts is disabled on this system"), allow local scripts for your user once, then activate again:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+```bat
+:: Windows CMD
+python -m venv .venv
+.venv\Scripts\activate.bat
+```
+
+```bash
+# macOS / Linux
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+**Install Clinescope.** Install it as a module of your interpreter (`python -m pip`), which always targets the Python you just checked, rather than a bare `pip` that can point at a different or broken one:
+
+```bash
+python -m pip install clinescope
+```
+
+On Windows you can also use `py -m pip install clinescope`. If this prints `Fatal error in launcher` or `pip` is not found, see [Install troubleshooting](#install-troubleshooting).
+
+## Install troubleshooting
+
+A few things a first install can hit. These are environment issues, not Clinescope bugs; the fixes are standard Python packaging steps.
+
+- **`Fatal error in launcher: Unable to create process using ...pip.exe ...: The system cannot find the file specified`.** Your `pip.exe` launcher hardcodes the path of the Python it was installed with, and that Python has since moved or been removed. Bypass the broken launcher by running pip as a module: `python -m pip install clinescope` (or `py -m pip install clinescope` on Windows). If it persists, the venv's launcher shims are stale: delete the `.venv` folder and recreate it (step 1). If the `clinescope` command itself is broken the same way, run it as a module: `python -m clinescope --demo`.
+
+- **`clinescope: command not found` (or `'clinescope' is not recognized`) after installing.** The install landed in a different interpreter, or your venv is not activated. Activate the venv (step 1), or run Clinescope as a module: `python -m clinescope --demo`.
+
+- **Python is older than 3.11.** Check with `python --version` (Windows: `py --version`, or `py --list` to see every installed version). Install or select a 3.11+ interpreter; on Windows, `py -3.11 -m venv .venv` creates the venv with a specific version.
+
+- **`error: externally-managed-environment` (Debian, Ubuntu, and some Homebrew setups).** Your system Python refuses direct installs. The fix is to install into a virtual environment (step 1), not to pass `--break-system-packages`.
+
+- **Nothing installs cleanly.** You can skip installing entirely and run Clinescope in a throwaway environment: `uvx clinescope@latest --demo` (with [uv](https://docs.astral.sh/uv/)) or `pipx run clinescope --demo` (with [pipx](https://pipx.pypa.io/)).
+
+Still stuck? Open a [bug report](https://github.com/minh2416294/clinescope/issues/new/choose) with your OS, `python --version`, and the exact command and error.
+
+## Verify your install
+
+Confirm the install works before you produce a real Cline session. These commands need no Cline session, no Ollama, and no API key; they score traces bundled inside the package.
+
+```bash
+clinescope --demo                              # scores a bundled trace; exit 0
+clinescope --list-tools                        # prints the known Cline tool names; exit 0
+clinescope-corpus                              # scores six bundled traces: "6/6 items match their labels"; exit 0
+python -m clinescope.judge_run --report-only   # recomputes the judge agreement from a cached run, no model call; exit 0
+clinescope --help                              # usage text; exit 0
+```
+
+Check the installed version (there is no `clinescope --version` flag):
+
+```bash
+pip show clinescope                                          # or:
+python -c "import clinescope; print(clinescope.__version__)"
 ```
 
 ## 2. Produce a Cline session
