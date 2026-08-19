@@ -358,7 +358,7 @@ def test_kappa_report_tripwire_text_appears_below_floor() -> None:
     )
     report = judge_kappa_report(inputs)
     assert "ADVISORY-ONLY" in report
-    assert "protocol §7" in report
+    assert "operating-protocol tripwire" in report
 
 
 def test_report_only_does_not_crash_on_a_cp1252_stdout(
