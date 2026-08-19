@@ -33,7 +33,8 @@ clinescope-gate = "clinescope.gate:main"
 clinescope-corpus = "clinescope.corpus:main"
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-cov", "ruff", "mypy"]
+# Pinned so CI is reproducible: an unpinned linter release fails PRs that did not touch the code.
+dev = ["pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.15.22", "mypy==2.3.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/clinescope"]
