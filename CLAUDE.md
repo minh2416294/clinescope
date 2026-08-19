@@ -7,8 +7,12 @@ Project-local instructions for any Claude Code session opened in this repo.
 > - **Charter (WHAT):** `~/.claude/memory/project_agent_eval_harness.md`
 > - **Operating protocol (HOW — canonical):** `~/.claude/memory/project_agent_eval_harness_protocol.md`
 >
-> The Charter's Living Log (bottom of that file) is the append-only progress record. Read the last
-> entry's EVIDENCE + NEXT ACTION before doing any work, so sessions never conflict.
+> The Charter holds current state only. The dated build history lives in
+> `~/.claude/memory/project_agent_eval_harness.ARCHIVE.md` (append-only, relocation only). A
+> session's own close-out notes go in the git-excluded `writing-content/`; only a decision a future
+> session could not re-derive graduates into the Charter, and only on a major update, a major fix,
+> or a release (operating protocol, section 5.9). Read the Charter plus the last session note before
+> doing any work, so sessions never conflict.
 
 ## What this project is (one line)
 
@@ -50,7 +54,7 @@ module. No second adapter before a real one exists (two-adapter rule).
 | **SPIKE** | One question, hard timebox (2–3h), throwaway code, MUST end with a written decision. Timebox expiry IS the answer. Only for genuine unknowns. |
 | **PUBLISH** | Triggered by artifact milestones, never by calendar. Raw material mined from the Living Log + commits → `writing-content/`. |
 
-## Living-Log entry template (append to the Charter file, append-only)
+## Session close-out template (append to a dated note in the git-excluded `writing-content/`)
 
 ```
 ## YYYY-MM-DD — <session goal, one sentence, ends in a verifiable state>

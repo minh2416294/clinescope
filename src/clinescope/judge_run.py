@@ -55,7 +55,7 @@ _DIMENSION = "diff_minimality"
 # A cache row's outcome: a usable verdict, an unparseable answer, or a call error.
 JudgeOutcome = Literal["verdict", "unparseable", "error"]
 
-# The κ<0.5 tripwire (protocol §7): below this the judge is advisory-only.
+# The κ<0.5 advisory tripwire: below this the judge is advisory-only, never a gate.
 _KAPPA_ADVISORY_FLOOR = 0.5
 
 
@@ -424,7 +424,7 @@ def judge_kappa_report(inputs: KappaInputs) -> str:
 
     Prints the overall Cohen's κ + a seeded bootstrap 95% CI, the counts (gold /
     verdicts / unparseable / errors / effective N), the 2x2 confusion matrix, per-label
-    agreement, the κ<0.5 → advisory tripwire (protocol §7), and the honest small-N
+    agreement, the κ<0.5 → advisory tripwire, and the honest small-N
     wide-CI caveat.
     """
     n_kappa = len(inputs.human_labels)
@@ -501,7 +501,7 @@ def _judge_report_interpretation(result: CohenKappaResult, n_kappa: int) -> list
     if result.defined and result.kappa < _KAPPA_ADVISORY_FLOOR:
         lines.append(
             f"  !! κ = {result.kappa:.2f} < {_KAPPA_ADVISORY_FLOOR} -> JUDGE IS "
-            f"ADVISORY-ONLY (protocol §7 tripwire)."
+            f"ADVISORY-ONLY (operating-protocol tripwire)."
         )
         lines.append(
             "     A free gpt-oss:20b is not yet a trustworthy diff judge; rewrite the "
