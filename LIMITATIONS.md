@@ -45,8 +45,9 @@ scored.
 What to do instead: read the score as one structural property of the patch text, not a standalone
 minimality verdict; read `mean_context_density` alongside it.
 
-Its measured agreement with human labels, and the fact that its CI gate flag has never fired on a
-real trace, are in "The gated `diff_minimality` flag is weaker than it looks" below.
+Its measured agreement with human labels, what its CI gate flag has and has not fired on, and why
+an identical edit can score 1.0 or 0.0 depending on the layout of the file, are in "The gated
+`diff_minimality` flag is weaker than it looks" below.
 
 ### `apply_recovery` measures a trajectory pattern, not fix-correctness
 
