@@ -260,9 +260,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "Minimum acceptable diff_minimality score (gates it when given). "
             "Agreement with 50 human labels is Cohen's kappa 0.2599, recall 7 "
             "of 24, and this flag has never failed a build on any real captured "
-            "trace shipped with Clinescope, at any threshold. Treat it as a "
-            "regression tripwire for a shape you have confirmed in your own "
-            "traces, not as a general bloat filter. See LIMITATIONS.md"
+            "trace shipped with Clinescope, at any threshold. It scores the "
+            "patch text, so the same edit can score 1.0 or 0.0 depending on how "
+            "many lines sit between an anchor and the change in the file being "
+            "edited. Treat it as a regression tripwire for a shape you have "
+            "confirmed in your own traces, not as a general bloat filter. "
+            "See LIMITATIONS.md"
         ),
     )
     parser.add_argument(
