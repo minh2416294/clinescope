@@ -72,7 +72,9 @@ def test_committed_corpus_covers_the_real_failure_modes() -> None:
     # These three are captured from REAL weak-model runs; guard that a future
     # corpus edit cannot silently drop coverage of a mode it once had. The 4th
     # mode (blind_rewrite) is an honestly-stated gap -- see examples/corpus/
-    # README.md; the local model set could not emit a valid-but-bloated patch.
+    # README.md. A local model CAN emit a valid-but-bloated patch (proven
+    # 2026-08-20); that trace is left out because its task was built to elicit
+    # the shape, not because no model produces one.
     report = run_corpus(CORPUS_MANIFEST)
     covered = {
         a.label.value for item in report.items for a in item.actual_advice.values()

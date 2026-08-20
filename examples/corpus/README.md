@@ -33,7 +33,8 @@ does *not* cry wolf on a good run.
 1. a valid `apply_patch` (so `diff_coherence` passes and `diff_minimality` applies), and
 2. bloated enough that a hunk is a blind whole-block rewrite.
 
-No local Ollama model in the tested set produced such a trace:
+In the 2026-07-12 sweep, no local Ollama model in the tested set produced such a trace. Each failed at
+a different stage:
 
 - Weak coders (`qwen2.5-coder:1.5b`, `llama3.1:8b`) fail at the tool-call stage -- they hallucinate a JSON tool or dump plain-text code and never emit a real Cline `apply_patch`, so their patches are `malformed_patch`, never valid-but-bloated.
 - `qwen2.5-coder:7b` emits a hallucinated JSON tool blob (`{"name":
@@ -41,4 +42,18 @@ No local Ollama model in the tested set produced such a trace:
 - `gpt-oss:20b` does emit valid patches and, when asked to rewrite a whole function, reasons out the whole-block rewrite in its thinking -- but stalls before emitting the `apply_patch` tool call, so no valid bloated patch lands in the trace.
 - `deepseek-coder-v2:16b` rejects tool use entirely (`does not support tools`).
 
-So the corpus honestly ships 6 real / 0 authored traces covering 3 of 4 modes. `blind_rewrite` is left as a stated gap rather than filled with an authored trace -- coverage of modes with real evidence is worth more than a round number with a synthetic. Capturing it needs a model that reliably emits a valid-but-bloated Cline patch (a stronger hosted model, or a local model that both emits real tool calls and over-rewrites). The `diff_minimality` scorer and its `blind_rewrite` advice are still exercised by the unit tests (`tests/test_diff_minimality.py`) against authored patch bodies; what is missing is a real captured trace of the mode, which is what this corpus is for.
+**That conclusion was overturned on 2026-08-20, and the reason the mode is still uncovered has changed.**
+The sweep above asked models to rewrite a whole function, which put the shape in the instruction. Given
+an ordinary one-line task instead, `gpt-oss:20b` emitted a valid `apply_patch` that scored 0.0 and failed
+`clinescope-gate --min-diff-minimality 0.75` with exit 1. So a local model can produce this, and no
+stronger hosted model is required. What it took is written up in
+[`LIMITATIONS.md`](../../LIMITATIONS.md).
+
+That trace is deliberately **not** shipped here. The task was built to make the shape likely, two of four
+runs were discarded because the model's tool call failed to parse, and the target file was widened by one
+line after watching the model's behaviour on the narrower version. It would be evidence that the scorer
+fires, not evidence about how often agents do this, and those are different claims. So the corpus still
+ships 6 real / 0 authored traces covering 3 of 4 modes, and `blind_rewrite` stays an honestly-stated gap
+rather than a number rounded up with a trace hunted until it fired. The `diff_minimality` scorer and its
+`blind_rewrite` advice remain exercised by the unit tests (`tests/test_diff_minimality.py`) against
+authored patch bodies.
