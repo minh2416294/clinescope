@@ -45,8 +45,9 @@ scored.
 What to do instead: read the score as one structural property of the patch text, not a standalone
 minimality verdict; read `mean_context_density` alongside it.
 
-Its measured agreement with human labels, and the fact that its CI gate flag has never fired on a
-real trace, are in "The gated `diff_minimality` flag is weaker than it looks" below.
+Its measured agreement with human labels, what its CI gate flag has and has not fired on, and why
+an identical edit can score 1.0 or 0.0 depending on the layout of the file, are in "The gated
+`diff_minimality` flag is weaker than it looks" below.
 
 ### `apply_recovery` measures a trajectory pattern, not fix-correctness
 
@@ -115,7 +116,7 @@ If you are deciding whether to gate on this, recall matters more than kappa. `di
 flagged 7 of 24 patches a human called WASTEFUL, which is 29 percent. It scored a clean 1.0 on
 the other 17.
 
-**The gate flag has never fired on a real trace.** Twelve distinct captured Cline sessions ship in
+**The gate flag has never fired on a real trace shipped here.** Twelve distinct captured Cline sessions ship in
 this repository, across the corpus and the harness-gap experiment. Five score 1.0, seven abstain,
 and none scores below 1.0. Running `clinescope-gate --min-diff-minimality` over the six corpus
 traces at thresholds 0.0, 0.25, 0.5, 0.75, 0.99 and 1.0 gives no build-failing exit 1 in any of
@@ -124,6 +125,44 @@ authored `examples/gold` fixture. The scorer itself is not broken, and it fires 
 those. The gate is unexercised. This is the corpus gap described in the next section, stated as
 its consequence: because no captured trace here contains a blind whole-block rewrite, there is no
 threshold you can pass that makes this flag fail a build on the real traces shipped with it.
+
+**It has now fired once, on a captured trace that is not shipped here, and what that took is the
+finding.** On 2026-08-20 a `gpt-oss:20b` run through the Cline CLI produced a patch scoring 0.0 that
+exits 1. How it was obtained matters more than that it exists: the task was chosen to make the shape
+likely, two of four runs were discarded because the model's tool call failed to parse, and the target
+file's branch was widened from two lines to three after watching what the model did to the two-line
+version.
+
+**The score depends on the layout of the file being edited, not only on the agent's behaviour.**
+That run and an earlier one produced the same behaviour twice. The model anchored on the `if` line,
+retyped every line through to the one it was changing, and kept no context line. On a two-line branch
+that is a run of two, which is under `FLOOR` and scores 1.0:
+
+```
+-    if metric == "dlq_depth":
+-        return 500
++    if metric == "dlq_depth":
++        return 2000
+```
+
+On a three-line branch the identical behaviour is a run of three, and scores 0.0:
+
+```
+-    if metric == "dlq_depth":
+-        # dead-letter growth is bursty, so page late rather than early
+-        return 500
++    if metric == "dlq_depth":
++        # dead-letter growth is bursty, so page late rather than early.
++        # Threshold increased to reduce noise from frequent paging.
++        return 2000
+```
+
+The agent did the same thing in both. The difference is one comment line in the file it was editing.
+So a codebase that keeps a comment between an anchor and the line being changed will trip this gate
+on behaviour that an otherwise identical codebase without that comment will pass. How many lines sit
+between an anchor and a change is a property of the code, not a measure of how wasteful the agent
+was. Read a score below 1.0 as "a run of at least three lines was retyped here", never as "this agent
+wasted more effort than one that scored 1.0".
 
 **The gold set is authored end to end.** All 50 items point at constructed patches. None is a
 captured Cline trace. One person wrote every label, so there is no inter-rater reliability number,
