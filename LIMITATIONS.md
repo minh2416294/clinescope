@@ -45,6 +45,9 @@ scored.
 What to do instead: read the score as one structural property of the patch text, not a standalone
 minimality verdict; read `mean_context_density` alongside it.
 
+Its measured agreement with human labels, and the fact that its CI gate flag has never fired on a
+real trace, are in "The gated `diff_minimality` flag is weaker than it looks" below.
+
 ### `apply_recovery` measures a trajectory pattern, not fix-correctness
 
 Of every `apply_patch` Cline marked failed, it scores the fraction later recovered by a strictly-later
@@ -65,6 +68,8 @@ not recover at all"; confirm real fixes by inspecting the trajectory.
 - `diff_minimality` scores ONE bloat shape, not overall edit MINIMALITY.
 - `apply_recovery` scores a same-file retry TRAJECTORY, not whether the fix is RIGHT.
 - The optional LLM judge is ADVISORY, never a gate signal (see below).
+- `--min-diff-minimality` has never produced a build-failing verdict on any real captured trace
+  shipped in this repository, at any threshold.
 
 ## The diff scorers grade `apply_patch` only
 
@@ -83,6 +88,58 @@ floor, the judge is treated as advisory-only and is deliberately kept out of the
 (`clinescope-gate` fires on the deterministic scorers, never the judge). The full measurement, the
 confusion matrix, and how to reproduce it with no model call are in
 [`docs/judge-validation.md`](docs/judge-validation.md).
+
+That is only half the picture. The next section covers the scorer that stayed in the gate.
+
+## The gated `diff_minimality` flag is weaker than it looks
+
+The judge above estimates the same thing `diff_minimality` estimates, and both were measured
+against the same 50 human labels. `diff_minimality` agrees with them at Cohen's kappa = 0.2599,
+95% CI [0.0574, 0.4777], N = 50. Comparing a graded score to a binary label needs a cut; this one
+uses the scorer's own invariant, that a score of 1.0 means zero blind rewrites, so 1.0 maps to
+NOT-WASTEFUL and anything below it maps to WASTEFUL. The stricter available cut, below 0.5, gives
+kappa 0.2175 and does not change any conclusion here.
+
+So both estimators of "is this patch wasteful?" fall below the 0.5 figure the judge section cites,
+the judge at 0.0496 and the gated scorer at 0.2599. Two qualifications, both cutting in different
+directions. The judge's interval includes zero and the scorer's does not, which is a real
+difference between them; note that a bootstrap interval excluding zero is not a hypothesis test,
+and none was run. And that 0.5 figure is defined in the judge modules only, as an advisory
+tripwire for an LLM signal. It has never been a project-wide validity bar for a deterministic
+scorer, so read the comparison as one estimator against the other rather than as a rule being
+broken. Both intervals are seeded percentile bootstraps whose full 2000 resamples were usable
+(`n_boot_effective` 2000 of 2000 for each), so neither rests on a thin resample pool and both can
+be read as written.
+
+If you are deciding whether to gate on this, recall matters more than kappa. `diff_minimality`
+flagged 7 of 24 patches a human called WASTEFUL, which is 29 percent. It scored a clean 1.0 on
+the other 17.
+
+**The gate flag has never fired on a real trace.** Twelve distinct captured Cline sessions ship in
+this repository, across the corpus and the harness-gap experiment. Five score 1.0, seven abstain,
+and none scores below 1.0. Running `clinescope-gate --min-diff-minimality` over the six corpus
+traces at thresholds 0.0, 0.25, 0.5, 0.75, 0.99 and 1.0 gives no build-failing exit 1 in any of
+the 36 runs. Every `diff_minimality` score below 1.0 anywhere in this repository comes from an
+authored `examples/gold` fixture. The scorer itself is not broken, and it fires on all eight of
+those. The gate is unexercised. This is the corpus gap described in the next section, stated as
+its consequence: because no captured trace here contains a blind whole-block rewrite, there is no
+threshold you can pass that makes this flag fail a build on the real traces shipped with it.
+
+**The gold set is authored end to end.** All 50 items point at constructed patches. None is a
+captured Cline trace. One person wrote every label, so there is no inter-rater reliability number,
+and nothing in the data separates "the scorer missed it" from "one labeler's idea of wasteful is
+idiosyncratic". The 24-to-26 class balance is a design choice rather than an observed rate, so
+nothing here calibrates a false-positive rate or generalizes to real traces. What it does support
+is a lower bound on recall for the bloat shapes its author chose to build, and the judge-to-scorer
+comparison above, since both were measured on identical items by identical code.
+
+**The other two gated scorers have no agreement number at all.** `diff_coherence` and
+`apply_recovery` are gated the same way and have never been measured against a human label. Read
+their silence as unmeasured, not as validated.
+
+What to do instead: treat `--min-diff-minimality` as a regression tripwire for a shape you have
+confirmed appears in your own traces, not as a general bloat filter. Score your own traces first.
+If none of them scores below 1.0, this flag will not fail your build whatever threshold you pass.
 
 ## The validation corpus covers 3 of 4 failure modes
 
