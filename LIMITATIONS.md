@@ -133,10 +133,10 @@ likely, two of four runs were discarded because the model's tool call failed to 
 file's branch was widened from two lines to three after watching what the model did to the two-line
 version.
 
-**The score depends on the layout of the file being edited, not only on the agent's behaviour.**
-That run and an earlier one produced the same behaviour twice. The model anchored on the `if` line,
-retyped every line through to the one it was changing, and kept no context line. On a two-line branch
-that is a run of two, which is under `FLOOR` and scores 1.0:
+**The score depends on where `FLOOR` falls, not only on the agent's behaviour.**
+Two runs, same model and same task. Both times the model anchored on the `if` line, retyped every
+line through to the one it was changing, and kept no context line. On a two-line branch that is a run
+of two, which is under `FLOOR` and scores 1.0:
 
 ```
 -    if metric == "dlq_depth":
@@ -145,7 +145,7 @@ that is a run of two, which is under `FLOOR` and scores 1.0:
 +        return 2000
 ```
 
-On a three-line branch the identical behaviour is a run of three, and scores 0.0:
+On a three-line branch the same approach produces a run of three, and scores 0.0:
 
 ```
 -    if metric == "dlq_depth":
@@ -157,10 +157,25 @@ On a three-line branch the identical behaviour is a run of three, and scores 0.0
 +        return 2000
 ```
 
-The agent did the same thing in both. The difference is one comment line in the file it was editing.
-So a codebase that keeps a comment between an anchor and the line being changed will trip this gate
-on behaviour that an otherwise identical codebase without that comment will pass. How many lines sit
-between an anchor and a change is a property of the code, not a measure of how wasteful the agent
+These two runs are not a controlled experiment and should not be read as one. In the second the model
+also appended a period to the existing comment and wrote a new comment line, so the patches are two
+deleted and two added against three deleted and four added. What stayed constant is the approach,
+anchor on the `if` and retype through the change. What changed is the file, and with it whether the
+retyped run reached three.
+
+That threshold is the whole effect. Sweeping the retyped-run length and asking whether removing one
+line from the file changes the verdict:
+
+```
+run of 2 -> 1.0     one line shorter, run of 1 -> 1.0     no change
+run of 3 -> 0.0     one line shorter, run of 2 -> 1.0     verdict flips
+run of 4 -> 0.0     one line shorter, run of 3 -> 0.0     no change
+run of 5 -> 0.0     one line shorter, run of 4 -> 0.0     no change
+```
+
+So this is not a property of commented code. It is a threshold at three: one line of difference
+changes the verdict only when it moves the retyped run across `FLOOR`, and at every other length it
+changes nothing. How long that run is depends on the file being edited, not on how wasteful the agent
 was. Read a score below 1.0 as "a run of at least three lines was retyped here", never as "this agent
 wasted more effort than one that scored 1.0".
 
@@ -184,9 +199,10 @@ If none of them scores below 1.0, this flag will not fail your build whatever th
 
 The real-trace regression corpus (`clinescope-corpus`) covers 3 of the 4 failure modes with real captured
 Cline traces: `malformed_patch`, `missing_tools`, and `no_apply_recovery`. The fourth, `blind_rewrite`, is
-a stated gap: the local models available could not emit a valid-but-bloated patch (they fail at the
-tool-call stage, or Cline's fuzzy matcher applies a wrong-context patch), so coverage-of-modes with real
-traces was chosen over a forced synthetic. See
+still uncovered here, but the reason has changed. It used to be that no local model could emit a
+valid-but-bloated patch at all. That is no longer true: on 2026-08-20 `gpt-oss:20b` emitted one, and the
+capture is described above. It is not shipped in the corpus because the task was built to elicit it, so
+it would be evidence that the scorer fires, not evidence about how often agents do this. See
 [`examples/corpus/README.md`](examples/corpus/README.md).
 
 ## Not intended for

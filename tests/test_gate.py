@@ -174,6 +174,25 @@ def test_help_discloses_diff_minimality_agreement(
     assert "never" in help_text.lower()
 
 
+def test_help_discloses_layout_dependence(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # The score is not a property of the agent alone: the SAME edit scores 1.0
+    # or 0.0 depending on how many lines the file puts between the anchor and
+    # the change (a FLOOR boundary crossing, measured 2026-08-20). Somebody
+    # gating CI on this must read that where they set the threshold, so it is
+    # pinned here rather than left to survive on goodwill.
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+
+    assert exc_info.value.code == 0
+    # argparse re-wraps help text at the terminal width, so collapse whitespace
+    # before matching a phrase that spans a wrap point.
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "the same edit can score 1.0 or 0.0" in help_text
+    assert "lines sit between an anchor and the change" in help_text
+
+
 # --- main(argv) exit-code contract (the CI-facing seam) ---------------------
 
 
