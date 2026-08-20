@@ -9,12 +9,23 @@ threshold -- so a CI job can block a regressing agent version.
 
 **Why it gates on the deterministic scorers only (the load-bearing constraint).**
 The LLM judge (:mod:`clinescope.judge`) is ADVISORY-ONLY: judge<->human agreement
-came out at Cohen's kappa = 0.2353 (95% CI [0.0, 0.5229], N=26), which fired the
-kappa < 0.5 advisory tripwire. Gating a build on an advisory signal would
-contradict the very finding that validation produced. So this module reads ONLY
-the three deterministic, keyless, reproducible scorers and imports NONE of the
-judge-arc modules (``judge`` / ``judge_run`` / ``agreement`` / ``gold`` /
-``label_gold``). An AST test pins that mechanically.
+came out at Cohen's kappa = 0.0496 (95% CI [-0.1200, 0.2175], N=50), an interval
+that includes zero, which fired the kappa < 0.5 advisory tripwire. Gating a build
+on an advisory signal would contradict the very finding that validation produced.
+(A higher figure from an earlier, smaller gold set is RETRACTED: that set was
+NOT-WASTEFUL-heavy and flattered a biased judge. The bigger, balanced, blind set
+LOWERED the number. Cite only the N=50 figure above.)
+So this module reads ONLY the three deterministic, keyless, reproducible scorers
+and imports NONE of the judge-arc modules (``judge`` / ``judge_run`` /
+``agreement`` / ``gold`` / ``label_gold``). An AST test pins that mechanically.
+
+**What the deterministic scorers are NOT (read before you gate on one).**
+Deterministic does not mean validated. Only ``diff_minimality`` has ever been
+measured against a human label: Cohen's kappa 0.2599 (95% CI [0.0574, 0.4777],
+N=50), recall 7 of 24, on a gold set that is authored end to end by one labeler.
+``diff_coherence`` and ``apply_recovery`` have no agreement number at all, so
+read their silence as unmeasured rather than as validated. ``LIMITATIONS.md``
+carries the full finding.
 
 **The exit-code contract (CI depends on it precisely):**
 
@@ -245,7 +256,14 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         type=float,
         default=None,
         metavar="MIN",
-        help="Minimum acceptable diff_minimality score (gates it when given)",
+        help=(
+            "Minimum acceptable diff_minimality score (gates it when given). "
+            "Agreement with 50 human labels is Cohen's kappa 0.2599, recall 7 "
+            "of 24, and this flag has never failed a build on any real captured "
+            "trace shipped with Clinescope, at any threshold. Treat it as a "
+            "regression tripwire for a shape you have confirmed in your own "
+            "traces, not as a general bloat filter. See LIMITATIONS.md"
+        ),
     )
     parser.add_argument(
         "--min-apply-recovery",
