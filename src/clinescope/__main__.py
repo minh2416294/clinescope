@@ -185,7 +185,11 @@ def _warn_unknown_expected(expected: list[str]) -> None:
         print(f"warning: unknown tool '{name}'{hint}", file=sys.stderr)
 
 
-_FEEDBACK_URL = "https://github.com/minh2416294/clinescope/issues/new/choose"
+# Links straight at the feedback form rather than the template picker: one
+# fewer click between "I have something to say" and a text box.
+_FEEDBACK_URL = (
+    "https://github.com/minh2416294/clinescope/issues/new?template=feedback.yml"
+)
 
 
 def _maybe_print_feedback_footer() -> None:
@@ -194,10 +198,17 @@ def _maybe_print_feedback_footer() -> None:
     # ask). To stderr so it never pollutes a piped/redirected stdout report, and
     # only when stdout is a TTY so pipes, CI, and tool consumers never see it --
     # the same convention the typo warnings above already use (file=sys.stderr).
+    #
+    # It asks for DISAGREEMENT, not agreement. diff_minimality returns 1.0 on
+    # every real captured trace shipped here (see LIMITATIONS.md), so "did it
+    # match?" collects a yes whose mechanism is already known. A score the reader
+    # thinks is wrong is the only answer that carries information.
     if not sys.stdout.isatty():
         return
     print(
-        f"\nRan this on your own Cline trace? Tell me how it went: {_FEEDBACK_URL}",
+        "\nRan this on your own Cline trace? One question: did any score above "
+        "disagree with your own read of the run?"
+        f"\nTell me which one: {_FEEDBACK_URL}",
         file=sys.stderr,
     )
 

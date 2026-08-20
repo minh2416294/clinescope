@@ -485,7 +485,8 @@ def test_cli_valid_trace_still_scores_and_exits_0(
 # To STDERR so it never pollutes a piped/redirected stdout report; only when
 # stdout is a real terminal, so pipes, CI, and tool consumers never see it.
 
-FEEDBACK_URL_FRAGMENT = "issues/new/choose"
+FEEDBACK_URL_FRAGMENT = "issues/new?template=feedback.yml"
+QUESTION_FRAGMENT = "did any score above disagree with your own read of the run"
 
 
 @pytest.mark.skipif(
@@ -525,6 +526,27 @@ def test_feedback_footer_silent_when_stdout_not_a_tty(
     assert exit_code == 0
     assert FEEDBACK_URL_FRAGMENT not in captured.err
     assert FEEDBACK_URL_FRAGMENT not in captured.out
+
+
+@pytest.mark.skipif(
+    not RECOVERY_EXAMPLE.exists(), reason="apply-recovery example trace not present"
+)
+def test_feedback_footer_asks_for_disagreement(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Pin the QUESTION, not just the link. The footer asks for disagreement
+    # rather than agreement because diff_minimality returns 1.0 on every real
+    # captured trace in this repo, so "did it match?" collects a yes whose
+    # mechanism is already known; a score the reader thinks is wrong is the only
+    # answer that carries information.
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+
+    exit_code = main([str(RECOVERY_EXAMPLE), "--expected", "read_files"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert QUESTION_FRAGMENT in captured.err
+    assert QUESTION_FRAGMENT not in captured.out
 
 
 # --- `clinescope --demo`: the zero-args proof-of-work -------------------------
