@@ -6,20 +6,28 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for trying Clinescope. The most useful thing you can tell me is what happened when you
-        ran it on your OWN Cline session: what worked, what confused you, what you wished it did. This
-        form is for impressions, rough edges, and "would I use this again". For a reproducible scorer
-        or CLI bug, the Bug report form is a better fit.
+        Thanks for trying Clinescope. Only the first box is required, and one sentence in it is worth
+        more to me than a filled-in form. Everything below it is optional. For a reproducible scorer or
+        CLI bug, the Bug report form is a better fit; for a rough thought that fits neither, Discussions
+        is open.
+  - type: textarea
+    id: disagreement
+    attributes:
+      label: Did any score disagree with your own read of the run?
+      description: Which scorer, what it said, and what you thought instead. If they all matched your read, say that; it is still an answer. This is the only field I need.
+      placeholder: "e.g. diff_minimality gave it 100/100, but the agent retyped a whole function to change one line and I would have called that wasteful."
+    validations:
+      required: true
   - type: dropdown
     id: ran-it
     attributes:
-      label: Did you run it on your own Cline trace?
+      label: What did you run it on?
       options:
-        - "Yes, on a real Cline CLI session of mine"
-        - "Yes, on the bundled examples / clinescope-corpus only"
-        - "No, I just read the docs / repo"
+        - "A real Cline session of mine"
+        - "The bundled examples / clinescope-corpus only"
+        - "I just read the docs / repo"
     validations:
-      required: true
+      required: false
   - type: textarea
     id: first-impression
     attributes:
@@ -27,7 +35,7 @@ body:
       description: What was your reaction after the first scored run? Did the output make sense? Did you trust the scores? What worked, and what did not?
       placeholder: "e.g. I scored a qwen2.5-coder run; the advice for diff_coherence made sense, but I was not sure what 'blind rewrite' meant or whether to trust the number."
     validations:
-      required: true
+      required: false
   - type: textarea
     id: confusing
     attributes:
