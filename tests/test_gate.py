@@ -155,6 +155,25 @@ def test_render_report_marks_skip_as_not_gated() -> None:
     assert "n/a" in text or "not applicable" in text or "not gated" in text
 
 
+# --- The gated scorer's measured agreement is disclosed at the point of use --
+# LIMITATIONS.md carries the full finding, but somebody wiring this into CI reads
+# --help and never opens the repo. The number belongs where the decision is made.
+
+
+def test_help_discloses_diff_minimality_agreement(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+
+    assert exc_info.value.code == 0
+    help_text = capsys.readouterr().out
+    # The measured agreement with the 50 human gold labels.
+    assert "0.2599" in help_text
+    # And the consequence a CI user most needs: it has never failed a build.
+    assert "never" in help_text.lower()
+
+
 # --- main(argv) exit-code contract (the CI-facing seam) ---------------------
 
 
