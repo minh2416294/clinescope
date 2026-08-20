@@ -1,6 +1,7 @@
-"""Apply-coherence diff-quality scorer (deterministic, zero-LLM).
+"""Apply-patch grammar-coherence scorer (deterministic, zero-LLM).
 
-The criterion-2 wedge: the diff-quality scorer no general eval framework ships.
+The criterion-2 wedge: the ``apply_patch`` grammar scorer no general eval
+framework ships. It says nothing about whether the change is good or correct.
 It reads a loaded :class:`~clinescope.world_a.Trace`, finds the ``apply_patch``
 tool call, and grades the coherence of the patch text against Cline's REAL
 ``apply_patch`` grammar -- the ``*** Begin Patch`` envelope, NOT a unified diff.

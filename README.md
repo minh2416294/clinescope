@@ -10,10 +10,10 @@
 
 Clinescope is a Cline eval harness that lives in your Cline development workflow, reads your logs, and helps you write better prompts by checking tool choices, catching messy code rewrites, and flagging failed patches the agent never retried. Clinescope reads a Cline log and scores four things:
 
-- **`tool_selection`**: did the agent call the tools the task needed?
-- **`diff_coherence`**: are its code patches valid and well-formed?
-- **`diff_minimality`**: are its edits small and focused, not bloated rewrites?
-- **`apply_recovery`**: when a patch failed, did the agent fix it?
+- **`tool_selection`**: did it call the tool names you passed to `--expected`?
+- **`diff_coherence`**: does its `apply_patch` text parse against Cline's `*** Begin Patch` grammar? It does not check that the patch applies.
+- **`diff_minimality`**: does any hunk delete three or more lines in a row and then add three or more, keeping no anchor line between them?
+- **`apply_recovery`**: after a patch Cline marked failed, did a later patch Cline confirmed touch the same file?
 
 The file it reads is not a scraped log. The Cline CLI's `messages.json` has been a published, versioned contract since 2026-04-22, and that contract states a downstream consumer should be able to reconstruct a full session trajectory from the file alone: [`messages-contract-v1.md`](https://github.com/cline/cline/blob/main/sdk/packages/core/docs/messages-contract-v1.md).
 
@@ -65,7 +65,7 @@ Learn more in the [usage guide](docs/usage.md). New to this? The [quickstart](do
 
 ## Feedback
 
-Ran Clinescope on your own Cline trace? Tell me how it went, what worked, or what was confusing: open a [feedback issue](https://github.com/minh2416294/clinescope/issues/new/choose) and pick "Share feedback". First-run impressions on a real trace are the single most useful thing you can send.
+Ran Clinescope on your own Cline trace? One question: did any score disagree with your own read of the run? Tell me which one on the [feedback form](https://github.com/minh2416294/clinescope/issues/new?template=feedback.yml). A score you think is wrong is the single most useful thing you can send, because it is the only answer that tells me something the code does not already say.
 
 For a reproducible scorer or CLI bug, the [Bug report](https://github.com/minh2416294/clinescope/issues/new/choose) form is a better fit. To contribute a change, see [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, tests, and what a scorer change needs.
 

@@ -1,4 +1,4 @@
-"""Tests for the apply-coherence diff-quality scorer (criterion-2 wedge).
+"""Tests for the apply-patch grammar-coherence scorer (criterion-2 wedge).
 
 One test per locked decision in ``clinescope.diff_coherence``. Assertions are
 mutation-resistant: they pin the exact score AND a direction (``< 1.0`` / a named

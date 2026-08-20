@@ -44,8 +44,8 @@ local Ollama model) reported `apply_patch` unavailable and used `write_to_file`
 instead. Clinescope handles that honestly: `tool_selection` scores the extension's
 own tools (both `write_to_file` and `read_file` are in the pinned vocab), and the
 three `apply_patch`-based diff scorers abstain (`n/a` / a hard zero) rather than
-crash. A diff-quality scorer for `write_to_file` / `replace_in_file` grammar is a
-roadmap item, not shipped.
+crash. A `write_to_file` / `replace_in_file` grammar scorer is a roadmap item, not
+shipped.
 
 ## `api_conversation_history.constructed.json`
 
