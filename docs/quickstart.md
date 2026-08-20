@@ -173,10 +173,10 @@ clinescope path/to/messages.json --expected apply_patch read_files
 
 You get one line per scorer:
 
-- **`tool_selection`**: did the agent call the tools the task needed?
-- **`diff_coherence`**: are its code patches valid and well-formed?
-- **`diff_minimality`**: are its edits small and focused, not bloated rewrites?
-- **`apply_recovery`**: when a patch failed, did the agent fix it?
+- **`tool_selection`**: did it call the tool names you passed to `--expected`?
+- **`diff_coherence`**: does its `apply_patch` text parse against Cline's `*** Begin Patch` grammar? It does not check that the patch applies.
+- **`diff_minimality`**: does any hunk delete three or more lines in a row and then add three or more, keeping no anchor line between them?
+- **`apply_recovery`**: after a patch Cline marked failed, did a later patch Cline confirmed touch the same file?
 
 Here is a real run of a small local model asked to fix a bug. It answered in fluent prose ("the fix is complete, a patch was applied") but never actually called a tool, and the file was never touched. Clinescope caught it (your session id will be a timestamp Cline assigned, like `1783823285576_8f1km`):
 

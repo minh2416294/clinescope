@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "clinescope"
 version = "1.2.0"
-description = "A Cline eval harness: scores diff quality + tool-trajectory from a real Cline messages.json trace."
+description = "A Cline eval harness: scores apply_patch grammar, patch shape, and tool trajectory from a real Cline messages.json trace."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"

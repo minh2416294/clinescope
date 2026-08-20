@@ -10,10 +10,10 @@
 
 Clinescope is a Cline eval harness that lives in your Cline development workflow, reads your logs, and helps you write better prompts by checking tool choices, catching messy code rewrites, and flagging failed patches the agent never retried. Clinescope reads a Cline log and scores four things:
 
-- **`tool_selection`**: did the agent call the tools the task needed?
-- **`diff_coherence`**: are its code patches valid and well-formed?
-- **`diff_minimality`**: are its edits small and focused, not bloated rewrites?
-- **`apply_recovery`**: when a patch failed, did the agent fix it?
+- **`tool_selection`**: did it call the tool names you passed to `--expected`?
+- **`diff_coherence`**: does its `apply_patch` text parse against Cline's `*** Begin Patch` grammar? It does not check that the patch applies.
+- **`diff_minimality`**: does any hunk delete three or more lines in a row and then add three or more, keeping no anchor line between them?
+- **`apply_recovery`**: after a patch Cline marked failed, did a later patch Cline confirmed touch the same file?
 
 The file it reads is not a scraped log. The Cline CLI's `messages.json` has been a published, versioned contract since 2026-04-22, and that contract states a downstream consumer should be able to reconstruct a full session trajectory from the file alone: [`messages-contract-v1.md`](https://github.com/cline/cline/blob/main/sdk/packages/core/docs/messages-contract-v1.md).
 
