@@ -8,12 +8,14 @@
 
 **Clinescope runs on the Cline CLI and the VS Code extension.** Run `clinescope --vscode` to auto-discover and score a VS Code extension session (see [Score a VS Code extension session](docs/usage.md#score-a-vs-code-extension-session)).
 
-Clinescope is an AI evaluation tool that lives in your Cline development workflow, reads your logs, and helps you write better prompts by checking tool choices, catching messy code rewrites, and ensuring updates don't break past work. Clinescope reads a Cline log and scores four things:
+Clinescope is a Cline eval harness that lives in your Cline development workflow, reads your logs, and helps you write better prompts by checking tool choices, catching messy code rewrites, and flagging failed patches the agent never retried. Clinescope reads a Cline log and scores four things:
 
 - **`tool_selection`**: did the agent call the tools the task needed?
 - **`diff_coherence`**: are its code patches valid and well-formed?
 - **`diff_minimality`**: are its edits small and focused, not bloated rewrites?
 - **`apply_recovery`**: when a patch failed, did the agent fix it?
+
+The file it reads is not a scraped log. The Cline CLI's `messages.json` has been a published, versioned contract since 2026-04-22, and that contract states a downstream consumer should be able to reconstruct a full session trajectory from the file alone: [`messages-contract-v1.md`](https://github.com/cline/cline/blob/main/sdk/packages/core/docs/messages-contract-v1.md).
 
 <p align="center"><img src="docs/demo.svg" alt="clinescope scoring three real captured Cline runs: a clean run, a run whose failed patch was never retried, and a run where the model called no tools, each with advice to fix the agent" width="720"></p>
 
@@ -26,6 +28,8 @@ Clinescope scores **coding-agent execution traces** and ships a **code-diff-qual
 Clinescope validates its own optional LLM judge against human labels and, finding it agrees only at chance level, deliberately keeps it out of the pass/fail gate. See [`docs/judge-validation.md`](docs/judge-validation.md). Each scorer is deliberately narrow; what it does and does not measure is spelled out in [LIMITATIONS.md](LIMITATIONS.md).
 
 Clinescope was built largely with an AI coding agent. How it stayed correct anyway (frozen invariants, verification-first checks, an AI signal measured and then kept out of the gate) is written up in [docs/building-with-agents.md](docs/building-with-agents.md).
+
+Clinescope reads a format Cline owns, which puts Cline in a better position to build this than anyone outside the project, and nothing here prevents that. If it happens it hurts, and the specific way it hurts is worth knowing before you depend on this: the three diff scorers are welded to Cline's `apply_patch` grammar, so they do not port to another agent without being rewritten, and the case for a separate tool would narrow to whether you want the thing scoring an agent shipped by the same people who ship the agent. That is a real argument. It is not a large one. What outlives the risk is the part that is not format-specific: a corpus of real captured traces, a gold set of 50 authored patches labeled by one person, and the agreement numbers measured against that gold set, including the ones that came out badly. If that dependency is disqualifying for you, better to know now than after you have wired this into CI.
 
 ## Get Started
 
