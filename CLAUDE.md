@@ -16,13 +16,14 @@ Project-local instructions for any Claude Code session opened in this repo.
 
 ## What this project is (one line)
 
-A **Cline eval harness**: scores diff quality + tool-trajectory from a real Cline `messages.json` v1
-trace. Framework-agnostic core; Cline World-A adapter is the flagship + first adapter. Purpose =
-hireability + reputation, NOT paid users.
+A **Cline eval harness**: scores `apply_patch` grammar, patch shape, and tool trajectory from a real
+Cline `messages.json` v1 trace. Framework-agnostic core; Cline World-A adapter is the flagship + first
+adapter. Purpose = hireability + reputation, NOT paid users.
 
 **Hard floor (v1 is "done" only when BOTH are true):**
 1. Runs against Cline's golden fixture — ingests `sdk/packages/core/fixtures/messages/success.messages.json`,
-   emits a scored report (tool-selection + diff-quality + completion).
+   emits a scored report (`tool_selection` plus the three `apply_patch` scorers, which abstain on a
+   trace with no patch).
 2. Ships the diff-coherence / minimal-diff / apply-recovery scorer the incumbents don't, on ≥1 real trace.
 
 ## Standing rules (check every session — from the protocol)
