@@ -4,6 +4,118 @@ All notable changes to Clinescope are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-08-20
+
+Corrections to what this tool claims to measure, and the disclosures that were
+already in `LIMITATIONS.md` moved to where the decision is actually made.
+
+### Changed
+
+- `clinescope-gate --help`: `--min-diff-minimality` now carries its own measured
+  agreement with human labels (Cohen's kappa 0.2599, 7 of 24 recalled, N=50), the
+  fact that it has never failed a build on any real captured trace shipped here,
+  and that the same edit can score 1.0 or 0.0 depending on how many lines sit
+  between an anchor and the change in the file being edited. Someone wiring this
+  into CI reads `--help` and never opens the repo.
+- The CLI feedback footer now asks whether any score disagreed with your own read
+  of the run, and its link goes to the feedback form instead of the template
+  picker. It is still written to stderr, and still only when stdout is a terminal,
+  so pipes, redirects, and CI never see it.
+- The judge report names the kappa advisory tripwire without a section number,
+  which pointed into a document this repository does not control.
+- The `dev` extra is pinned to exact versions (`pytest==9.1.1`,
+  `pytest-cov==7.1.0`, `ruff==0.15.22`, `mypy==2.3.0`) so an unpinned linter
+  release cannot turn every open pull request red. **This is the only change here
+  that can break an install:** `pip install clinescope[dev]` will now conflict with
+  a different pinned version of any of those four in the same environment. The
+  runtime `dependencies` list is untouched and still empty. Two printed strings
+  also changed, the feedback footer and the judge report line above, so anything
+  matching on their old wording needs updating; neither is on stdout.
+
+### Fixed
+
+- The package summary, and the four scorer bullets in `README.md` and
+  `docs/quickstart.md`, name the specific deterministic check each scorer runs
+  instead of calling them diff-quality scorers. The scorers parse `apply_patch`
+  text against Cline's `*** Begin Patch` grammar, flag one bloat shape, and read
+  Cline's own failed and applied verdicts. None of them judges whether a change is
+  correct.
+- Three statements about what the scorers measure, caught by an adversarial
+  re-verification: `apply_recovery` is not a structural check on patch text (two
+  traces with byte-identical patches score differently when only Cline's
+  `is_error` flips), its denominator counts failed file pairs rather than failed
+  patches, and `diff_minimality` does not require the deleted and added runs to be
+  adjacent.
+- The front page no longer calls Clinescope an AI evaluation tool, and no longer
+  says it ensures updates do not break past work. `apply_recovery` scores whether
+  a failed patch was retried later in the same session; it does not verify any fix
+  is correct.
+- `LIMITATIONS.md` no longer presents the layout comparison as controlled: the two
+  patches differ by more than the one comment line the text claimed. The corpus
+  README gives the real reason `blind_rewrite` is uncovered, which is that the task
+  was built to elicit the shape, not that no local model could produce one.
+
+### Added
+
+- `LIMITATIONS.md` records that `diff_minimality`'s score depends on the layout of
+  the file being edited, with both patches printed so a reader can check it.
+- `diff_minimality`'s measured agreement against the same 50 human labels used for
+  the judge, and the fact that `diff_coherence` and `apply_recovery` have no
+  agreement number at all. Read their silence as unmeasured, not as validated.
+- An install-troubleshooting section and a verify-your-install section in the
+  quickstart, for machines where a bare `pip install` does not work.
+- A paragraph naming what happens if Cline ships trace evaluation itself, and the
+  specific reason it would hurt: the three diff scorers are welded to the
+  `apply_patch` grammar and do not port without a rewrite.
+- A test asserting that `pyproject.toml` and `clinescope.__version__` agree, so a
+  half-finished version bump cannot ship a wheel whose `__version__` is wrong.
+
+### Notes
+
+- **No scoring logic changed.** `git diff v1.2.0..v1.2.1 -- src/clinescope/diff_minimality.py
+  src/clinescope/apply_recovery.py src/clinescope/tool_selection.py src/clinescope/world_a.py`
+  is empty: those four files are byte-identical to 1.2.0. The fifth,
+  `src/clinescope/diff_coherence.py`, changed by three added and two removed lines,
+  all of them prose inside the module docstring, where it stopped calling itself a
+  diff-quality scorer. No executable line moved, so no score moves on any trace
+  that scored under 1.2.0.
+- No runtime dependencies were added: `dependencies` is still empty (pure stdlib).
+
+## [1.2.0] - 2026-07-23
+
+The one-command live demo, plus a typing and hygiene pass.
+
+This entry was written on 2026-08-20, four weeks after the release, and
+reconstructed from `git log v1.1.0..v1.2.0`. The 1.2.0 bump commit (`8bf45a0`)
+changed only `pyproject.toml` and `src/clinescope/__init__.py`, so no entry was
+recorded at the time.
+
+### Added
+
+- `clinescope --demo`: score a bundled real trace with no arguments, no API key,
+  and no network. Three scorers pass and `apply_recovery` fails, with advice, so a
+  stranger can watch it catch a real failure on their own machine.
+- A PEP 561 `py.typed` marker, so a downstream importer sees Clinescope's inline
+  type annotations instead of ignoring them.
+- `LIMITATIONS.md` at the repository root, linked from the README.
+- `docs/building-with-agents.md`, on how a correctness tool stayed correct while an
+  agent wrote much of the code.
+- `docs/harness-gap.md` and the harness-gap A/B: real captured Cline traces for
+  three local models, run with and without a `.clinerules` harness, as
+  `skipif`-gated test fixtures.
+
+### Changed
+
+- A corrupt but present VS Code extension JSON file now warns to stderr instead of
+  being skipped silently. An absent file stays silent.
+- The reader-facing prose docs were rewritten in a plainer voice, with every
+  command, flag, score, and caveat unchanged.
+
+### Notes
+
+- No scorer, loader, or dependency change. `dependencies` stayed empty and the
+  golden fixture stayed byte-identical.
+
 ## [1.1.0] - 2026-07-18
 
 Score a Cline VS Code extension session directly from the command line.
@@ -53,5 +165,7 @@ with four deterministic scorers (`tool_selection`, `diff_coherence`,
 chance-level and kept out of the gate, a real-trace validation corpus, a CI gate,
 and `--advice` / `--compare`.
 
+[1.2.1]: https://github.com/minh2416294/clinescope/releases/tag/v1.2.1
+[1.2.0]: https://github.com/minh2416294/clinescope/releases/tag/v1.2.0
 [1.1.0]: https://github.com/minh2416294/clinescope/releases/tag/v1.1.0
 [1.0.1]: https://github.com/minh2416294/clinescope/releases/tag/v1.0.1

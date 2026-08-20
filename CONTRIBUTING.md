@@ -86,13 +86,48 @@ Releases publish to PyPI automatically via **Trusted Publishing** (OIDC) — the
 stored in the repo. `.github/workflows/release.yml` builds the sdist + wheel and uploads them when a
 **GitHub Release is published** (not on a tag alone, and never on a PR).
 
+**A published version is permanent.** PyPI does not allow a filename to be reused, even after the
+release is deleted, so a wrong upload cannot be replaced: it can only be yanked and superseded by the
+next version number. Every step below is free to abort except the last one.
+
 To cut a release:
 
-1. Bump `version` in `pyproject.toml` (and anywhere else it's mirrored), and land it on `main` via PR.
-2. On GitHub, **Releases → Draft a new release**, create a tag matching the version (e.g. `v1.0.1`), and
-   **Publish**. The `Release` workflow runs and uploads to PyPI.
-3. Verify the new version renders at <https://pypi.org/project/clinescope/> and installs cleanly into a
-   fresh venv (`pip install clinescope` → `clinescope-corpus` exits 0).
+1. Bump the version in **both** places, on a branch:
+   - `pyproject.toml`, `[project] version`
+   - `src/clinescope/__init__.py`, `__version__`
+
+   `tests/test_version_consistency.py` fails if they disagree. Bumping only one used to be silent.
+2. **Add a `CHANGELOG.md` entry** for the new version: a `## [x.y.z] - YYYY-MM-DD` heading, the
+   Added / Changed / Fixed / Notes sections, and a matching link reference at the bottom of the file.
+   This step is easy to skip and nothing enforces it. 1.2.0 shipped without an entry and it had to be
+   reconstructed from `git log` four weeks later.
+3. Open a PR and land it on `main`.
+4. Wait for the push-to-main CI run to go green **on the merge commit itself**, not just on the PR
+   head. `release.yml` runs no tests at all, so this is the only gate between a broken `main` and PyPI.
+5. Pre-tag checks, on a clean checkout of merged `main`. Any failure here is free to fix:
+   - local `main` matches `git ls-remote origin refs/heads/main`
+   - both version strings agree and the value is new
+   - `https://pypi.org/pypi/clinescope/<version>/json` returns 404
+   - `python -m build` emits exactly `clinescope-<version>.tar.gz` and
+     `clinescope-<version>-py3-none-any.whl` and nothing else (this is the same command the workflow
+     runs, so it predicts the upload)
+   - that wheel installs into a throwaway venv and `clinescope-corpus` exits 0
+6. **Create and push the tag first**, before opening the Release form:
+   `git tag -a v<version> -m "clinescope <version>"` then `git push origin v<version>`. Pushing a tag
+   triggers nothing.
+7. On GitHub, **Releases → Draft a new release**, and **select the existing tag** from the dropdown.
+   If the dropdown offers to create the tag on publish, stop: the push in step 6 did not reach origin.
+   Letting the form create the tag is how a release gets built from the wrong commit, and a wrong
+   build that succeeds is unrecoverable. `gh release create --verify-tag` enforces the same thing.
+8. **Publish.** This is the irreversible step. The `Release` workflow runs and uploads to PyPI.
+9. Verify the new version renders at <https://pypi.org/project/clinescope/> with **both** files under
+   Download files, and installs cleanly into a fresh venv (`pip install clinescope` →
+   `clinescope-corpus` exits 0).
+
+If the publish job fails before anything uploads (build error, OIDC error, or a pending environment
+review), nothing is burned: fix it and re-run the failed job, keeping the same version number. If it
+uploads and the result is wrong, yank that version and ship the next patch. Do not delete it, because
+deletion is permanent, does not free the filename, and cannot be undone.
 
 One-time setup (already configured; documented here for the record) — on PyPI, **Account → Publishing →
 Add a pending publisher** with: PyPI Project Name `clinescope`, Owner `minh2416294`, Repository name

@@ -65,7 +65,7 @@ Learn more in the [usage guide](docs/usage.md). New to this? The [quickstart](do
 
 ## Feedback
 
-Ran Clinescope on your own Cline trace? Tell me how it went, what worked, or what was confusing: open a [feedback issue](https://github.com/minh2416294/clinescope/issues/new/choose) and pick "Share feedback". First-run impressions on a real trace are the single most useful thing you can send.
+Ran Clinescope on your own Cline trace? One question: did any score disagree with your own read of the run? Tell me which one on the [feedback form](https://github.com/minh2416294/clinescope/issues/new?template=feedback.yml). A score you think is wrong is the single most useful thing you can send, because it is the only answer that tells me something the code does not already say.
 
 For a reproducible scorer or CLI bug, the [Bug report](https://github.com/minh2416294/clinescope/issues/new/choose) form is a better fit. To contribute a change, see [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, tests, and what a scorer change needs.
 
