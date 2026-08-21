@@ -1,4 +1,4 @@
-"""Tool-selection-correctness scorer (deterministic, zero-LLM).
+"""Tool-name recall scorer (deterministic, zero-LLM).
 
 The first metric of the walking skeleton's "score" stage (load -> SCORE -> emit).
 It scores a loaded :class:`~clinescope.world_a.Trace` against a

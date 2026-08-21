@@ -30,7 +30,10 @@ already in `LIMITATIONS.md` moved to where the decision is actually made.
   a different pinned version of any of those four in the same environment. The
   runtime `dependencies` list is untouched and still empty. Two printed strings
   also changed, the feedback footer and the judge report line above, so anything
-  matching on their old wording needs updating; neither is on stdout.
+  matching on their old wording needs updating. The footer goes to stderr, and only
+  when stdout is a terminal. The judge report, including the line that changed, goes
+  to **stdout**, so a CI job grepping it for the old `protocol section 7` wording
+  will stop matching.
 
 ### Fixed
 
@@ -80,6 +83,11 @@ already in `LIMITATIONS.md` moved to where the decision is actually made.
   diff-quality scorer. No executable line moved, so no score moves on any trace
   that scored under 1.2.0.
 - No runtime dependencies were added: `dependencies` is still empty (pure stdlib).
+- **Corrected 2026-08-21, after 1.2.1 was published.** This entry originally said that
+  neither changed string is on stdout. That is wrong for the judge report line, which
+  `judge_run.py` prints to stdout. The bullet above now says so. The copy of this file
+  inside the published 1.2.1 sdist still carries the original wording, because a
+  released artifact cannot be edited.
 
 ## [1.2.0] - 2026-07-23
 
