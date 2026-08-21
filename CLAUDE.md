@@ -39,6 +39,21 @@ adapter. Purpose = hireability + reputation, NOT paid users.
 7. **Tooling-config urges = procrastination.** Log the urge, return to the CHECK.
 8. **Log is append-only.** Decisions are immutable; to change one, write a NEW entry that supersedes
    and links the old (ADR discipline). Never edit past Living-Log entries.
+9. **R6 honesty check: run this exact grep, it covers BOTH banned words.** R6 bans calling a scorer
+   a *quality* scorer OR a *correctness* scorer. A grep for only the first word passes while a
+   module titled with the second sits in shipped source, which is exactly what happened and shipped
+   in 1.2.1 (`tool_selection.py`, caught by a Gate-4 audit on 2026-08-21, not by the release check):
+
+   ```bash
+   grep -rn -i -E "diff[- ]quality|quality of (the )?(diff|patch)|[a-z-]*(quality|correctness)[- ]scorer" \
+     --exclude-dir=.git --exclude-dir=.venv --exclude-dir=htmlcov --exclude-dir=__pycache__ --exclude-dir=dist .
+   ```
+
+   It deliberately does NOT match legitimate disclaimers ("not argument correctness", "does not
+   verify semantic correctness") or DeepEval's `ToolCorrectness` API name. Surviving hits should be
+   only frozen CHANGELOG history. **The grep is the mechanical half; it cannot catch a quality
+   judgement phrased in ordinary words** (1.2.1 also shipped "catching messy code rewrites" on the
+   PyPI front page). Read the prose too.
 
 ## Sequencing law — walking skeleton
 
