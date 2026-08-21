@@ -4,6 +4,10 @@ All notable changes to Clinescope are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Nothing yet.
+
 ## [1.2.1] - 2026-08-20
 
 Corrections to what this tool claims to measure, and the disclosures that were
