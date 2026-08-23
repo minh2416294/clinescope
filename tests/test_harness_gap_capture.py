@@ -23,9 +23,12 @@ The six captures, and what each pins:
    ceiling: a rules file shifts intent but cannot manufacture tool-calling ability.
 
 3. ``gptoss-bare.messages.json`` -- gpt-oss:20b, NO harness. The model did not produce
-   a first token inside Cline's local 30s Ollama request timeout, so the assistant turn
-   is empty (an infra timeout, not a model behavior). Kept as an honest record; it
-   pins the same all-zero shape a no-tool-call trace produces.
+   a first token inside the 30s local Ollama request timeout Cline defaulted to when this
+   was captured, so the assistant turn is empty (an infra timeout, not a model behavior).
+   Cline raised that default to five minutes on 2026-08-01, so the 30s is a property of
+   the capture conditions, not of Cline now. Kept as an honest record; it pins the same
+   shape a no-tool-call trace produces, which is a hard zero on tool_selection and
+   diff_coherence and an abstention on the other two, NOT zero everywhere.
 
 4. ``gptoss-harness.messages.json`` -- gpt-oss:20b, WITH the harness. The model made
    real tool calls (search_codebase, read_files, run_commands, apply_patch), emitted a
@@ -136,8 +139,11 @@ def test_qwen_harness_moved_choice_to_apply_patch_but_still_zero() -> None:
     not _GPTOSS_BARE.exists(), reason="gpt-oss bare capture not present"
 )
 def test_gptoss_bare_empty_under_timeout_scores_zero() -> None:
-    # gpt-oss did not produce a first token inside the local 30s Ollama timeout, so
-    # the assistant turn is empty. An honest infra record, not a scored model failure.
+    # gpt-oss did not produce a first token inside the 30s local Ollama timeout Cline
+    # defaulted to when this was captured (raised to five minutes upstream on
+    # 2026-08-01), so the assistant turn is empty. An honest infra record, not a scored
+    # model failure. Note the name: "scores zero" here means the two scorers that hard-zero
+    # on a missing apply_patch, not all four.
     trace = load_trace(_GPTOSS_BARE)
 
     assert trace.version == 1

@@ -151,7 +151,7 @@ cline auth -p ollama -m gpt-oss:20b -k ollama
 
 Ollama needs no API key, but the CLI's quick setup requires the flag, so pass any placeholder (`-k ollama` here).
 
-**Do not pass `--timeout` on this run, and expect the first one to be slow.** The flag defaults to `0`, meaning no cap, which is what you want here. It bounds the whole run rather than a single request, and Ollama holds the connection open while it cold-loads the model. Cline's own source says that for a large model the first request of a session "routinely takes minutes before the stream starts", which is why Cline raised its Ollama response-start default to five minutes. A short `--timeout` turns that cold load into an aborted run and an empty trace, and an empty trace scores 0/100 on everything.
+**Do not pass `--timeout` on this run, and expect the first one to be slow.** The flag defaults to `0`, meaning no cap, which is what you want here. It bounds the whole run rather than a single request, and Ollama holds the connection open while it cold-loads the model. Cline's own source says that for a large model the first request of a session "routinely takes minutes before the stream starts", which is why Cline raised its Ollama response-start default to five minutes. A short `--timeout` turns that cold load into an aborted run and an empty trace, and an empty trace tells you nothing about your agent: `tool_selection` and `diff_coherence` hard-zero because no tool was ever called, and the rest abstain with `n/a`.
 
 Run a task in any project directory and let the first one take its time:
 
