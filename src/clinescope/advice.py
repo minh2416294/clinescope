@@ -139,8 +139,7 @@ def advice_for_editor_recovery(score: EditorRecoveryScore) -> ScorerAdvice | Non
             f"({score.confirmed_recovered_pairs}/{score.total_failed_pairs} "
             f"recovered; unrecovered files: {files}).",
             "Add a retry instruction: after a failed editor call, re-read the file "
-            "and try a corrected edit instead of giving up. In the one captured "
-            "trace shipped here the failing call omitted old_text, which cline "
-            "rejects when the file already exists.",
+            "and try a corrected edit instead of giving up. One cause cline names "
+            "explicitly is a missing old_text on a file that already exists.",
         ),
     )

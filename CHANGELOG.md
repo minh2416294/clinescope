@@ -18,8 +18,10 @@ All notable changes to Clinescope are recorded here. The format follows
   the three `apply_patch` scorers produce one hard zero and two blanks.
 - `examples/live-granite-editor-recovery.json`, a real captured Cline CLI session
   (granite4.1:8b via Ollama) in which the agent called `editor` without `old_text`,
-  Cline rejected it, and the agent retried successfully. It is the first
-  editor-bearing trace in this repository.
+  Cline rejected it, and the agent retried successfully. It is the first trace
+  captured deliberately to exercise an `editor` scorer. It is NOT the first
+  editor-bearing trace here: `examples/harness-gap/granite-harness.messages.json`
+  has carried `editor` calls since #69 in July, and nobody noticed until now.
 
 ### Changed
 
@@ -66,10 +68,15 @@ All notable changes to Clinescope are recorded here. The format follows
   gateable signal. Wiring it into the gate is deliberately deferred until someone
   gates CI on one.
 - There is no shape scorer for `editor`, only this trajectory one. A candidate
-  design exists and was not shipped: across every Cline session on the development
-  machine there were exactly two real `editor` replacement calls, and every
-  candidate definition scored both of them clean, so the check would have been
-  unexercised by construction.
+  design exists and was not shipped, because every real `editor` replacement call
+  available scores clean under it, so the check would have been unexercised by
+  construction. The evidence is three such calls: two in the sessions on the
+  development machine, and one already committed here in
+  `examples/harness-gap/granite-harness.messages.json`. That third call is also the
+  clearest argument for the design's most contested choice, not penalising
+  identical lines at the edges of a replacement: it is a plain append whose
+  `old_text` and `new_text` share a three-line leading run, so a definition that
+  counted edge runs would have flagged a correct edit.
 
 ## [1.2.1] - 2026-08-20
 
