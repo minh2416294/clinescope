@@ -65,9 +65,12 @@ What each shows:
   via `editor`. The zero delta vs bare is real, but for a different reason than qwen: qwen could
   not emit a tool call at all, while Granite emits tool calls and succeeds but keeps its own tool
   preference over the rules file. See the caveats in [`docs/harness-gap.md`](../../docs/harness-gap.md).
-- gpt-oss bare: the model did not produce a first token inside Cline's local 30s Ollama
-  request timeout, so the assistant turn is empty. This is an infra timeout, not a model
-  behavior; it is kept as an honest record, and there is no fair bare baseline for gpt-oss.
+- gpt-oss bare: the model did not produce a first token inside the 30s local Ollama request
+  timeout Cline defaulted to when this was captured, so the assistant turn is empty. Cline
+  raised that default to five minutes on 2026-08-01, so a rerun today would not fail this way;
+  read the 30s as a property of the capture conditions, not of Cline now. This is an infra
+  timeout, not a model behavior; it is kept as an honest record, and there is no fair bare
+  baseline for gpt-oss.
 - gpt-oss harness: the model made real tool calls (`search_codebase`, `read_files`,
   `run_commands`, `apply_patch`), emitted a grammar-valid `*** Begin Patch` that succeeded,
   and actually edited the file. A clean 100/100/100: the harness path working end to end on a

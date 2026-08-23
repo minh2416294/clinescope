@@ -52,13 +52,19 @@ All notable changes to Clinescope are recorded here. The format follows
   raised its Ollama response-start default to five minutes on 2026-08-01 precisely
   because a large model's cold load takes minutes
   (`sdk/packages/llms/src/providers/vendors/ollama.ts` lines 49-65). Capping a 13 GB
-  model's whole run at 120 seconds aborts it and leaves an empty trace, and an empty
-  trace scores 0/100 across the board.
+  model's whole run at 120 seconds aborts it and leaves an empty trace, which tells
+  the reader nothing about their agent.
 - The step's verification note now says what was actually checked, the `cline auth`
   flags against CLI 3.0.57, instead of vouching for the whole section.
-- `docs/harness-gap.md` now dates its reference to the 30-second Ollama timeout, so
-  it reads as a property of the conditions that run was captured under rather than
-  as current Cline behaviour.
+- Every surviving reference to the 30-second Ollama timeout is now dated as a property
+  of the conditions a capture ran under, not as current Cline behaviour:
+  `docs/harness-gap.md`, `examples/harness-gap/README.md` (which ships as package data)
+  and the `tests/test_harness_gap_capture.py` docstring and comment.
+- Four places said an empty or no-tool-call trace scores "0/100 across the board" or
+  "on everything". That reports an abstention as a zero, which is the error #89 and
+  #91 were written to remove. An empty trace hard-zeros `tool_selection` and
+  `diff_coherence` and abstains with `n/a` on `diff_minimality` and `apply_recovery`,
+  verified by running it.
 
 ### Known limitation
 
@@ -70,13 +76,15 @@ All notable changes to Clinescope are recorded here. The format follows
 - There is no shape scorer for `editor`, only this trajectory one. A candidate
   design exists and was not shipped, because every real `editor` replacement call
   available scores clean under it, so the check would have been unexercised by
-  construction. The evidence is three such calls: two in the sessions on the
-  development machine, and one already committed here in
-  `examples/harness-gap/granite-harness.messages.json`. That third call is also the
-  clearest argument for the design's most contested choice, not penalising
-  identical lines at the edges of a replacement: it is a plain append whose
-  `old_text` and `new_text` share a three-line leading run, so a definition that
-  counted edge runs would have flagged a correct edit.
+  construction. The evidence is exactly TWO such calls, and both are committed here:
+  one in `examples/harness-gap/granite-harness.messages.json` and one in
+  `examples/live-granite-editor-recovery.json`. Each file is byte-identical to the
+  session it was captured from, so counting the sessions and the committed examples
+  separately double-counts them.
+  The first of the two is the clearest argument for the design's most contested
+  choice, not penalising identical lines at the edges of a replacement: it is a plain
+  append whose `old_text` and `new_text` share a three-line leading run, so a
+  definition that counted edge runs would have flagged a correct edit.
 
 ## [1.2.1] - 2026-08-20
 

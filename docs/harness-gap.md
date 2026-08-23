@@ -95,9 +95,10 @@ from a different angle.
   way; read the 30 seconds as a property of the capture conditions, not of Cline now. It is kept as an
   honest record, not
   scored as a model behavior. So the gpt-oss column shows the harness path working, not a within-model
-  before-and-after. (Scoring the empty trace prints 0/100 across the board, the same all-zero shape any
-  no-tool-call trace produces; the table marks it "(empty)" because the run never started, not because
-  the model scored zero.)
+  before-and-after. (Scoring the empty trace prints the same shape any no-tool-call trace produces: a
+  hard `0/100` on `tool_selection` and `diff_coherence`, and `n/a` on `diff_minimality` and
+  `apply_recovery`, which abstain rather than score zero. The table marks it "(empty)" because the run
+  never started, not because the model scored zero.)
 - **The harness names `apply_patch` on purpose, which is a confound worth stating.** It is a general
   tool-format harness, but it does steer toward the exact tool the diff scorers grade. That is the
   point (the scorers grade `apply_patch`; the default prompt does not teach it), but it means the
