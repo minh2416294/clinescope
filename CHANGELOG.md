@@ -30,6 +30,15 @@ All notable changes to Clinescope are recorded here. The format follows
 - A trace containing no `editor` call renders exactly as before: the CLI scores
   editor recovery only when the tool is actually present, so no existing report
   gains a line.
+- Quickstart step 2 now recommends `gpt-oss:20b` instead of `qwen2.5-coder:7b`, and
+  says why: in this repository's own harness-gap A/B, `qwen2.5-coder:7b` wrote its
+  tool call as JSON inside its prose, so Cline recorded zero tool calls and a
+  first-time reader saw nothing but zeros and blanks. The step also adds the Cline
+  CLI install command, corrects the download size, and moves the `--timeout 120`
+  advice above the command it applies to instead of below it.
+- The README no longer claims the quickstart "walks you from installing Cline". It
+  walks you from installing Clinescope, and now links out to Cline's own docs for
+  the Cline CLI itself.
 
 ### Known limitation
 

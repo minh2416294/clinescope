@@ -62,7 +62,7 @@ Clinescope reads a format Cline owns, which puts Cline in a better position to b
     clinescope path/to/messages.json --expected read_files apply_patch --advice
     ```
 
-Learn more in the [usage guide](docs/usage.md). New to this? The [quickstart](docs/quickstart.md) walks you from installing Cline to scoring your own session.
+Learn more in the [usage guide](docs/usage.md). New to this? The [quickstart](docs/quickstart.md) walks you from installing Clinescope to scoring your own session, and step 2 links out to Cline's own docs if you still need the Cline CLI itself.
 
 ## Feedback
 
