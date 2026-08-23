@@ -344,6 +344,38 @@ def test_non_str_path_is_treated_as_pathless() -> None:
     assert result.failed_target_paths == ("<no path>",)
 
 
+def test_two_pathless_calls_never_recover_each_other() -> None:
+    # The `<no path>` sentinel is deliberately unrecoverable, so two pathless calls
+    # must NOT satisfy each other just because their sentinels are equal. Without
+    # the explicit guard in _editor_pair_is_recovered the sentinel would match
+    # itself and a failure would silently launder into a recovery.
+    trace = _editor_trace(
+        _editor_call("c1", None, is_error=True),
+        _editor_call("c2", None, is_error=False),
+    )
+    result = score_editor_recovery(trace)
+
+    assert result.score == 0.0
+    assert result.confirmed_recovered_pairs == 0
+    assert result.unrecovered_pairs == 1
+    assert result.recovery_pairs == ()
+
+
+def test_leading_whitespace_in_a_path_is_not_stripped() -> None:
+    # Matching is rstrip-only by design. A LEADING space makes it a different path,
+    # so this failure stays unrecovered. Using .strip() here would silently
+    # normalise the two into one file and turn a real miss into a false recovery.
+    trace = _editor_trace(
+        _editor_call("c1", "   " + CALC, is_error=True),
+        _editor_call("c2", CALC, is_error=False),
+    )
+    result = score_editor_recovery(trace)
+
+    assert result.score == 0.0
+    assert result.unrecovered_pairs == 1
+    assert result.failed_target_paths == ("   " + CALC,)
+
+
 def test_trailing_whitespace_is_stripped_before_paths_are_matched() -> None:
     # Guards the .rstrip() in _editor_target_path: without it these two calls
     # name different files and the failure reads as unrecovered.
