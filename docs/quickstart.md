@@ -127,27 +127,39 @@ python -c "import clinescope; print(clinescope.__version__)"
 
 If you already have a Cline CLI session on disk, skip to step 3. Otherwise, generate one against a local model (no API key, no cost).
 
-Prerequisites: install [Ollama](https://ollama.com) and pull a small, fast coding model (about 4-5 GB):
+**Install the Cline CLI**, if you have not already. Cline documents this as:
 
 ```bash
-ollama pull qwen2.5-coder:7b
+npm i -g cline
 ```
+
+Clinescope does not track Cline's installer, so if that fails, follow [Cline's own docs](https://docs.cline.bot/) rather than anything here.
+
+**Install [Ollama](https://ollama.com) and pull a model.** Use `gpt-oss:20b` (about 13 GB):
+
+```bash
+ollama pull gpt-oss:20b
+```
+
+A smaller coding model downloads faster but will not get you a useful first run. In the A/B recorded in [the harness-gap writeup](harness-gap.md), `qwen2.5-coder:7b` wrote its tool call as JSON inside its prose instead of emitting a real tool call, so Cline recorded zero tool calls and every scorer read `0/100` or `n/a`, with and without a harness. `gpt-oss:20b` actually completes the task.
 
 Point the Cline CLI at it:
 
 ```bash
-cline auth -p ollama -m qwen2.5-coder:7b -k ollama
+cline auth -p ollama -m gpt-oss:20b -k ollama
 ```
 
-Ollama needs no API key, but the CLI's quick setup requires the flag, so pass any placeholder (`-k ollama` here). A small model responds quickly; a larger model (for example `gpt-oss:20b`) may need `cline --timeout 120 "..."` to beat the default 30-second request timeout.
+Ollama needs no API key, but the CLI's quick setup requires the flag, so pass any placeholder (`-k ollama` here).
 
-Run a task in any project directory:
+**Pass `--timeout 120` when you run it.** The CLI's default request timeout is 30 seconds, which a 20B model on local hardware will often miss. Run a task in any project directory:
 
 ```bash
-cline "Fix the bug in calc.py using apply_patch, then stop."
+cline --timeout 120 "Fix the bug in calc.py using apply_patch, then stop."
 ```
 
-(Verified against the Cline CLI as of 2026-07-17. If `cline auth` rejects these flags, run `cline auth --help`.)
+One thing this model choice decides for you: because its model id contains `gpt`, Cline routes the session to the `apply_patch` tool, so the `--expected apply_patch read_files` in step 4 is the right set. A model without `codex` or `gpt` in its name gets the `editor` tool instead, which changes which scorers report; step 4 covers that case.
+
+(Verified against the Cline CLI as of 2026-08-23. If `cline auth` rejects these flags, run `cline auth --help`.)
 
 ## 3. Find your session's trace
 
