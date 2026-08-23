@@ -6,7 +6,43 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- `editor_recovery`, a trajectory scorer for Cline's `editor` tool. Of every
+  `editor` call Cline marked failed, it scores the fraction later recovered by a
+  strictly-later `editor` call Cline confirmed non-failing on the same path. It
+  exists because almost no current Cline session emits `apply_patch`: all five
+  tool presets set `enableApplyPatch: false`, and only two routing rules flip a
+  session back to it (an `openai-native` provider, or a model id containing
+  `codex` or `gpt`), both of which also require `act` mode. On every other session
+  the three `apply_patch` scorers produce one hard zero and two blanks.
+- `examples/live-granite-editor-recovery.json`, a real captured Cline CLI session
+  (granite4.1:8b via Ollama) in which the agent called `editor` without `old_text`,
+  Cline rejected it, and the agent retried successfully. It is the first
+  editor-bearing trace in this repository.
+
+### Changed
+
+- The `"success"`-JSON verdict oracle moved out of `apply_recovery` into a shared
+  `clinescope.tool_verdict`, because `editor_recovery` resolves a verdict the same
+  way. Behaviour is unchanged; the existing `apply_recovery` tests pass against the
+  shared implementation without modification.
+- A trace containing no `editor` call renders exactly as before: the CLI scores
+  editor recovery only when the tool is actually present, so no existing report
+  gains a line.
+
+### Known limitation
+
+- `editor_recovery` is report-only in this release. It renders in the `clinescope`
+  report and feeds `--advice`, but `clinescope-gate`, `python -m clinescope.compare`
+  and `clinescope-corpus` do not read it yet, so an editor-only session has no
+  gateable signal. Wiring it into the gate is deliberately deferred until someone
+  gates CI on one.
+- There is no shape scorer for `editor`, only this trajectory one. A candidate
+  design exists and was not shipped: across every Cline session on the development
+  machine there were exactly two real `editor` replacement calls, and every
+  candidate definition scored both of them clean, so the check would have been
+  unexercised by construction.
 
 ## [1.2.1] - 2026-08-20
 

@@ -37,6 +37,7 @@ from clinescope.apply_recovery import ApplyRecoveryScore, score_apply_recovery
 from clinescope.cline_extension import load_extension_trace
 from clinescope.diff_coherence import DiffCoherenceScore, score_diff_coherence
 from clinescope.diff_minimality import DiffMinimalityScore, score_diff_minimality
+from clinescope.editor_recovery import EditorRecoveryScore, score_editor_recovery
 from clinescope.extension_discovery import (
     ExtensionSession,
     ExtensionStorageNotFound,
@@ -479,6 +480,15 @@ def _score_and_render(
     diff_score: DiffCoherenceScore = score_diff_coherence(trace)
     minimality_score: DiffMinimalityScore = score_diff_minimality(trace)
     recovery_score: ApplyRecoveryScore = score_apply_recovery(trace)
+    # Scored and rendered ONLY when the trace actually contains an editor call.
+    # Almost every current Cline session uses editor rather than apply_patch, but a
+    # trace that does not touch it gains no line, so every existing apply_patch
+    # report stays byte-identical to before this scorer shipped.
+    editor_score: EditorRecoveryScore | None = (
+        score_editor_recovery(trace)
+        if any(call.name == "editor" for call in trace.tool_calls)
+        else None
+    )
     return render_report(
         trace,
         score,
@@ -487,6 +497,7 @@ def _score_and_render(
         diff_coherence=diff_score,
         diff_minimality=minimality_score,
         apply_recovery=recovery_score,
+        editor_recovery=editor_score,
         expected_provided=expected_provided,
         advice=args.advice,
         verbose=args.verbose,

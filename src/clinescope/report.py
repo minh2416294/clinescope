@@ -34,11 +34,13 @@ from clinescope.advice import (
     advice_for_apply_recovery,
     advice_for_diff_coherence,
     advice_for_diff_minimality,
+    advice_for_editor_recovery,
     advice_for_tool_selection,
 )
 from clinescope.apply_recovery import ApplyRecoveryScore
 from clinescope.diff_coherence import DiffCoherenceScore
 from clinescope.diff_minimality import DiffMinimalityScore
+from clinescope.editor_recovery import EditorRecoveryScore
 from clinescope.tool_selection import ToolSelectionScore
 from clinescope.world_a import Trace
 
@@ -58,6 +60,7 @@ def render_report(
     diff_coherence: DiffCoherenceScore | None = None,
     diff_minimality: DiffMinimalityScore | None = None,
     apply_recovery: ApplyRecoveryScore | None = None,
+    editor_recovery: EditorRecoveryScore | None = None,
     expected_provided: bool = True,
     advice: bool = False,
     verbose: bool = False,
@@ -66,6 +69,10 @@ def render_report(
     # verbatim (e.g. an "extension session <taskId> \"title\" [Code]" line for a
     # VS Code extension trace, which has no World-A sessionId). When None the
     # header is unchanged, so every existing caller is byte-identical.
+    #
+    # editor_recovery is the editor-family sibling of apply_recovery. Callers pass
+    # it only when the trace actually contains an editor call, so an apply_patch
+    # trace renders byte-identically to before this scorer existed.
     if verbose:
         return _render_verbose(
             trace,
@@ -75,6 +82,7 @@ def render_report(
             diff_coherence=diff_coherence,
             diff_minimality=diff_minimality,
             apply_recovery=apply_recovery,
+            editor_recovery=editor_recovery,
         )
     summary = _render_summary(
         trace,
@@ -84,12 +92,13 @@ def render_report(
         diff_coherence=diff_coherence,
         diff_minimality=diff_minimality,
         apply_recovery=apply_recovery,
+        editor_recovery=editor_recovery,
         expected_provided=expected_provided,
     )
     if not advice:
         return summary
     advice_block = _render_advice_block(
-        score, diff_coherence, diff_minimality, apply_recovery
+        score, diff_coherence, diff_minimality, apply_recovery, editor_recovery
     )
     return summary if advice_block is None else f"{summary}\n{advice_block}"
 
@@ -102,6 +111,7 @@ def _render_advice_block(
     diff_coherence: DiffCoherenceScore | None,
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
+    editor_recovery: EditorRecoveryScore | None = None,
 ) -> str | None:
     # One advice entry per FAILING scorer, in report order; a passing/abstaining
     # scorer contributes nothing. Returns None when there is nothing to coach, so
@@ -122,6 +132,10 @@ def _render_advice_block(
         ar = advice_for_apply_recovery(apply_recovery)
         if ar is not None:
             entries.append(("apply_recovery", ar))
+    if editor_recovery is not None:
+        er = advice_for_editor_recovery(editor_recovery)
+        if er is not None:
+            entries.append(("editor_recovery", er))
     if not entries:
         return None
 
@@ -144,6 +158,7 @@ def _render_summary(
     diff_coherence: DiffCoherenceScore | None,
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
+    editor_recovery: EditorRecoveryScore | None = None,
     expected_provided: bool,
 ) -> str:
     subject = _header_subject(session_id, session_label)
@@ -171,12 +186,15 @@ def _render_summary(
         )
     if apply_recovery is not None:
         lines.append(_render_summary_apply_recovery(apply_recovery))
+    if editor_recovery is not None:
+        lines.append(_render_summary_editor_recovery(editor_recovery))
     footer = _summary_footer(
         score,
         expected_provided,
         diff_coherence,
         diff_minimality,
         apply_recovery,
+        editor_recovery,
     )
     if footer is not None:
         lines.append(footer)
@@ -251,6 +269,36 @@ def _render_summary_apply_recovery(score: ApplyRecoveryScore) -> str:
     )
 
 
+def _render_summary_editor_recovery(score: EditorRecoveryScore) -> str:
+    # Same shape as the apply_patch sibling above: the N/M count when something
+    # failed, otherwise a named reason so a bare n/a is never cryptic. The name is
+    # 15 characters, the same as "diff_minimality", so the existing column width
+    # holds and no other report line moves.
+    if score.applicable:
+        extra = (
+            f"({score.confirmed_recovered_pairs}/{score.total_failed_pairs} "
+            "failed edits recovered)"
+        )
+    else:
+        extra = _summary_reason_editor_recovery(score)
+    return _render_summary_line(
+        "editor_recovery",
+        render_score_out_of_100(score.score),
+        summary_verdict(score.score),
+        extra,
+    )
+
+
+def _summary_reason_editor_recovery(score: EditorRecoveryScore) -> str:
+    # The two honest n/a sub-cases, mirroring the apply_patch sibling: a genuine
+    # clean run vs a trace that carried no pass/fail verdict at all.
+    if score.editor_call_count == 0:
+        return "(no editor call - nothing to recover)"
+    if score.verdict_coverage == 0:
+        return "(no pass/fail verdicts in trace - nothing to score)"
+    return "(no failed edits - nothing to recover)"
+
+
 def _summary_reason_diff_coherence(score: DiffCoherenceScore) -> str:
     # diff_coherence never abstains (no apply_patch is a hard 0.0, not n/a), so a
     # reason is only useful to name WHY a hard-zero happened -- the first violation.
@@ -285,6 +333,7 @@ def _summary_footer(
     diff_coherence: DiffCoherenceScore | None,
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
+    editor_recovery: EditorRecoveryScore | None = None,
 ) -> str | None:
     # A positive takeaway on a clean run (U1): if nothing scored below its bar,
     # say so plainly rather than leaving the reader to eyeball four lines. A
@@ -302,7 +351,18 @@ def _summary_footer(
         or not apply_recovery.applicable
         or apply_recovery.score == 1.0
     )
-    if tool_ok and coherence_ok and minimality_ok and recovery_ok:
+    editor_recovery_ok = (
+        editor_recovery is None
+        or not editor_recovery.applicable
+        or editor_recovery.score == 1.0
+    )
+    if (
+        tool_ok
+        and coherence_ok
+        and minimality_ok
+        and recovery_ok
+        and editor_recovery_ok
+    ):
         return "clean run - nothing to fix"
     return None
 
@@ -352,6 +412,7 @@ def _render_verbose(
     diff_coherence: DiffCoherenceScore | None,
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
+    editor_recovery: EditorRecoveryScore | None = None,
 ) -> str:
     lines = ["=== clinescope report ==="]
     if session_label is not None:
@@ -379,6 +440,8 @@ def _render_verbose(
         lines.extend(_render_diff_minimality(diff_minimality))
     if apply_recovery is not None:
         lines.extend(_render_apply_recovery(apply_recovery))
+    if editor_recovery is not None:
+        lines.extend(_render_editor_recovery(editor_recovery))
     return "\n".join(lines)
 
 
@@ -430,6 +493,30 @@ def _render_apply_recovery(score: ApplyRecoveryScore) -> list[str]:
         f"violations:     {_render_violations(score.violations)}",
         f"apply_patch_calls: {score.apply_patch_call_count}",
         f"cline_is_error: {score.cline_apply_is_error}",
+    ]
+
+
+def _render_editor_recovery(score: EditorRecoveryScore) -> list[str]:
+    # The apply_patch sibling's verbose block, minus partially_recovered (one editor
+    # call touches exactly one path, so a call can never be half-recovered) and with
+    # unparseable_failed_calls replaced by pathless_failed_calls.
+    return [
+        "",
+        "[editor_recovery]",
+        f"score:          {_render_optional_4f(score.score)}",
+        f"applicable:     {score.applicable}",
+        f"total_failed_pairs: {score.total_failed_pairs}",
+        f"recovered_pairs: {score.confirmed_recovered_pairs}",
+        f"unrecovered_pairs: {score.unrecovered_pairs}",
+        f"same_file_refail: {score.same_file_refail_count}",
+        f"unverified_reattempts: {score.unverified_reattempt_pairs}",
+        f"verdict_coverage: {_render_optional_4f(score.verdict_coverage)}",
+        f"failed_files:   {_render_violations(score.failed_target_paths)}",
+        f"recovered_by:   {_render_recovery_pairs(score.recovery_pairs)}",
+        f"pathless_failed_calls: {score.pathless_failed_calls}",
+        f"violations:     {_render_violations(score.violations)}",
+        f"editor_calls:   {score.editor_call_count}",
+        f"cline_is_error: {score.cline_editor_is_error}",
     ]
 
 
