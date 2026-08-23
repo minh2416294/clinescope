@@ -151,15 +151,17 @@ cline auth -p ollama -m gpt-oss:20b -k ollama
 
 Ollama needs no API key, but the CLI's quick setup requires the flag, so pass any placeholder (`-k ollama` here).
 
-**Pass `--timeout 120` when you run it.** The CLI's default request timeout is 30 seconds, which a 20B model on local hardware will often miss. Run a task in any project directory:
+**Do not pass `--timeout` on this run, and expect the first one to be slow.** The flag defaults to `0`, meaning no cap, which is what you want here. It bounds the whole run rather than a single request, and Ollama holds the connection open while it cold-loads the model. Cline's own source says that for a large model the first request of a session "routinely takes minutes before the stream starts", which is why Cline raised its Ollama response-start default to five minutes. A short `--timeout` turns that cold load into an aborted run and an empty trace, and an empty trace scores 0/100 on everything.
+
+Run a task in any project directory and let the first one take its time:
 
 ```bash
-cline --timeout 120 "Fix the bug in calc.py using apply_patch, then stop."
+cline "Fix the bug in calc.py using apply_patch, then stop."
 ```
 
 One thing this model choice decides for you: because its model id contains `gpt`, Cline routes the session to the `apply_patch` tool, so the `--expected apply_patch read_files` in step 4 is the right set. A model without `codex` or `gpt` in its name gets the `editor` tool instead, which changes which scorers report; step 4 covers that case.
 
-(Verified against the Cline CLI as of 2026-08-23. If `cline auth` rejects these flags, run `cline auth --help`.)
+(The `cline auth` flags above were checked against Cline CLI 3.0.57 on 2026-08-23. If they are rejected, run `cline auth --help`.)
 
 ## 3. Find your session's trace
 

@@ -34,11 +34,29 @@ All notable changes to Clinescope are recorded here. The format follows
   says why: in this repository's own harness-gap A/B, `qwen2.5-coder:7b` wrote its
   tool call as JSON inside its prose, so Cline recorded zero tool calls and a
   first-time reader saw nothing but zeros and blanks. The step also adds the Cline
-  CLI install command, corrects the download size, and moves the `--timeout 120`
-  advice above the command it applies to instead of below it.
+  CLI install command and corrects the stated download size.
 - The README no longer claims the quickstart "walks you from installing Cline". It
   walks you from installing Clinescope, and now links out to Cline's own docs for
   the Cline CLI itself.
+
+### Fixed
+
+- Quickstart step 2 no longer tells the reader to pass `--timeout 120`, and no
+  longer claims Cline's default request timeout is 30 seconds. Both were wrong, and
+  together they caused the failure the step exists to prevent. `--timeout` defaults
+  to `0`, meaning no cap, and it aborts the whole run rather than one request
+  (`apps/cli/src/commands/program.ts` line 61 and `apps/cli/src/runtime/run-agent.ts`
+  lines 314-325 at cline/cline `4f836ae7d0ed29ece7ef4a2a478deb470fdd056e`). Cline
+  raised its Ollama response-start default to five minutes on 2026-08-01 precisely
+  because a large model's cold load takes minutes
+  (`sdk/packages/llms/src/providers/vendors/ollama.ts` lines 49-65). Capping a 13 GB
+  model's whole run at 120 seconds aborts it and leaves an empty trace, and an empty
+  trace scores 0/100 across the board.
+- The step's verification note now says what was actually checked, the `cline auth`
+  flags against CLI 3.0.57, instead of vouching for the whole section.
+- `docs/harness-gap.md` now dates its reference to the 30-second Ollama timeout, so
+  it reads as a property of the conditions that run was captured under rather than
+  as current Cline behaviour.
 
 ### Known limitation
 

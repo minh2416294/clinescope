@@ -89,8 +89,11 @@ from a different angle.
 - **This is one task per cell, not a benchmark.** It illustrates the mechanism (harness moves intent;
   capability sets the ceiling); it does not prove a population-level effect size. A larger task and
   model matrix is future work.
-- **There is no fair gpt-oss:20b bare baseline.** That run did not produce a first token inside Cline's
-  local 30-second Ollama request timeout, so its trace is empty. It is kept as an honest record, not
+- **There is no fair gpt-oss:20b bare baseline.** That run did not produce a first token inside the
+  30-second local Ollama request timeout Cline defaulted to when it was captured, so its trace is
+  empty. Cline raised that default to five minutes on 2026-08-01, so a rerun today would not fail this
+  way; read the 30 seconds as a property of the capture conditions, not of Cline now. It is kept as an
+  honest record, not
   scored as a model behavior. So the gpt-oss column shows the harness path working, not a within-model
   before-and-after. (Scoring the empty trace prints 0/100 across the board, the same all-zero shape any
   no-tool-call trace produces; the table marks it "(empty)" because the run never started, not because
