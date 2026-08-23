@@ -190,6 +190,25 @@ apply_recovery      n/a  n/a   (no apply_patch - nothing to recover)
 
 Reading it: the agent claimed it fixed the bug, but the trace records zero tool calls, so no file was touched. `tool_selection 0/100` means it never called the tools; `diff_coherence FAIL` means there was no patch to check; the two `n/a` lines mean there was no patch to measure (not an error). That gap between "the agent said it succeeded" and "the agent did nothing" is what Clinescope exists to catch.
 
+**If your run used the `editor` tool instead of `apply_patch`.** Most current Cline CLI sessions do. Cline only routes a session to `apply_patch` when the provider is `openai-native` or the model id contains `codex` or `gpt`, and only in act mode; everything else gets `editor`. On those sessions the three `apply_patch` scorers go quiet and a fifth line appears:
+
+```
+clinescope report - session 1787455395427_4abgw (3 tool calls)
+tool_selection  100/100  PASS
+diff_coherence    0/100  FAIL   (no apply_patch tool call in trace)
+diff_minimality     n/a  n/a   (no apply_patch - nothing to check)
+apply_recovery      n/a  n/a   (no apply_patch - nothing to recover)
+editor_recovery 100/100  PASS   (1/1 failed edits recovered)
+```
+
+Pass `--expected editor read_files` on those runs, not `apply_patch`:
+
+```bash
+clinescope path/to/messages.json --expected editor read_files
+```
+
+`editor_recovery` asks the `apply_recovery` question of the `editor` tool: of every `editor` call Cline marked failed, how many did a later confirmed `editor` call on the same path re-touch? The `diff_coherence 0/100` above still means "no `apply_patch` to grade here", not "your agent wrote a broken patch". There is no shape or grammar scorer for `editor`, and [LIMITATIONS.md](../LIMITATIONS.md) explains why, plus why you should not gate CI on an editor-only trace yet.
+
 ## 5. Improve the agent
 
 Add `--advice` to turn a failing scorer into a concrete fix for your prompt:
@@ -226,7 +245,8 @@ That opens an interactive picker (newest first; press Enter for the newest, `q` 
 
 The report header reads `extension session <taskId> "<title>" [<variant>]`, so it is clear you are looking at an extension run, not a CLI one.
 
-**One tool-name difference to know.** The CLI uses `apply_patch` / `read_files`; the extension often uses `write_to_file` / `replace_in_file` / `read_file` instead (it depends on your Cline and model). Run `clinescope --list-tools` to see the full set for `--expected` (both the CLI and extension names). The diff scorers grade `apply_patch` grammar, so on a `write_to_file` session `tool_selection` still scores; `diff_coherence` reports a hard `0/100` (it found no `apply_patch` to grade), and `diff_minimality` / `apply_recovery` abstain (`n/a`). That `0/100` means "no `apply_patch` to grade here," not "your agent wrote a broken patch." A `write_to_file` grammar scorer is on the roadmap.
+**One tool-name difference to know.** The CLI uses `apply_patch` / `read_files`; the extension often uses `write_to_file` / `replace_in_file` / `read_file` instead (it depends on your Cline and model). Run `clinescope --list-tools` to see the full set for `--expected` (both the CLI and extension names). The three diff scorers grade `apply_patch` grammar, so on a `write_to_file` session `tool_selection` still scores; `diff_coherence` reports a hard `0/100` (it found no `apply_patch` to grade), and `diff_minimality` / `apply_recovery` abstain (`n/a`). That `0/100` means "no `apply_patch` to grade here," not "your agent wrote a broken patch." A `write_to_file` grammar scorer is on the roadmap.
+
 
 ## Related
 

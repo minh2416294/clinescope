@@ -22,6 +22,7 @@ from enum import Enum
 from clinescope.apply_recovery import ApplyRecoveryScore
 from clinescope.diff_coherence import DiffCoherenceScore
 from clinescope.diff_minimality import DiffMinimalityScore
+from clinescope.editor_recovery import EditorRecoveryScore
 from clinescope.tool_selection import ToolSelectionScore
 
 
@@ -32,6 +33,7 @@ class FailureLabel(Enum):
     MALFORMED_PATCH = "malformed_patch"
     BLIND_REWRITE = "blind_rewrite"
     NO_APPLY_RECOVERY = "no_apply_recovery"
+    NO_EDITOR_RECOVERY = "no_editor_recovery"
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,5 +118,29 @@ def advice_for_apply_recovery(score: ApplyRecoveryScore) -> ScorerAdvice | None:
             f"recovered; unrecovered files: {files}).",
             "Add a retry instruction: after a failed apply_patch, re-read the file "
             "and try a corrected patch instead of giving up.",
+        ),
+    )
+
+
+def advice_for_editor_recovery(score: EditorRecoveryScore) -> ScorerAdvice | None:
+    """Advise when a failed editor call was never recovered; ``None`` when clean.
+
+    The ``apply_recovery`` sibling's advice, keyed to the ``editor`` tool. Abstains
+    and perfect scores yield nothing, so a clean run stays quiet.
+    """
+    if not score.applicable or score.score == 1.0:
+        return None
+    files = ", ".join(score.failed_target_paths) if score.failed_target_paths else "-"
+    return ScorerAdvice(
+        label=FailureLabel.NO_EDITOR_RECOVERY,
+        lines=(
+            f"The agent failed an editor call and no later confirmed editor call "
+            f"re-touched that path "
+            f"({score.confirmed_recovered_pairs}/{score.total_failed_pairs} "
+            f"recovered; unrecovered files: {files}).",
+            "Add a retry instruction: after a failed editor call, re-read the file "
+            "and try a corrected edit instead of giving up. In the one captured "
+            "trace shipped here the failing call omitted old_text, which cline "
+            "rejects when the file already exists.",
         ),
     )

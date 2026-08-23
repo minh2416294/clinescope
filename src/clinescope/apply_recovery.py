@@ -38,15 +38,13 @@ re-attempted on the same files and Cline confirmed those re-attempts applied", N
   context only). Apply-recovery is *about* the failure/success verdict, so the score
   reads an EFFECTIVE verdict per call -- ``True`` (failure), ``False`` (confirmed
   success), or ``None`` (a THIRD state: neither failure nor confirmed success).
-* The effective verdict is resolved with ``is_error`` AUTHORITATIVE, then a SECONDARY
-  ``"success"``-JSON oracle (:func:`_recovery_effective_verdict`): (1) if the loader
-  gave a real ``bool`` ``is_error``, use it (and it wins any conflict with the
-  content); (2) else, because a genuine Cline ``apply_patch`` result carries NO
-  ``is_error`` field and encodes the outcome as ``{...,"success":true/false}`` inside
-  the tool_result content JSON (cline ``definitions.ts`` + ``agent-message-codec.ts``),
-  read that ``"success"`` bool from a ``str`` content (``not success`` -> the
-  ``is_error`` polarity); (3) else ``None``. Without the oracle the scorer abstained on
-  every real trace (the Day-10 gap); the oracle is what lets it score genuine runs.
+* The effective verdict is resolved by the SHARED
+  :func:`clinescope.tool_verdict.tool_verdict_effective`: ``is_error`` AUTHORITATIVE,
+  then a SECONDARY ``"success"``-JSON read of the tool_result content, then ``None``.
+  Without the oracle the scorer abstained on every real trace (the Day-10 gap); the
+  oracle is what lets it score genuine runs. It lives in its own module because
+  :mod:`clinescope.editor_recovery` resolves the verdict identically for ``editor``
+  calls, so the two scorers share one implementation rather than a copy.
 * Recovery requires an effective verdict of ``False`` (Cline-confirmed OR
   ``"success":true``), NOT merely ``is not True``. Admitting ``None`` would let an
   adversary max the score by truncating the trace right after any re-attempt (``None``
@@ -79,19 +77,14 @@ and reuses the coherence sibling's grammar parser.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 
 from clinescope.diff_coherence import (
     diff_coherence_normalize,
     diff_coherence_read_patch_text,
 )
+from clinescope.tool_verdict import tool_verdict_effective
 from clinescope.world_a import ToolCall, Trace
-
-# The key inside an apply_patch tool_result's JSON-string content that carries the
-# outcome (source: cline definitions.ts createApplyPatchTool -> {query, result,
-# [error], success}). The SECONDARY oracle reads this when is_error is absent.
-_SUCCESS_KEY = "success"
 
 # Reused verbatim from cline apply-patch-parser.ts markers (see diff_coherence).
 # Matched WITH the trailing ": " so "*** End of File" / "*** Begin Patch" etc.
@@ -115,7 +108,7 @@ class ApplyRecoveryScore:
       of ``True`` (nothing failed); then ``score is None`` and the vacuous split is read
       from ``verdict_coverage`` (``> 0`` clean run vs ``== 0`` no verdicts joined). The
       effective verdict is ``is_error`` when present, else the ``"success"``-JSON oracle
-      (see the module docstring / :func:`_recovery_effective_verdict`).
+      (see the module docstring / :func:`clinescope.tool_verdict.tool_verdict_effective`).
     * Otherwise ``score = confirmed_recovered_pairs / total_failed_pairs`` in
       ``[0.0, 1.0]``. It is ``1.0`` iff every failed (call, file) pair was recovered.
     * ``total_failed_pairs`` counts EACH failed file of EACH failed call; an
@@ -225,50 +218,13 @@ def _recovery_apply_patch_views(trace: Trace) -> list[_ApplyPatchView]:
         views.append(
             _ApplyPatchView(
                 index=index,
-                is_error=_recovery_effective_verdict(call),
+                is_error=tool_verdict_effective(call),
                 raw_is_error=call.is_error,
                 targets=targets,
                 unparseable=unparseable,
             )
         )
     return views
-
-
-def _recovery_effective_verdict(call: ToolCall) -> bool | None:
-    """The effective failure/success verdict of one apply_patch call.
-
-    Precedence, is_error AUTHORITATIVE:
-
-    1. If ``call.is_error`` is a real ``bool`` -> return it directly (Cline's
-       loader-level verdict wins; it also wins any conflict with the content).
-    2. Else read the SECONDARY oracle: a genuine Cline apply_patch result carries
-       NO ``is_error`` field, so the loader gives ``None``; the outcome lives inside
-       the tool_result CONTENT as a JSON string ``{...,"success":true/false}``
-       (source: cline definitions.ts + agent-message-codec.ts). If ``result_content``
-       is a ``str`` that parses to a ``dict`` with a real ``bool`` ``"success"``,
-       return ``not success`` (success -> non-failing verdict ``False``; failure ->
-       failing verdict ``True``), matching the ``is_error`` polarity.
-    3. Else -> ``None`` (abstain). Fails CLOSED on non-str/list content, invalid or
-       truncated JSON, non-dict JSON, a missing/``null``/non-``bool`` ``"success"``.
-       Abstaining can only ever UNDER-count recovery (the numerator needs a confirmed
-       ``False``), never inflate it -- preserving the anti-truncation guarantee.
-    """
-    if isinstance(call.is_error, bool):
-        return call.is_error
-
-    content = call.result_content
-    if not isinstance(content, str):
-        return None
-    try:
-        parsed = json.loads(content)
-    except (ValueError, TypeError):
-        return None
-    if not isinstance(parsed, dict):
-        return None
-    success = parsed.get(_SUCCESS_KEY)
-    if not isinstance(success, bool):
-        return None
-    return not success
 
 
 def _recovery_targets(call: ToolCall) -> tuple[frozenset[str], bool]:

@@ -62,23 +62,73 @@ literal, so the same file spelled differently is a false miss. It abstains (`n/a
 What to do instead: read a LOW score as "did not recover via a same-file confirmed apply_patch", not "did
 not recover at all"; confirm real fixes by inspecting the trajectory.
 
+### `editor_recovery` measures the same trajectory pattern, for the `editor` tool
+
+Of every `editor` call Cline marked failed, it scores the fraction later recovered by a strictly-later
+`editor` call Cline confirmed non-failing on the same path. Every caveat on `apply_recovery` above applies
+unchanged: it does NOT verify the retry fixed anything, does NOT verify semantic correctness, and matches
+at FILE granularity. It is BLIND to cross-tool recovery, so an agent that abandons `editor` and fixes the
+file with `run_commands` scores that failure as unrecovered. Path matching is LITERAL, and on Windows that
+is a live risk rather than a theoretical one: the same file reached through Git Bash arrives as
+`/c/Users/...` and through PowerShell as `C:\Users\...`, and those will not match each other. It abstains
+(`n/a`) when nothing failed.
+
+Unlike its sibling it has no `partially_recovered_failures` counter, because one `editor` call touches
+exactly one path and so can never be half-recovered.
+
+What to do instead: read a LOW score as "did not recover via a same-path confirmed editor call", not "did
+not recover at all".
+
+### `diff_coherence` has no `editor` analogue, and one is not planned
+
+There is no `editor_coherence`. `apply_patch` carries a freeform patch string with a grammar that a model
+can get wrong, which is what `diff_coherence` grades. An `editor` call carries structured fields (`path`,
+`old_text`, `new_text`, `insert_line`) instead of a freeform payload, so there is no grammar to parse.
+
+A mis-shaped `editor` call is not rejected by the schema. At cline/cline commit
+`4f836ae7d0ed29ece7ef4a2a478deb470fdd056e`, `old_text` is declared optional and nullable
+(`sdk/packages/core/src/extensions/tools/schemas.ts` lines 200-206), so omitting it passes validation and
+the call fails later inside the executor, at
+`sdk/packages/core/src/extensions/tools/executors/editor.ts` line 259, when the target file already
+exists. Cline reports that as `success: false`, which is exactly the verdict `editor_recovery` already
+reads; the capture at `examples/live-granite-editor-recovery.json` is one such call. So a shape scorer
+would largely restate a verdict this repository already surfaces.
+
 ## What Clinescope does NOT claim
 
 - `tool_selection` scores tool NAMES, not tool ARGUMENTS or success.
 - `diff_coherence` scores apply_patch GRAMMAR, not whether the patch APPLIES or is CORRECT.
 - `diff_minimality` scores ONE bloat shape, not overall edit MINIMALITY.
 - `apply_recovery` scores a same-file retry TRAJECTORY, not whether the fix is RIGHT.
+- `editor_recovery` scores a same-path retry TRAJECTORY for the `editor` tool, not whether the fix is
+  RIGHT. There is no shape or quality scorer for `editor` at all.
 - The optional LLM judge is ADVISORY, never a gate signal (see below).
 - `--min-diff-minimality` has never produced a build-failing verdict on any real captured trace
   shipped in this repository, at any threshold.
 
-## The diff scorers grade `apply_patch` only
+## The diff scorers grade `apply_patch` only, and most sessions no longer use it
 
-The three diff scorers grade Cline's `apply_patch` grammar. On a trace that edits with `write_to_file` or
-`replace_in_file` instead (common in the VS Code extension), `diff_coherence` reports a hard `0/100` and
-`diff_minimality` / `apply_recovery` abstain (`n/a`). That is honest, not a bug: a `write_to_file` /
-`replace_in_file` diff-grammar scorer is on the roadmap, not shipped. `tool_selection` still scores those
-tools (both families are in the pinned vocabulary).
+The three diff scorers grade Cline's `apply_patch` grammar. On a trace that edits with `editor`,
+`write_to_file` or `replace_in_file` instead, `diff_coherence` reports a hard `0/100` and
+`diff_minimality` / `apply_recovery` abstain (`n/a`). That is honest, not a bug, but it is now the common
+case rather than the exception. Verified at cline/cline commit
+`4f836ae7d0ed29ece7ef4a2a478deb470fdd056e`: all five tool presets set `enableApplyPatch: false`
+(`sdk/packages/core/src/extensions/tools/presets.ts` lines 30, 50, 68, 85, 103), and only two routing
+rules flip a session back to `apply_patch` (`model-tool-routing.ts` lines 60-75), both requiring `act`
+mode plus either an `openai-native` provider or a model id containing `codex` or `gpt`. Everything else
+gets `editor`, and the two tools are mutually exclusive (`definitions.ts` lines 935-939).
+
+`editor_recovery` covers the trajectory half of that gap. A `write_to_file` / `replace_in_file`
+diff-grammar scorer, and any shape scorer for `editor`, are on the roadmap and not shipped.
+`tool_selection` still scores all these tools (every family is in the pinned vocabulary).
+
+**`editor_recovery` is report-only in this release.** It renders in the `clinescope` report and feeds
+`--advice`, but `clinescope-gate`, `python -m clinescope.compare` and `clinescope-corpus` do not read it
+yet: the gate still exposes only `--min-diff-coherence`, `--min-diff-minimality` and
+`--min-apply-recovery`. So on an editor-only session the gate has no usable signal at all, because
+`diff_minimality` and `apply_recovery` both abstain and `diff_coherence` contributes a hard zero that
+reflects the absent `apply_patch` rather than anything the agent did. Do not gate CI on an editor-only
+trace today.
 
 ## The LLM judge is advisory-only (kept out of the gate)
 
