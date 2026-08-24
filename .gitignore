@@ -32,6 +32,16 @@ artifacts/
 # --- Machine/workflow state (skills read this back) ---
 .planning/
 
+# --- Claude Code project harness ---
+# .claude/rules/ is COMMITTED: those files are this project's operating contract and a
+# fresh clone needs them. Everything else under .claude/ is per-machine state (local
+# settings, agent scratch, worktree bookkeeping) and must never be committed.
+#
+# The first line is `.claude/*`, not `.claude/`. Excluding the directory itself stops git
+# descending into it, and the negation below would then silently do nothing.
+.claude/*
+!.claude/rules/
+
 # Windows folder settings
 desktop.ini
 
