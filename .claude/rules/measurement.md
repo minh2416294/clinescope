@@ -196,6 +196,18 @@ Set 2026-08-24. Each carries its reasoning so a future revision has something to
 | Spike hold before it may be cited | 60 days | The measured promotional effect of purchased stars runs under two months, so a shorter hold cannot distinguish promotion from adoption. |
 | Pull-classification downgrade timer | 14 days | Long enough for a busy person to come back unprompted, short enough that the classification does not drift on optimism. |
 | Abstention rate that makes a scorer suspect | above 50 percent of real traces | Past half, the scorer is silent more often than not on what people actually have, which is the condition that produced `editor_recovery`. |
+| Spike-revert window that disqualifies a spike | 48 hours | One business day either side of a spike. Adoption that arrives and leaves inside that window was an event, not a change in behaviour. |
+| Slope comparison window after a spike | 14 days | Long enough for a referral tail to show up, short enough to still be attributable to the spike rather than to whatever came next. |
+| Post-log lookback when a number moves | 7 days | Covers the week a post, release or comment would plausibly still be driving traffic. |
+
+**Every number that sets a bar appears in this table, including the ones embedded in the procedures
+above.** A number hiding inside a procedure is still a number that can rot, and the first version of
+this file left three of them undated. If you add a bar-setting number to a procedure, add a row here
+in the same edit.
+
+Figures quoted from sources are not thresholds and are not revisable: the 36.7 percent star-usage
+ceiling, the 0.47 and 0.14 correlations, Kite's 500,000, and this project's own 76-download day are
+measurements, not bars. They do not belong in this table and are not subject to the hard rule.
 
 **None of these has ever been evaluated against real data**, because there is no real data. That
 is the condition under which they are legitimately settable. Once a measurement window opens,
