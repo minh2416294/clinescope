@@ -18,8 +18,11 @@ Two classes of statement live here and they are governed differently.
 
 > **A threshold may not be revised after I have seen the data it would judge.**
 >
-> Revising it *before* new data arrives is calibration. Revising it *after* is **moving the
-> goalposts**, and this framework says so in those words so that the temptation has a name.
+> Revising it *before* new data arrives is calibration.
+> Revising it *after* is moving the goalposts.
+>
+> That phrase sits on one line, unbroken and unformatted, so a grep can find it. A rule you
+> cannot mechanically check for is a rule that quietly stops applying.
 
 If a threshold looks wrong once the data is in, the honest move is to record that it was wrong,
 report the result against it anyway, and set the next one before the next measurement window
