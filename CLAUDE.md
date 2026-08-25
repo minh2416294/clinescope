@@ -223,6 +223,25 @@ Conventional commit subjects. Branches are short kebab-case, for example
 README, CHANGELOG or CLAUDE.md update land separately. Drift is a latency problem, and
 same-commit leaves no window for a stale claim to survive in.
 
+**Every action in `.github/workflows/` is pinned to a full commit SHA**, with the readable
+version kept in a trailing comment (`uses: actions/checkout@<sha> # v7`). A tag or a branch is
+mutable, so an upstream repoint would run new code inside the release workflow, where the build
+job hands `dist/` to the publish job that holds `id-token: write`. Keep the comment: it is the
+form Dependabot reads. Note the trade this makes, so it is not discovered later: Dependabot still
+opens version-update PRs for a SHA-pinned action, but it does **not** raise vulnerability alerts
+for one ("Dependabot only creates alerts for vulnerable actions that use semantic versioning and
+will not create alerts for actions pinned to SHA values").
+
+## Run the security scan after every release or major update
+
+`/claude-security`, then Scan codebase, then the whole repository. It writes a timestamped
+`CLAUDE-SECURITY-<ts>/` directory carrying its own `.gitignore`, so nothing in it reaches a
+commit. Scans are nondeterministic: two scans of the same code can surface different findings, so
+a clean run is evidence about that run and not proof the code is safe. It complements code review
+and the three required checks; it does not replace either. Pair it with a read of the workflow
+files and the exit-code contract by hand: the scan is strong on taint chains through code and
+weak on contracts, which is where the Day 56 review found three findings it did not return.
+
 ## Layout
 
 ```

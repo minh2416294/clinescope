@@ -86,6 +86,22 @@ All notable changes to Clinescope are recorded here. The format follows
   append whose `old_text` and `new_text` share a three-line leading run, so a
   definition that counted edge runs would have flagged a correct edit.
 
+### Security
+
+- Every GitHub Action is now referenced by a full 40-character commit SHA instead of
+  a mutable tag or branch, with the readable version kept in a trailing comment.
+  Seven references moved: five in `release.yml` and two in `ci.yml`. This closes the
+  path where an upstream tag is repointed and new code runs inside the release
+  workflow. The build job matters as much as the publish job even though only the
+  latter holds `id-token: write`: build hands `dist/` to publish through artifact
+  upload and download, so a compromised build action can alter the wheel before the
+  authenticated upload happens.
+- The trade this makes, recorded rather than discovered later: Dependabot continues
+  to open version-update PRs for a SHA-pinned action, but it does not raise
+  vulnerability alerts for one. Expect more update PRs too, since a moving major tag
+  such as `@v7` silently absorbs a patch release while a pinned SHA does not.
+- No package behaviour changed. No scorer, score, exit code or public type moved.
+
 ## [1.2.1] - 2026-08-20
 
 Corrections to what this tool claims to measure, and the disclosures that were
