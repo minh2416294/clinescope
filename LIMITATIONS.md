@@ -151,6 +151,20 @@ floor, the judge is treated as advisory-only and is deliberately kept out of the
 confusion matrix, and how to reproduce it with no model call are in
 [`docs/judge-validation.md`](docs/judge-validation.md).
 
+**`--base-url` points the judge's own request wherever you tell it to.** It defaults to
+`http://localhost:11434` and exists so that pointing the judge at a different endpoint, including a
+paid one, is a flag rather than a code change. It is operator input from your own command line, not
+anything read out of a trace, so nothing in a trace can redirect it. Pass an address you trust: the
+patch text being judged is sent there. This is the only outbound network call the package makes, it
+is opt-in, and no gated code path reaches it.
+
+**The judge reads a verdict only from the last non-empty line of the model's answer.** Patch text is
+trace content and is interpolated into the prompt without a delimiter, so a trace can attempt to steer
+the model's output. Requiring the sentinel to be the model's actual last word means a steered verdict
+buried mid-answer raises an error instead of silently becoming the label. The patch text itself is not
+yet fenced inside the prompt; doing so changes what the model is asked and would invalidate the cached
+verdicts behind the figure above, so it waits for a run that can recompute them.
+
 That is only half the picture. The next section covers the scorer that stayed in the gate.
 
 ## The gated `diff_minimality` flag is weaker than it looks
