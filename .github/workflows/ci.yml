@@ -38,10 +38,17 @@ jobs:
       # Dogfooding: this project's own CI runs the gate it ships. Both directions are
       # asserted, because a step that only ever expects exit 0 would still pass if the
       # gate stopped failing anything at all.
+      #
+      # The negative case asserts the EXACT code, not merely "did not pass". Exit 2 is
+      # the gate's usage error, which it also returns for a missing file or a trace
+      # with no apply_patch, so a looser `if ! gate ...` check would keep passing if
+      # this trace were renamed or lost its patch. That would leave CI green while
+      # testing nothing, which is the failure this step exists to prevent.
       - name: Dogfood clinescope-gate on committed traces
         run: |
           clinescope-gate examples/apply-patch-trace.json --min-diff-coherence 0.75 --min-diff-minimality 0.75
-          if clinescope-gate examples/gate-regression-badpatch.json --min-diff-coherence 1.0; then
-            echo "expected exit 1 on the regression trace, got a pass"
-            exit 1
-          fi
+          set +e
+          clinescope-gate examples/gate-regression-badpatch.json --min-diff-coherence 1.0
+          code=$?
+          set -e
+          test "$code" -eq 1 || { echo "expected exit 1 on the regression trace, got $code"; exit 1; }

@@ -17,6 +17,8 @@ exactly the non-printable set), NOT copied from what this module happens to emit
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from clinescope.apply_recovery import ApplyRecoveryScore
 from clinescope.render_safety import quote_untrusted_text
 from clinescope.report import render_report
@@ -123,6 +125,27 @@ def test_hostile_session_id_cannot_repaint_the_report() -> None:
     )
     assert "\x1b" not in report
     assert "\r" not in report
+
+
+def test_hostile_extension_task_id_cannot_repaint_the_header() -> None:
+    # The taskId is a directory name off disk, which on a POSIX host may contain
+    # anything. _extension_label becomes the report header, the first line printed, so
+    # this is the strongest position an escape sequence can occupy. Missed on the first
+    # pass here, when only the title was neutralized.
+    from clinescope.__main__ import _extension_label, _picker_line
+    from clinescope.extension_discovery import ExtensionSession
+
+    session = ExtensionSession(
+        task_id=f"{_ERASE_LINE}task-1",
+        task_dir=Path("."),
+        api_history_path=Path("."),
+        variant="Code",
+        title="a title",
+        timestamp_ms=None,
+    )
+    for rendered in (_extension_label(session), _picker_line(session)):
+        assert "\x1b" not in rendered
+        assert "\r" not in rendered
 
 
 def test_hostile_tool_name_cannot_repaint_the_verbose_dump() -> None:
