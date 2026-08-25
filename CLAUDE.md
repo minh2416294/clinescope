@@ -57,6 +57,13 @@ silent and `editor_recovery` is the one that produces a number.
 report `n/a`. Reporting an abstention as a zero is a specific, recurring error in this repo's
 history. Before writing any sentence about what a trace scores, run the tool on it.
 
+**The report and the gate read that hard zero differently, on purpose.** The report keeps
+showing `diff_coherence 0/100` with its reason, because a missing artifact should be loud.
+`clinescope-gate` treats a trace with no `apply_patch` as not applicable to the whole
+apply_patch family and exits `2` ("nothing was verified") instead of `1` ("a scorer
+regressed"). It decides that on `apply_patch_call_count`, not on the score, so a malformed
+patch that really is present still fails the build.
+
 ## The honesty rule (binds every word written about this project)
 
 Never describe clinescope as having users, traction, or a working judge it does not have.
@@ -254,6 +261,7 @@ src/clinescope/        the package
   apply_recovery.py    scorer
   editor_recovery.py   scorer
   report.py            rendering
+  render_safety.py     escapes trace-derived text before it is rendered
   advice.py            rule-based zero-LLM coach
   gate.py              clinescope-gate CLI
   corpus.py            clinescope-corpus CLI
@@ -265,6 +273,13 @@ tests/
 ```
 
 `examples/` and `gold/` are **frozen contracts**. Do not regenerate or reformat them.
+
+**A trace is untrusted input.** The bug-report template asks a reporter to paste one, so
+any string lifted out of a trace (a `sessionId`, a path, a tool name, an extension task
+title) is chosen by whoever wrote it. Route every such value through
+`render_safety.quote_untrusted_text` at the point it is read, not at the join: scorer-built
+violation strings already escape their own paths with `!r`, so neutralizing a joined line
+would escape it twice. Values the operator typed, such as `--expected` names, are left alone.
 
 ## Known limits
 

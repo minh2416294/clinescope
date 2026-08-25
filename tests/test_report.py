@@ -44,7 +44,8 @@ def test_report_verbose_contains_score_1_and_matched_tool() -> None:
     assert "matched:        read_files" in report
     assert "missing:        -" in report
     assert "unexpected:     -" in report
-    assert "sessionId:      fixture-success-01" in report
+    # Quoted because the id is trace content and is neutralized before display.
+    assert "sessionId:      'fixture-success-01'" in report
     assert "trace.version:  1" in report
 
 
@@ -88,7 +89,7 @@ def test_summary_is_the_default_and_hides_the_dump() -> None:
     report = render_report(trace, score, session_id="s1")
 
     # The scannable header + the one-line tool_selection summary are present...
-    assert "clinescope report - session s1 (1 tool calls)" in report
+    assert "clinescope report - session 's1' (1 tool calls)" in report
     assert "tool_selection  100/100  PASS" in report
     # ...and NONE of the verbose dump leaks into the default.
     assert "=== clinescope report ===" not in report
@@ -291,7 +292,7 @@ def test_advice_true_on_a_failing_scorer_appends_the_advice_block() -> None:
     report = render_report(trace, score, session_id="s1", advice=True)
 
     lines = report.splitlines()
-    assert lines[0] == "clinescope report - session s1 (1 tool calls)"
+    assert lines[0] == "clinescope report - session 's1' (1 tool calls)"
     assert "advice (how to improve the agent):" in report
     assert "  [tool_selection] missing_tools" in report
     assert "    - The agent never called: apply_patch." in report
@@ -340,7 +341,8 @@ def test_report_verbose_on_real_golden_fixture_end_to_end() -> None:
 
     assert "score:          1.0000" in report
     assert "matched:        read_files" in report
-    assert "sessionId:      fixture-success-01" in report
+    # Quoted because the id is trace content and is neutralized before display.
+    assert "sessionId:      'fixture-success-01'" in report
     assert "trace.version:  1" in report
     assert "turns:          4" in report
     assert "tool_calls:     1" in report
@@ -358,7 +360,7 @@ def test_cli_main_verbose_reads_session_id_and_prints_dump(
 
     assert exit_code == 0
     out = capsys.readouterr().out
-    assert "sessionId:      fixture-success-01" in out
+    assert "sessionId:      'fixture-success-01'" in out
     assert "score:          1.0000" in out
     assert "matched:        read_files" in out
 
@@ -373,7 +375,7 @@ def test_cli_main_default_prints_summary_not_dump(
 
     assert exit_code == 0
     out = capsys.readouterr().out
-    assert "clinescope report - session fixture-success-01" in out
+    assert "clinescope report - session 'fixture-success-01'" in out
     assert "tool_selection  100/100  PASS" in out
     assert "[tool_selection]" not in out
 

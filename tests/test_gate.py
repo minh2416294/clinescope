@@ -30,6 +30,9 @@ EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
 BASELINE = EXAMPLES / "apply-patch-trace.json"
 RECOVERY_REGRESSION = EXAMPLES / "live-gpt-oss-apply-fail.json"
 COHERENCE_REGRESSION = EXAMPLES / "gate-regression-badpatch.json"
+# A real captured session that edits with `editor` and never calls apply_patch, which
+# is what almost every current Cline session looks like.
+EDITOR_ONLY = EXAMPLES / "live-granite-editor-recovery.json"
 GATE_SOURCE = Path(__file__).resolve().parent.parent / "src" / "clinescope" / "gate.py"
 
 
@@ -311,6 +314,58 @@ def test_main_all_abstained_on_real_trace_is_exit_2(
     assert "abstain" in text.lower() or "nothing" in text.lower()
 
 
+# --- absence is not a regression -------------------------------------------
+# Almost no current Cline session emits apply_patch, so the common trace has none at
+# all. diff_coherence hard-zeros on one by design, and that 0.0 used to count as a
+# graded result: the gate then exited 1, "at least one gated scorer scored below its
+# threshold", for a scorer that never graded anything. The module docstring's contract
+# says exit 2 covers "every gated scorer abstained on this trace (nothing was
+# verified)", and on a trace with no apply_patch that is the true statement.
+
+
+@pytest.mark.skipif(
+    not EDITOR_ONLY.exists(), reason="real editor-only trace not present"
+)
+def test_main_no_apply_patch_is_exit_2_not_a_regression(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = main([str(EDITOR_ONLY), "--min-diff-coherence", "0.75"])
+    assert exit_code == 2
+    combined = capsys.readouterr()
+    text = combined.out + combined.err
+    assert "SKIP" in text
+    assert "FAIL" not in text
+
+
+@pytest.mark.skipif(
+    not EDITOR_ONLY.exists(), reason="real editor-only trace not present"
+)
+def test_main_no_apply_patch_stays_exit_2_alongside_the_abstainers() -> None:
+    # The case that made this a defect rather than a quirk: adding
+    # --min-diff-coherence to a config used to convert an honest exit 2 into exit 1.
+    exit_code = main(
+        [
+            str(EDITOR_ONLY),
+            "--min-diff-coherence",
+            "0.75",
+            "--min-diff-minimality",
+            "0.75",
+            "--min-apply-recovery",
+            "0.75",
+        ]
+    )
+    assert exit_code == 2
+
+
+def test_malformed_patch_still_fails_the_gate() -> None:
+    # The guard keys on "no apply_patch call", NOT on a zero score, so every genuine
+    # malformed-patch failure keeps failing. A patch IS present here; it is just wrong.
+    trace = _trace_with_apply_patch("*** Begin Patch\nnonsense\n*** End Patch")
+    report = run_gate(trace, {"diff_coherence": 0.75})
+    assert report.exit_code == 1
+    assert report.all_abstained is False
+
+
 # --- the load-bearing constraint: the gate NEVER touches the judge ----------
 
 
@@ -318,8 +373,12 @@ def test_gate_module_imports_no_judge_or_gold_modules() -> None:
     """AST-prove gate.py imports none of the judge-arc modules.
 
     The gate must read ONLY the deterministic scorers -- the LLM judge is
-    advisory-only (kappa=0.24 fired the advisory tripwire), so gating on it
-    would contradict the very finding criterion 3 produced.
+    advisory-only (Cohen's kappa 0.0496, 95% CI [-0.1200, 0.2175], N=50, an interval
+    that includes zero and fires the advisory tripwire), so gating on it would
+    contradict the very finding criterion 3 produced. The figure this docstring used
+    to cite, 0.24, is the RETRACTED one from the earlier and smaller N=26 gold set,
+    which was NOT-WASTEFUL-heavy and flattered a biased judge; ``gate.py`` says to
+    cite only the N=50 number.
     """
     tree = ast.parse(GATE_SOURCE.read_text(encoding="utf-8"))
     forbidden = {"judge", "judge_run", "agreement", "gold", "label_gold"}

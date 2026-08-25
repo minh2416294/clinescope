@@ -442,7 +442,8 @@ def test_report_shows_recovered_by_line() -> None:
     )
 
     assert "recovered_by:" in report
-    assert "src/auth.py @ call 0->1" in report
+    # Quoted: the path is trace content, neutralized before it reaches a terminal.
+    assert "'src/auth.py' @ call 0->1" in report
 
 
 def test_earlier_success_does_not_recover_later_failure() -> None:

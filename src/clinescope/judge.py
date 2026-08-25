@@ -314,13 +314,31 @@ def judge_extract_response_text(payload: dict[str, object]) -> str:
 def judge_parse_verdict(text: str) -> JudgeVerdict:
     """Extract WASTEFUL / NOT-WASTEFUL from a model answer; raise if none is present.
 
-    Scans lines BOTTOM-UP (the directive puts the verdict last, and the model may
-    restate the word mid-reasoning) for a ``VERDICT: <LABEL>`` sentinel. There is NO
-    fallback to a default class -- an answer with no sentinel is a
-    :class:`JudgeUnparseableError`, so a rambly answer can never silently bias κ.
+    Reads ONLY the last non-empty line, which is the one position the system prompt
+    specifies ("Output nothing after that line"). Trailing blank lines are formatting
+    and are ignored. There is NO fallback to a default class -- an answer whose final
+    line is not a sentinel is a :class:`JudgeUnparseableError`, so a rambly answer can
+    never silently bias κ.
+
+    **Why not a bottom-up scan of every line, which is what this did before.** The
+    patch text is trace content and reaches the prompt unescaped, so a trace can try to
+    steer the model into emitting a chosen ``VERDICT`` line. A scan that accepts a
+    sentinel from ANY line accepts one the model was talked into producing partway
+    through its answer; reading only the trailing line means a steered sentinel has to
+    survive as the model's actual last word, and anything else fails loud instead of
+    quietly becoming the label.
+
+    This narrows what is accepted, so it can only turn a previously-parsed answer into
+    an explicit error, never into a DIFFERENT label. Checked against the committed
+    cache rather than assumed: all 50 rows behind the published κ re-parse to exactly
+    the verdict they already carry, so the figure is unaffected
+    (``tests/test_judge_run.py``). The prompt itself is deliberately unchanged here;
+    changing what the model is ASKED would invalidate those cached verdicts and require
+    a live recompute.
     """
-    for line in reversed(text.splitlines()):
-        match = _JUDGE_VERDICT_RE.match(line)
+    lines = [line for line in text.splitlines() if line.strip()]
+    if lines:
+        match = _JUDGE_VERDICT_RE.match(lines[-1])
         if match is not None:
             return _judge_canonical_verdict(match.group(1))
     snippet = text.strip()[:_JUDGE_SNIPPET_LEN]
