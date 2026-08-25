@@ -31,6 +31,23 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Changed
 
+- `clinescope-gate` no longer reports a regression on a trace it never scored. A trace
+  with no `apply_patch` is now treated as not applicable to the whole apply_patch
+  family, so the gate exits `2` ("nothing was verified") instead of `1` ("a scorer
+  regressed"). Previously `diff_coherence` contributed a hard zero reflecting the
+  absent patch rather than anything the agent did, so adding `--min-diff-coherence` to
+  a configuration converted an honest exit `2` into a build failure. Almost no current
+  Cline session emits `apply_patch`, so this was the common case, not an edge one.
+  **If you gate CI on `--min-diff-coherence` against a current-format trace, that job
+  changes from red to a usage error.** That is the point: it verified nothing either
+  way. A malformed patch still fails, because the gate keys on whether a patch was
+  present rather than on whether the score was zero.
+- The rejected alternative, recorded so it is not silently retried: making
+  `DiffCoherenceScore.score` a `float | None` so the scorer itself abstains. It would
+  fix the meaning everywhere rather than only at the gate, but it reverses a decision
+  the scorer defends deliberately, changes a public dataclass field type on a
+  published package, and requires editing the frozen corpus profile, which pins
+  `0/100` and a `malformed_patch` label for both no-`apply_patch` traces.
 - The `"success"`-JSON verdict oracle moved out of `apply_recovery` into a shared
   `clinescope.tool_verdict`, because `editor_recovery` resolves a verdict the same
   way. Behaviour is unchanged; the existing `apply_recovery` tests pass against the

@@ -57,6 +57,13 @@ silent and `editor_recovery` is the one that produces a number.
 report `n/a`. Reporting an abstention as a zero is a specific, recurring error in this repo's
 history. Before writing any sentence about what a trace scores, run the tool on it.
 
+**The report and the gate read that hard zero differently, on purpose.** The report keeps
+showing `diff_coherence 0/100` with its reason, because a missing artifact should be loud.
+`clinescope-gate` treats a trace with no `apply_patch` as not applicable to the whole
+apply_patch family and exits `2` ("nothing was verified") instead of `1` ("a scorer
+regressed"). It decides that on `apply_patch_call_count`, not on the score, so a malformed
+patch that really is present still fails the build.
+
 ## The honesty rule (binds every word written about this project)
 
 Never describe clinescope as having users, traction, or a working judge it does not have.

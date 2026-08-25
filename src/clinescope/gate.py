@@ -48,10 +48,22 @@ carries the full finding.
   and :class:`ApplyRecoveryScore` return ``score is None`` when the metric is
   undefined for the trace (no ``apply_patch`` / nothing failed). ``None`` is not
   ``0.0`` -- it cannot pass or fail a threshold, so it is reported "not gated
-  (n/a)" and excluded from the verdict. (:class:`DiffCoherenceScore` never
-  abstains: its ``score`` is always a ``float``, a missing ``apply_patch`` being
-  a hard ``0.0``.) If EVERY gated scorer abstains, that is the loud exit ``2``
-  above -- never a silent pass.
+  (n/a)" and excluded from the verdict. If EVERY gated scorer abstains, that is
+  the loud exit ``2`` above -- never a silent pass.
+* **A trace with no ``apply_patch`` is NOT APPLICABLE to the whole apply_patch
+  family, including :class:`DiffCoherenceScore`.** That scorer cannot abstain --
+  its ``score`` is typed ``float`` and a missing ``apply_patch`` is a deliberate
+  hard ``0.0`` (``diff_coherence`` states why: the artifact it was asked to grade
+  is absent, so failing loud beats a vacuous ``1.0``). That is the right answer
+  for a REPORT and the wrong one for a GATE, where ``0.0`` is indistinguishable
+  from a patch that really did score badly, and exit ``1`` would claim a scorer
+  regressed on a trace nothing graded. So the GATE reads
+  ``apply_patch_call_count`` and treats a count of ``0`` as not applicable, which
+  makes all three apply_patch-family scorers agree at this boundary instead of
+  carving one out. Keying on the COUNT and not on the score is what keeps every
+  genuine malformed-patch failure failing: a bad input shape, empty patch text,
+  unbalanced sentinels and a sub-threshold score all carry a count of at least 1.
+  This matters because almost no current Cline session emits ``apply_patch``.
 
 Pure except for :func:`main` (which parses argv, loads the file, and prints):
 :func:`run_gate` and :func:`render_gate_report` do no I/O.
@@ -163,7 +175,28 @@ def run_gate(trace: Trace, thresholds: dict[str, float]) -> GateReport:
 
 
 def _gate_score_value(score: object) -> float | None:
-    """Read ``.score`` off a scorer value object (``float`` or ``float | None``)."""
+    """Read the gateable score off a scorer value object.
+
+    ``None`` means "this scorer did not apply to this trace"; :func:`_gate_verdict`
+    turns that into ``skip`` and :func:`run_gate` leaves it out of the verdict. A
+    scorer says that in one of two ways, and the second is the one worth explaining.
+
+    ``diff_minimality`` and ``apply_recovery`` return ``score is None`` themselves.
+    ``diff_coherence`` cannot, because its ``score`` is typed ``float``. Its hard
+    ``0.0`` on a trace with no ``apply_patch`` is deliberate and stays: for a report,
+    a missing artifact should read as a loud zero rather than a vacuous 1.0. For a
+    GATE it is ambiguous, and the ambiguity is the defect: ``0.0`` from an absent
+    patch and ``0.0`` from a genuinely broken one produce the same build-failing
+    exit 1, so CI reports "a scorer regressed" about a trace nothing graded.
+
+    ``apply_patch_call_count`` resolves it and is already public on all three
+    apply_patch-family results, so no type changes and no new field. Keying on the
+    COUNT rather than on the score is deliberate: a bad input shape, empty patch text,
+    unbalanced sentinels and a real sub-threshold score all carry a count of at least
+    one, so every genuine malformed-patch failure still fails.
+    """
+    if getattr(score, "apply_patch_call_count", None) == 0:
+        return None
     value = getattr(score, "score", None)
     if value is None or isinstance(value, float):
         return value

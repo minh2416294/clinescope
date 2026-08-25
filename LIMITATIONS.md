@@ -125,10 +125,21 @@ diff-grammar scorer, and any shape scorer for `editor`, are on the roadmap and n
 **`editor_recovery` is report-only in this release.** It renders in the `clinescope` report and feeds
 `--advice`, but `clinescope-gate`, `python -m clinescope.compare` and `clinescope-corpus` do not read it
 yet: the gate still exposes only `--min-diff-coherence`, `--min-diff-minimality` and
-`--min-apply-recovery`. So on an editor-only session the gate has no usable signal at all, because
-`diff_minimality` and `apply_recovery` both abstain and `diff_coherence` contributes a hard zero that
-reflects the absent `apply_patch` rather than anything the agent did. Do not gate CI on an editor-only
-trace today.
+`--min-apply-recovery`. So on an editor-only session the gate has no usable signal at all, because all
+three of those scorers grade `apply_patch` and the trace contains none.
+
+**The gate now says that honestly instead of failing the build.** It exits `2`, the "nothing was
+verified" code, rather than `1`, "a scorer regressed". Previously `diff_coherence` contributed a hard
+zero reflecting the absent `apply_patch` rather than anything the agent did, and adding
+`--min-diff-coherence` to a configuration turned an honest exit `2` into a build failure. The gate now
+reads `apply_patch_call_count` and treats a trace with no `apply_patch` as not applicable to the whole
+apply_patch family. A malformed patch still fails: the check is on whether a patch was present, not on
+whether the score was zero.
+
+The report is unchanged and still shows `diff_coherence 0/100` on such a trace, with the reason beside
+it. That is the honest reading for a report, where a missing artifact should be loud rather than
+silent, and the gate is the place where the distinction had to be made. **Gating CI on an editor-only
+trace still verifies nothing**; the difference is that it now tells you so instead of blaming the agent.
 
 ## The LLM judge is advisory-only (kept out of the gate)
 
