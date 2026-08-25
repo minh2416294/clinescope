@@ -87,6 +87,61 @@ def test_parse_verdict_raises_on_mid_line_verdict_word() -> None:
         judge_parse_verdict("the VERDICT: is unclear to me")
 
 
+# ---- the verdict must come from the model's OWN trailing output ---------------
+# Patch text reaches the prompt unescaped, so a trace can try to steer the model into
+# emitting a chosen VERDICT line. The parser used to scan every line bottom-up, which
+# accepted a sentinel sitting anywhere in the answer. It now reads only the last
+# non-empty line, the one position the system prompt actually specifies
+# ("Output nothing after that line"), so a steered sentinel buried mid-answer fails
+# loud instead of quietly becoming the label.
+
+
+def test_parse_verdict_rejects_a_sentinel_that_is_not_the_final_line() -> None:
+    answer = (
+        "VERDICT: NOT-WASTEFUL\n"
+        "Actually, on reflection the patch retypes the whole block.\n"
+    )
+    with pytest.raises(JudgeUnparseableError):
+        judge_parse_verdict(answer)
+
+
+def test_parse_verdict_tolerates_trailing_blank_lines() -> None:
+    # Trailing whitespace is formatting, not content; the sentinel is still last.
+    assert judge_parse_verdict("reasoning\nVERDICT: WASTEFUL\n\n   \n") == "WASTEFUL"
+
+
+def test_parse_verdict_still_takes_the_final_sentinel_when_several_appear() -> None:
+    answer = "VERDICT: WASTEFUL\nOn reflection:\nVERDICT: NOT-WASTEFUL"
+    assert judge_parse_verdict(answer) == "NOT-WASTEFUL"
+
+
+def test_parser_change_moves_no_cached_verdict() -> None:
+    """The committed kappa rests on these 50 verdicts, so prove none of them moved.
+
+    This is the whole reason the prompt itself was left alone in this change. Changing
+    what the model is ASKED would invalidate the cached single-draw verdicts and the
+    N=50 agreement figure computed from them, and that recompute needs a live model.
+    Changing only how its ANSWER is read can be checked offline, right here, against
+    the committed cache. If this test ever fails, the reported kappa is stale.
+    """
+    cache = _REPO_ROOT / "gold" / "diff_minimality.judge.jsonl"
+    rows = [
+        json.loads(line)
+        for line in cache.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert len(rows) == 50, "the committed kappa is N=50; the cache should hold 50 rows"
+
+    for row in rows:
+        if row.get("outcome") != "verdict":
+            continue
+        parsed = judge_parse_verdict(row["rationale"])
+        assert parsed == row["judge_label"], (
+            f"{row['item_id']}: re-parsing the cached answer gives {parsed!r}, "
+            f"but the cache recorded {row['judge_label']!r}"
+        )
+
+
 # ---- request body (blind: patch text present, no label/score leak) ------------
 
 

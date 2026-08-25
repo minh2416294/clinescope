@@ -135,6 +135,24 @@ All notable changes to Clinescope are recorded here. The format follows
   header reads `session 'abc-123'` and a Windows path reads `'C:\\work\\calc.py'`.
   Scores, verdicts and exit codes are unchanged. This matches how the recovery
   scorers have always rendered paths inside their violation strings.
+- The advisory judge now accepts a `VERDICT:` line only as the last non-empty line of
+  the model's answer, which is the one position its own instructions specify. It used
+  to scan every line bottom-up, so a sentinel sitting anywhere in the answer counted.
+  Patch text reaches the prompt unescaped, so a trace can try to steer the model into
+  emitting a chosen verdict; requiring it to be the model's actual last word means
+  anything else now fails loud rather than quietly becoming the label. The judge was
+  already advisory-only and pinned out of the gate at the AST level, so no pass/fail
+  signal was ever reachable this way.
+- **The published agreement figure is unaffected, and this was measured rather than
+  assumed.** All 50 rows behind it re-parse to exactly the verdict they already
+  carried, so Cohen's kappa stays 0.0496, 95% CI [-0.1200, 0.2175], N=50. A test pins
+  that, and it fails if the figure ever goes stale.
+- **Not done here, deliberately:** the patch text is still interpolated into the judge
+  prompt without a delimiter. Fencing it changes what the model is asked, which
+  invalidates the cached single-draw verdicts and the agreement figure computed from
+  them, and recomputing needs a live model. Shipping a prompt change while continuing
+  to quote the old number is exactly the failure this project's rules exist to
+  prevent, so the prompt is left alone until the recompute can ride the same commit.
 
 ## [1.2.1] - 2026-08-20
 
