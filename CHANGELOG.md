@@ -135,24 +135,38 @@ All notable changes to Clinescope are recorded here. The format follows
   header reads `session 'abc-123'` and a Windows path reads `'C:\\work\\calc.py'`.
   Scores, verdicts and exit codes are unchanged. This matches how the recovery
   scorers have always rendered paths inside their violation strings.
-- The advisory judge now accepts a `VERDICT:` line only as the last non-empty line of
-  the model's answer, which is the one position its own instructions specify. It used
-  to scan every line bottom-up, so a sentinel sitting anywhere in the answer counted.
-  Patch text reaches the prompt unescaped, so a trace can try to steer the model into
-  emitting a chosen verdict; requiring it to be the model's actual last word means
-  anything else now fails loud rather than quietly becoming the label. The judge was
-  already advisory-only and pinned out of the gate at the AST level, so no pass/fail
-  signal was ever reachable this way.
-- **The published agreement figure is unaffected, and this was measured rather than
-  assumed.** All 50 rows behind it re-parse to exactly the verdict they already
-  carried, so Cohen's kappa stays 0.0496, 95% CI [-0.1200, 0.2175], N=50. A test pins
-  that, and it fails if the figure ever goes stale.
-- **Not done here, deliberately:** the patch text is still interpolated into the judge
-  prompt without a delimiter. Fencing it changes what the model is asked, which
-  invalidates the cached single-draw verdicts and the agreement figure computed from
-  them, and recomputing needs a live model. Shipping a prompt change while continuing
-  to quote the old number is exactly the failure this project's rules exist to
-  prevent, so the prompt is left alone until the recompute can ride the same commit.
+- The advisory judge now treats the patch text it is given as untrusted on both sides
+  of the model call. Patch text comes from a trace, so whoever wrote the trace chose
+  it. On the way out, a `VERDICT:` line is accepted only as the last non-empty line of
+  the answer, the one position the judge's own instructions specify; it used to scan
+  every line bottom-up, so a sentinel sitting anywhere in the answer counted. On the
+  way in, the patch is fenced between a `<<<BEGIN PATCH <tag>>>` line and a
+  `<<<END PATCH <tag>>>` line whose tag is a sha256 prefix of the patch itself, and the
+  system prompt states that the fenced region is data rather than instruction. The tag
+  is derived from the content so that emitting a byte-identical closing marker would
+  mean writing the patch's own digest into the patch, which changes the digest: a
+  64-bit fixed-point search, not a preimage attack on sha256. Previously the patch was
+  interpolated with no delimiter at all. The fence is honoured by the model rather than
+  enforced by code, so an unforgeable tag is necessary and not sufficient; it raises
+  the cost of steering an advisory label rather than guaranteeing anything.
+- **This is a measurement-integrity change, not a security fix.** The judge is
+  advisory-only and pinned out of `clinescope-gate` at the AST level, so no pass/fail
+  signal was ever reachable this way. What a steered verdict could reach is the
+  published agreement figure.
+- **The agreement figure moved, and both numbers are published rather than the old one
+  being replaced.** Fencing changes what the model is asked, which invalidates every
+  cached verdict, so all 50 were recomputed against a live `gpt-oss:20b` in this same
+  change. Cohen's kappa went from **0.0496, 95% CI [-0.1200, 0.2175]** to **0.0433,
+  95% CI [0.0000, 0.1503]**, N=50 both times, with 0 unparseable and 0 errors. Recall
+  of human-WASTEFUL patches fell from 3 of 24 to 1 of 24.
+- **Do not read the new interval as an improvement.** It stops at zero instead of going
+  negative because the judge answered WASTEFUL exactly once in fifty; a bootstrap
+  resample that omits that single item scores exactly zero, and 36% of resamples do.
+  The bound reflects the judge answering almost one class, not a signal.
+- **The difference is not attributed to the fence.** Each figure is one draw, and this
+  model flips labels run-to-run at temperature 0. A gap of 0.0063 sits inside that
+  noise. Both runs agree on the finding that matters: the judge is at chance and is
+  heavily biased toward calling patches fine, so it stays out of the gate.
 
 ## [1.2.1] - 2026-08-20
 
