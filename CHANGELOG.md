@@ -22,6 +22,12 @@ All notable changes to Clinescope are recorded here. The format follows
   captured deliberately to exercise an `editor` scorer. It is NOT the first
   editor-bearing trace here: `examples/harness-gap/granite-harness.messages.json`
   has carried `editor` calls since #69 in July, and nobody noticed until now.
+- This project's CI now runs `clinescope-gate` on two committed traces, on every
+  Python version in the matrix. One trace must pass and one must fail, because a
+  step that only ever expects exit 0 would keep passing if the gate stopped failing
+  anything at all. To be exact about what this is: it is dogfooding inside the
+  maintainer's own repository, not a third party adopting the gate. Nobody else's
+  CI runs it.
 
 ### Changed
 

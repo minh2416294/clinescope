@@ -35,3 +35,13 @@ jobs:
         run: mypy src
       - name: Test (with coverage gate)
         run: pytest -q --cov=clinescope --cov-report=term-missing --cov-fail-under=90
+      # Dogfooding: this project's own CI runs the gate it ships. Both directions are
+      # asserted, because a step that only ever expects exit 0 would still pass if the
+      # gate stopped failing anything at all.
+      - name: Dogfood clinescope-gate on committed traces
+        run: |
+          clinescope-gate examples/apply-patch-trace.json --min-diff-coherence 0.75 --min-diff-minimality 0.75
+          if clinescope-gate examples/gate-regression-badpatch.json --min-diff-coherence 1.0; then
+            echo "expected exit 1 on the regression trace, got a pass"
+            exit 1
+          fi
