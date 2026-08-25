@@ -145,11 +145,21 @@ trace still verifies nothing**; the difference is that it now tells you so inste
 
 Clinescope ships one optional LLM judge (a local `gpt-oss:20b`) as an auxiliary signal for
 `diff_minimality`. Validated against a 50-item human-labeled gold set, it agrees with humans only at
-chance level: Cohen's kappa = 0.0496, 95% CI [-0.1200, 0.2175], N = 50. Because that is far below the 0.5
+chance level: Cohen's kappa = 0.0433, 95% CI [0.0000, 0.1503], N = 50. Because that is far below the 0.5
 floor, the judge is treated as advisory-only and is deliberately kept out of the pass/fail gate
 (`clinescope-gate` fires on the deterministic scorers, never the judge). The full measurement, the
 confusion matrix, and how to reproduce it with no model call are in
 [`docs/judge-validation.md`](docs/judge-validation.md).
+
+**Do not read that lower bound of zero as the judge clearing chance.** It answered WASTEFUL exactly
+once in fifty. When a rater almost never uses one class, a bootstrap resample that omits that single
+item scores exactly zero rather than something negative, and 36% of resamples omit it, which is what
+holds the bound at 0.0000. The whole positive agreement rests on one patch.
+
+The previous measurement, taken before the judge prompt was fenced, was kappa 0.0496,
+95% CI [-0.1200, 0.2175], N = 50, catching 3 of 24. Both are single draws on a model that flips
+labels run-to-run at temperature 0, so the gap between them is inside the noise and is not
+attributable to the prompt change.
 
 **`--base-url` points the judge's own request wherever you tell it to.** It defaults to
 `http://localhost:11434` and exists so that pointing the judge at a different endpoint, including a
@@ -158,12 +168,27 @@ anything read out of a trace, so nothing in a trace can redirect it. Pass an add
 patch text being judged is sent there. This is the only outbound network call the package makes, it
 is opt-in, and no gated code path reaches it.
 
-**The judge reads a verdict only from the last non-empty line of the model's answer.** Patch text is
-trace content and is interpolated into the prompt without a delimiter, so a trace can attempt to steer
-the model's output. Requiring the sentinel to be the model's actual last word means a steered verdict
-buried mid-answer raises an error instead of silently becoming the label. The patch text itself is not
-yet fenced inside the prompt; doing so changes what the model is asked and would invalidate the cached
-verdicts behind the figure above, so it waits for a run that can recompute them.
+**Patch text is trace content, so the judge treats it as untrusted on both sides of the call.** On the
+way in, it is fenced between a `<<<BEGIN PATCH <tag>>>` line and a `<<<END PATCH <tag>>>` line whose
+tag is a sha256 prefix of the patch itself, and the system prompt states that the fenced region is
+data rather than instruction. The tag is derived from the content so that emitting a byte-identical
+closing marker would require a patch that already contains its own digest, and writing the digest in
+changes the digest. That is a 64-bit fixed-point search, roughly 2^64 trials, not a preimage attack
+on sha256. On the way out, a verdict is read only from the last non-empty line of the answer, so a
+steered sentinel buried mid-answer raises an error instead of silently becoming the label.
+
+Be precise about what that buys, because the fence is honoured by the model and is not enforced by
+any code here: nothing parses the markers back out. An unforgeable tag means a patch cannot produce
+the real terminator, which is necessary but not sufficient for the model to keep treating the region
+as data. The fence raises the cost of steering an advisory label. It is not a guarantee.
+
+Fencing changed what the model is asked, which invalidated every cached verdict, so all 50 were
+recomputed against a live model in the same change. The figures above are from that run.
+
+**What this is not.** It is not a security boundary. The judge is advisory-only and is pinned out of
+`clinescope-gate` at the AST level, so the worst a successfully steered verdict can reach is an
+advisory label and the published agreement figure. It is protection for a measurement, not for a
+build.
 
 That is only half the picture. The next section covers the scorer that stayed in the gate.
 
@@ -177,15 +202,20 @@ NOT-WASTEFUL and anything below it maps to WASTEFUL. The stricter available cut,
 kappa 0.2175 and does not change any conclusion here.
 
 So both estimators of "is this patch wasteful?" fall below the 0.5 figure the judge section cites,
-the judge at 0.0496 and the gated scorer at 0.2599. Two qualifications, both cutting in different
-directions. The judge's interval includes zero and the scorer's does not, which is a real
+the judge at 0.0433 and the gated scorer at 0.2599. Two qualifications, both cutting in different
+directions. The judge's interval reaches down to zero and the scorer's does not, which is a real
 difference between them; note that a bootstrap interval excluding zero is not a hypothesis test,
 and none was run. And that 0.5 figure is defined in the judge modules only, as an advisory
 tripwire for an LLM signal. It has never been a project-wide validity bar for a deterministic
 scorer, so read the comparison as one estimator against the other rather than as a rule being
-broken. Both intervals are seeded percentile bootstraps whose full 2000 resamples were usable
-(`n_boot_effective` 2000 of 2000 for each), so neither rests on a thin resample pool and both can
-be read as written.
+broken.
+
+Both intervals are seeded percentile bootstraps whose full 2000 resamples were usable
+(`n_boot_effective` 2000 of 2000 for each), so neither rests on a thin resample pool. The scorer's
+interval can be read as written. The judge's cannot: because it answered one class almost
+exclusively, 36% of its resamples score exactly zero rather than spreading below it, so the shape of
+that interval is dominated by the judge's degeneracy rather than by sampling error. A pool can be
+full and still be uninformative.
 
 If you are deciding whether to gate on this, recall matters more than kappa. `diff_minimality`
 flagged 7 of 24 patches a human called WASTEFUL, which is 29 percent. It scored a clean 1.0 on

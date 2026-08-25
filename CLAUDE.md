@@ -67,9 +67,17 @@ patch that really is present still fails the build.
 ## The honesty rule (binds every word written about this project)
 
 Never describe clinescope as having users, traction, or a working judge it does not have.
-**Today: 0 users, 0 revenue.** The optional LLM judge is chance-level (Cohen's kappa 0.0496,
-N=50, 95 percent CI -0.1200 to 0.2175, which crosses zero) and stays **out** of any pass/fail
-claim.
+**Today: 0 users, 0 revenue.** The optional LLM judge is chance-level (Cohen's kappa 0.0433,
+N=50, 95 percent CI 0.0000 to 0.1503) and stays **out** of any pass/fail claim. It called 1 of
+24 wasteful patches wasteful.
+
+**That interval's lower bound of zero is not a sign the judge clears chance, and writing it up
+that way would be exactly the inflation this rule exists to stop.** The judge answered one class
+almost exclusively, so a bootstrap resample omitting its single positive call scores exactly zero
+instead of going negative, and 36 percent of resamples do. The bound is degeneracy, not signal.
+The previous figure, measured before the judge prompt was fenced, was kappa 0.0496 with a
+95 percent CI of -0.1200 to 0.2175. Both are single draws on a model that flips labels
+run-to-run, so do not attribute the difference to the prompt change.
 
 **Banned lines:**
 
@@ -272,7 +280,20 @@ tests/
 .claude/rules/         project rule files, committed
 ```
 
-`examples/` and `gold/` are **frozen contracts**. Do not regenerate or reformat them.
+`examples/` is a **frozen contract**. Do not regenerate or reformat it.
+
+`gold/` holds two files and they are governed differently, which an earlier version of this
+line flattened into one rule and got wrong:
+
+- **`gold/diff_minimality.gold.jsonl` is frozen.** These are the human labels. They are the
+  fixed side of every agreement number, so a machine never writes one. Adding an item means
+  committing it unlabeled (`"label": null`) and having a human label it blind.
+- **`gold/diff_minimality.judge.jsonl` is a regenerable machine artifact.** It caches one
+  judge verdict per gold item so kappa can be recomputed with no model call.
+  `python -m clinescope.judge_run` rewrites it by design, and `gold/README.md` documents
+  that command. Regenerating it is correct whenever the judge prompt changes, and the
+  recompute must ride the same commit as the prompt change, or the repo ends up quoting a
+  number that no longer describes the shipped prompt.
 
 **A trace is untrusted input.** The bug-report template asks a reporter to paste one, so
 any string lifted out of a trace (a `sessionId`, a path, a tool name, an extension task
@@ -280,6 +301,14 @@ title) is chosen by whoever wrote it. Route every such value through
 `render_safety.quote_untrusted_text` at the point it is read, not at the join: scorer-built
 violation strings already escape their own paths with `!r`, so neutralizing a joined line
 would escape it twice. Values the operator typed, such as `--expected` names, are left alone.
+
+The patch text handed to the optional judge is the same kind of untrusted input, and it is
+handled a second way because it goes to a model rather than to a terminal:
+`judge_user_prompt` fences it between `<<<BEGIN PATCH <tag>>>` and `<<<END PATCH <tag>>>`
+markers whose tag is a sha256 prefix of the patch itself, so a patch cannot close its own
+fence. That is a measurement-integrity control, not a security one: the judge is advisory
+and pinned out of the gate, so the worst a steered verdict reaches is the published
+agreement figure.
 
 ## Known limits
 

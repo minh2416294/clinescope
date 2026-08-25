@@ -9,12 +9,17 @@ threshold -- so a CI job can block a regressing agent version.
 
 **Why it gates on the deterministic scorers only (the load-bearing constraint).**
 The LLM judge (:mod:`clinescope.judge`) is ADVISORY-ONLY: judge<->human agreement
-came out at Cohen's kappa = 0.0496 (95% CI [-0.1200, 0.2175], N=50), an interval
-that includes zero, which fired the kappa < 0.5 advisory tripwire. Gating a build
-on an advisory signal would contradict the very finding that validation produced.
+came out at Cohen's kappa = 0.0433 (95% CI [0.0000, 0.1503], N=50), which fired the
+kappa < 0.5 advisory tripwire. Gating a build on an advisory signal would contradict
+the very finding that validation produced.
 (A higher figure from an earlier, smaller gold set is RETRACTED: that set was
 NOT-WASTEFUL-heavy and flattered a biased judge. The bigger, balanced, blind set
 LOWERED the number. Cite only the N=50 figure above.)
+(That CI bottoming out at zero rather than going negative is NOT the judge doing
+better. It answered WASTEFUL once in fifty, so a bootstrap resample missing that one
+item scores exactly zero, and 36% of them do. The prior run, before the judge prompt
+fenced its patch text, measured 0.0496 with a CI of [-0.1200, 0.2175]; both are single
+draws on a label-flipping model, so the gap is noise, not a prompt effect.)
 So this module reads ONLY the three deterministic, keyless, reproducible scorers
 and imports NONE of the judge-arc modules (``judge`` / ``judge_run`` /
 ``agreement`` / ``gold`` / ``label_gold``). An AST test pins that mechanically.

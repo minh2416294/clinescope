@@ -373,12 +373,16 @@ def test_gate_module_imports_no_judge_or_gold_modules() -> None:
     """AST-prove gate.py imports none of the judge-arc modules.
 
     The gate must read ONLY the deterministic scorers -- the LLM judge is
-    advisory-only (Cohen's kappa 0.0496, 95% CI [-0.1200, 0.2175], N=50, an interval
-    that includes zero and fires the advisory tripwire), so gating on it would
-    contradict the very finding criterion 3 produced. The figure this docstring used
-    to cite, 0.24, is the RETRACTED one from the earlier and smaller N=26 gold set,
-    which was NOT-WASTEFUL-heavy and flattered a biased judge; ``gate.py`` says to
-    cite only the N=50 number.
+    advisory-only (Cohen's kappa 0.0433, 95% CI [0.0000, 0.1503], N=50, which fires
+    the advisory tripwire), so gating on it would contradict the very finding
+    criterion 3 produced. The figure this docstring used to cite, 0.24, is the
+    RETRACTED one from the earlier and smaller N=26 gold set, which was
+    NOT-WASTEFUL-heavy and flattered a biased judge; ``gate.py`` says to cite only
+    the N=50 number.
+
+    The kappa moved from 0.0496 to 0.0433 when the judge prompt was fenced and all 50
+    verdicts were recomputed. Neither number is gateable and the move does not change
+    that: this test pins the constraint, not the figure.
     """
     tree = ast.parse(GATE_SOURCE.read_text(encoding="utf-8"))
     forbidden = {"judge", "judge_run", "agreement", "gold", "label_gold"}
