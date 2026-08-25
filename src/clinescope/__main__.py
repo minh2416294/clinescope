@@ -44,6 +44,7 @@ from clinescope.extension_discovery import (
     discover_sessions,
     enumerate_sessions,
 )
+from clinescope.render_safety import quote_untrusted_text
 from clinescope.report import render_report
 from clinescope.tool_selection import score_tool_selection
 from clinescope.tool_vocab import CLINE_KNOWN_TOOLS, tool_vocab_check
@@ -441,8 +442,11 @@ def _prompt_for_session(
 
 
 def _picker_line(session: ExtensionSession) -> str:
+    # The title is read out of the extension's taskHistory.json, so it is untrusted and
+    # is neutralized BEFORE truncation: truncating first could split an escape sequence
+    # and leave a raw byte behind.
     when = _format_ts(session.timestamp_ms)
-    title = session.title or "(no title)"
+    title = quote_untrusted_text(session.title) if session.title else "(no title)"
     if len(title) > 48:
         title = title[:47] + "…"
     return f"{when}  {title:<48}  [{session.variant}] {session.task_id}"
@@ -460,7 +464,9 @@ def _extension_label(session: ExtensionSession) -> str:
     # Honest header: the real folder taskId, the human title when known, and the
     # variant tag, clearly marked "extension session" so it is never mistaken for a
     # World-A sessionId (which an extension trace does not have).
-    title = f' "{session.title}"' if session.title else ""
+    # The title is untrusted taskHistory.json content. quote_untrusted_text supplies its
+    # own delimiters, so the hand-written quotes that used to wrap it are gone.
+    title = f" {quote_untrusted_text(session.title)}" if session.title else ""
     return f"extension session {session.task_id}{title} [{session.variant}]"
 
 

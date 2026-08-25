@@ -41,6 +41,7 @@ from clinescope.apply_recovery import ApplyRecoveryScore
 from clinescope.diff_coherence import DiffCoherenceScore
 from clinescope.diff_minimality import DiffMinimalityScore
 from clinescope.editor_recovery import EditorRecoveryScore
+from clinescope.render_safety import quote_untrusted_text
 from clinescope.tool_selection import ToolSelectionScore
 from clinescope.world_a import Trace
 
@@ -397,10 +398,15 @@ def summary_verdict(score: float | None) -> str:
 def _header_subject(session_id: str | None, session_label: str | None) -> str:
     # An explicit label (e.g. an extension session's taskId + title + variant) wins;
     # otherwise fall back to the World-A "session <id>" phrasing, unchanged.
+    # The id is trace content, so it is neutralized before it reaches a terminal. It is
+    # the FIRST thing printed, which makes it the strongest position in the report for
+    # an escape sequence to overwrite everything below it. "<unknown>" is ours, not the
+    # trace's, so it stays literal.
     if session_label is not None:
         return session_label
-    sid = session_id if session_id is not None else "<unknown>"
-    return f"session {sid}"
+    if session_id is None:
+        return "session <unknown>"
+    return f"session {quote_untrusted_text(session_id)}"
 
 
 def _render_verbose(
@@ -417,10 +423,10 @@ def _render_verbose(
     lines = ["=== clinescope report ==="]
     if session_label is not None:
         lines.append(f"session:        {session_label}")
+    elif session_id is None:
+        lines.append("sessionId:      <unknown>")
     else:
-        lines.append(
-            f"sessionId:      {session_id if session_id is not None else '<unknown>'}"
-        )
+        lines.append(f"sessionId:      {quote_untrusted_text(session_id)}")
     lines += [
         f"trace.version:  {trace.version}",
         f"turns:          {len(trace.turns)}",
@@ -429,10 +435,14 @@ def _render_verbose(
         "[tool_selection]",
         f"score:          {score.score:.4f}",
         f"expected:       {_render_names(score.expected)}",
-        f"used:           {_render_names(score.used)}",
+        # used/unexpected carry names the TRACE chose, so they are neutralized.
+        # expected/matched/missing are subsets of the operator's own --expected, so
+        # they are left alone: quoting them would change the most-read summary line
+        # for no reduction in risk.
+        f"used:           {_render_trace_names(score.used)}",
         f"matched:        {_render_names(score.matched)}",
         f"missing:        {_render_names(score.missing)}",
-        f"unexpected:     {_render_names(score.unexpected)}",
+        f"unexpected:     {_render_trace_names(score.unexpected)}",
     ]
     if diff_coherence is not None:
         lines.extend(_render_diff_coherence(diff_coherence))
@@ -487,7 +497,7 @@ def _render_apply_recovery(score: ApplyRecoveryScore) -> list[str]:
         f"same_file_refail: {score.same_file_refail_count}",
         f"unverified_reattempts: {score.unverified_reattempt_pairs}",
         f"verdict_coverage: {_render_optional_4f(score.verdict_coverage)}",
-        f"failed_files:   {_render_violations(score.failed_target_paths)}",
+        f"failed_files:   {_render_trace_paths(score.failed_target_paths)}",
         f"recovered_by:   {_render_recovery_pairs(score.recovery_pairs)}",
         f"unparseable_failed_calls: {score.unparseable_failed_calls}",
         f"violations:     {_render_violations(score.violations)}",
@@ -511,7 +521,7 @@ def _render_editor_recovery(score: EditorRecoveryScore) -> list[str]:
         f"same_file_refail: {score.same_file_refail_count}",
         f"unverified_reattempts: {score.unverified_reattempt_pairs}",
         f"verdict_coverage: {_render_optional_4f(score.verdict_coverage)}",
-        f"failed_files:   {_render_violations(score.failed_target_paths)}",
+        f"failed_files:   {_render_trace_paths(score.failed_target_paths)}",
         f"recovered_by:   {_render_recovery_pairs(score.recovery_pairs)}",
         f"pathless_failed_calls: {score.pathless_failed_calls}",
         f"violations:     {_render_violations(score.violations)}",
@@ -523,8 +533,12 @@ def _render_editor_recovery(score: EditorRecoveryScore) -> list[str]:
 def _render_recovery_pairs(pairs: tuple[tuple[int, int, str], ...]) -> str:
     # Each triple: the failed call index, the confirming call index, the file. The
     # index gap is the evidence -- a large gap is a distant (possibly unrelated) fix.
+    # The path is raw trace content; the two indices are ints the scorer computed.
     return (
-        "; ".join(f"{path} @ call {fail}->{fixer}" for fail, fixer, path in pairs)
+        "; ".join(
+            f"{quote_untrusted_text(path)} @ call {fail}->{fixer}"
+            for fail, fixer, path in pairs
+        )
         if pairs
         else "-"
     )
@@ -538,6 +552,22 @@ def _render_names(names: frozenset[str]) -> str:
     return ", ".join(sorted(names)) if names else "-"
 
 
+def _render_trace_names(names: frozenset[str]) -> str:
+    # Tool names are lifted from the trace, so they are attacker-chosen. Neutralize
+    # each one at the source rather than the join: a joined line can already contain
+    # scorer-built violation text that was escaped with !r, and escaping twice is ugly.
+    return _render_names(frozenset(quote_untrusted_text(name) for name in names))
+
+
 def _render_violations(violations: tuple[str, ...]) -> str:
     # Order-preserving (detection order is information), so NOT sorted.
+    # Deliberately does NOT neutralize: every violation string reaching it is built by
+    # a scorer, and the two that embed a trace path already use !r
+    # (apply_recovery.py, editor_recovery.py). Raw trace values go through
+    # _render_trace_paths instead.
     return "; ".join(violations) if violations else "-"
+
+
+def _render_trace_paths(paths: tuple[str, ...]) -> str:
+    # Raw file paths straight off the trace, unlike the scorer-built violation strings.
+    return _render_violations(tuple(quote_untrusted_text(path) for path in paths))

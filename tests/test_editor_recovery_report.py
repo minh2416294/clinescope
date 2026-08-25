@@ -22,6 +22,11 @@ _REAL_EDITOR_TRACE = _EXAMPLES / "live-granite-editor-recovery.json"
 _APPLY_PATCH_TRACE = _EXAMPLES / "live-gpt-oss-apply-fail.json"
 
 CALC = "C:\\work\\calc.py"
+# The same path as it appears in rendered output: trace-derived text is neutralized
+# before display, so it arrives quote-delimited with each backslash escaped. Pinned as
+# a literal on purpose; computing it with repr() would just restate how the code does
+# it, and the test would pass no matter what the code did.
+CALC_RENDERED = "'C:\\\\work\\\\calc.py'"
 
 
 def _editor_call(call_id: str, *, is_error: bool | None) -> ToolCall:
@@ -156,7 +161,7 @@ def test_advice_fires_for_an_unrecovered_editor_failure() -> None:
     # advice line must not make the broader claim.
     assert "no later confirmed editor call re-touched that path" in out
     assert "did not recover it" not in out
-    assert CALC in out
+    assert CALC_RENDERED in out
 
 
 def test_advice_stays_quiet_when_recovery_succeeded() -> None:

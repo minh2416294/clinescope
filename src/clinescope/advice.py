@@ -23,6 +23,7 @@ from clinescope.apply_recovery import ApplyRecoveryScore
 from clinescope.diff_coherence import DiffCoherenceScore
 from clinescope.diff_minimality import DiffMinimalityScore
 from clinescope.editor_recovery import EditorRecoveryScore
+from clinescope.render_safety import quote_untrusted_text
 from clinescope.tool_selection import ToolSelectionScore
 
 
@@ -109,7 +110,12 @@ def advice_for_apply_recovery(score: ApplyRecoveryScore) -> ScorerAdvice | None:
     """Advise when a failed patch was never recovered; ``None`` when clean/abstaining."""
     if not score.applicable or score.score == 1.0:
         return None
-    files = ", ".join(score.failed_target_paths) if score.failed_target_paths else "-"
+    # The paths come straight off the trace, so neutralize each before it is rendered.
+    files = (
+        ", ".join(quote_untrusted_text(path) for path in score.failed_target_paths)
+        if score.failed_target_paths
+        else "-"
+    )
     return ScorerAdvice(
         label=FailureLabel.NO_APPLY_RECOVERY,
         lines=(
@@ -130,7 +136,12 @@ def advice_for_editor_recovery(score: EditorRecoveryScore) -> ScorerAdvice | Non
     """
     if not score.applicable or score.score == 1.0:
         return None
-    files = ", ".join(score.failed_target_paths) if score.failed_target_paths else "-"
+    # The paths come straight off the trace, so neutralize each before it is rendered.
+    files = (
+        ", ".join(quote_untrusted_text(path) for path in score.failed_target_paths)
+        if score.failed_target_paths
+        else "-"
+    )
     return ScorerAdvice(
         label=FailureLabel.NO_EDITOR_RECOVERY,
         lines=(

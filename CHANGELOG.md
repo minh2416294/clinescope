@@ -107,6 +107,17 @@ All notable changes to Clinescope are recorded here. The format follows
   vulnerability alerts for one. Expect more update PRs too, since a moving major tag
   such as `@v7` silently absorbs a patch release while a pinned SHA does not.
 - No package behaviour changed. No scorer, score, exit code or public type moved.
+- Text taken from a trace is now escaped before it is rendered. A trace is untrusted
+  input, and the bug-report template asks a reporter to paste one, so a `sessionId`,
+  a file path, a tool name or an extension task title can carry terminal control
+  sequences. Those land ahead of the scorer lines, where erase-line and cursor
+  movement can overwrite them and show a score the tool never computed. For a tool
+  whose whole output is a score, that is an attack on the one thing it exists to do.
+  Exit codes and the `clinescope-gate` decision were never affected.
+- **Output change to expect:** trace-derived values now render quote-delimited, so a
+  header reads `session 'abc-123'` and a Windows path reads `'C:\\work\\calc.py'`.
+  Scores, verdicts and exit codes are unchanged. This matches how the recovery
+  scorers have always rendered paths inside their violation strings.
 
 ## [1.2.1] - 2026-08-20
 
