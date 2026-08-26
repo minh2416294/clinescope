@@ -2,13 +2,15 @@ name: Claude Code Review
 
 on:
   pull_request:
-    # Deliberately NOT synchronize. That fires on every push, so a branch pushed five times
-    # is reviewed five times, and on this repo most pushes are the author answering the
-    # previous review. One review per PR, plus one when it leaves draft, is the whole signal
-    # at a fraction of the tokens and runner minutes.
+    # synchronize is REQUIRED here, and the reason is not cost, it is correctness.
+    # `claude-review` is a required status check on main (ruleset main-guard). A required
+    # check has to report against the pull request's HEAD SHA. Drop synchronize and the
+    # first follow-up push produces a head SHA this workflow never runs on, so the check
+    # sits pending forever and the pull request can never merge.
     #
-    # To re-review after pushing a fix, comment @claude on the pull request.
-    types: [opened, ready_for_review]
+    # The per-push cost is smaller than it looks: the action skips a pull request it has
+    # already commented on, and a skip still reports a passing check in seconds.
+    types: [opened, synchronize, ready_for_review, reopened]
 
 jobs:
   claude-review:
