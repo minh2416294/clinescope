@@ -33,14 +33,25 @@ artifacts/
 .planning/
 
 # --- Claude Code project harness ---
-# .claude/rules/ is COMMITTED: those files are this project's operating contract and a
-# fresh clone needs them. Everything else under .claude/ is per-machine state (local
-# settings, agent scratch, worktree bookkeeping) and must never be committed.
+# TWO things under .claude/ are COMMITTED, because a fresh clone and a CI runner both
+# need them. Everything else is per-machine state (local settings, agent scratch,
+# worktree bookkeeping) and must never be committed.
+#
+#   rules/                        this project's operating contract.
+#   claude-security-guidance.md   the threat model and review checklist the security
+#                                 review loads. It is committed rather than local
+#                                 because a git-excluded file does not exist on a CI
+#                                 runner, which is exactly where an unreviewed change
+#                                 would land. Committing it also makes it tamper
+#                                 resistant: claude-code-action restores .claude/ from
+#                                 the pull request's BASE branch, so a hostile PR cannot
+#                                 rewrite the rules it will be reviewed against.
 #
 # The first line is `.claude/*`, not `.claude/`. Excluding the directory itself stops git
-# descending into it, and the negation below would then silently do nothing.
+# descending into it, and the negations below would then silently do nothing.
 .claude/*
 !.claude/rules/
+!.claude/claude-security-guidance.md
 
 # Windows folder settings
 desktop.ini
