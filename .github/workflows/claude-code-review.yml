@@ -41,7 +41,15 @@ jobs:
         id: claude-review
         uses: anthropics/claude-code-action@1f291e1cfe0f5fc21db2aef19af844591600ade7 # v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Subscription auth, NOT an API key. These are different credentials on different
+          # inputs: a sk-ant-oat01 token presented as anthropic_api_key is rejected, and the
+          # failure is quiet. The job still runs for minutes and then reports is_error with
+          # num_turns 1, total_cost_usd 0 and an empty modelUsage, which reads like a broken
+          # review rather than a rejected credential.
+          #
+          # `/install-github-app` generates the anthropic_api_key form. If it is ever re-run,
+          # check this line before merging what it produces.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
