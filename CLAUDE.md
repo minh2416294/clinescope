@@ -14,7 +14,7 @@ properties of the project rather than of a workstation:
 
 1. **The honesty rule** below. It governs every word written about this tool.
 2. **`dependencies = []`.** Zero runtime dependencies is a shipped guarantee, not a preference.
-3. **Integration is by pull request.** `main` takes no direct pushes and needs three green
+3. **Integration is by pull request.** `main` takes no direct pushes and needs four green
    checks. See "Shipping a change".
 
 ## What this is
@@ -227,9 +227,24 @@ anyway, since `main` takes no direct pushes.
 
 ## Shipping a change
 
-`main` is protected: no direct pushes, and a pull request needs three green checks
-(`test (3.11)`, `test (3.12)`, `test (3.13)`). A red check blocks the merge. Do not merge past
-one.
+`main` is protected: no direct pushes, and a pull request needs four green checks
+(`test (3.11)`, `test (3.12)`, `test (3.13)`, `claude-review`). A red check blocks the merge. Do
+not merge past one.
+
+**`claude-review` is a required check, so waiting for the review is enforced rather than
+remembered.** `.github/workflows/claude-code-review.yml` runs on every pull request opened by
+anyone with write access, and the merge is blocked until it reports. Nobody can bypass it: the
+`main-guard` ruleset has an empty `bypass_actors` list. Two consequences worth knowing before
+you change either piece:
+
+* **That workflow must keep its `synchronize` trigger.** A required check reports against the
+  pull request's HEAD SHA, so a workflow that skips a push leaves the check pending forever and
+  the pull request unmergeable. The comment in the workflow says the same thing; keep them in
+  step.
+* **A pull request from a fork cannot pass it.** GitHub withholds secrets from fork runs on a
+  public repository, so the action cannot authenticate. This is accepted deliberately: the
+  contributor model here is write access and branches in this repository, not forks. An outside
+  pull request needs a maintainer to merge it another way.
 
 Conventional commit subjects. Branches are short kebab-case, for example
 `fix/abstention-not-zero`.
