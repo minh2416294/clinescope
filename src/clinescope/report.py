@@ -570,4 +570,4 @@ def _render_violations(violations: tuple[str, ...]) -> str:
 
 def _render_trace_paths(paths: tuple[str, ...]) -> str:
     # Raw file paths straight off the trace, unlike the scorer-built violation strings.
-    return _render_violations(tuple(quote_untrusted_text(path) for path in paths))
+    return _render_violations(tuple(paths))
