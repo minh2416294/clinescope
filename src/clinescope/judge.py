@@ -12,7 +12,7 @@ number that is the charter's criterion 3.
 **Deliberate decisions (each a stated choice, not undefined behaviour):**
 
 * ``judge_diff_minimality`` takes a :class:`~clinescope.world_a.Trace`, NOT patch
-  text -- exactly parallel to the four deterministic scorers. It re-selects the first
+  text -- exactly parallel to the five deterministic scorers. It re-selects the first
   apply_patch internally via ``diff_coherence_select_apply_patch`` and lifts the text
   via ``diff_coherence_read_patch_text`` -- the SAME functions the scorer and the gold
   loader use, so all three agree on which call is judged and read it identically.

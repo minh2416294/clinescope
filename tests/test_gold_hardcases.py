@@ -1,7 +1,7 @@
 """Grammar-validity + divergence-design pins for the authored hard-case gold corpus.
 
-κ-arc segment 3 authors 24 balanced hard-case ``diff_minimality`` gold traces under
-``examples/gold/`` so a human's holistic "is this patch WASTEFUL?" call can plausibly
+κ-arc segment 3 authors balanced hard-case ``diff_minimality`` gold traces under
+``examples/gold/``, 48 in total today, so a human's holistic "is this patch WASTEFUL?" call can plausibly
 DIVERGE from the deterministic blind-rewrite proxy. These tests pin two properties of
 the AUTHORED corpus (not the human labels, which are the user's own):
 
@@ -137,7 +137,7 @@ def test_divergence_surface_has_both_margins() -> None:
 
 
 def test_gold_jsonl_loads_all_items_and_labels_are_valid() -> None:
-    """The full gold set (2 seed + 24 hard cases) parses + resolves; every present label
+    """The full gold set (2 seed + 48 hard cases) parses + resolves; every present label
     is a legal, human-provided value.
 
     Before S3 the corpus shipped UNLABELED (a Claude-authored label would be theater);

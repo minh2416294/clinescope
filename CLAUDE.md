@@ -49,13 +49,17 @@ between the check and the thing you might assume it checks is where every false 
 `apply_patch` grammar only. Almost no current Cline session emits `apply_patch`: all five tool
 presets set `enableApplyPatch: false`, and only two routing rules flip a session back to it (an
 `openai-native` provider, or a model id containing `codex` or `gpt`), both of which also
-require `act` mode. Everything else emits `editor`, where the three `apply_patch` scorers go
-silent and `editor_recovery` is the one that produces a number.
+require `act` mode. Everything else emits `editor`, where `diff_minimality` and `apply_recovery`
+go silent, `diff_coherence` still hard-zeros with its reason, and `editor_recovery` is the one
+that produces a number. Verified on `examples/live-granite-editor-recovery.json`: it prints
+`diff_coherence 0/100 FAIL (no apply_patch tool call in trace)`, not an abstention.
 
-**An empty or no-tool-call trace does not score 0 across the board.** `tool_selection` and
-`diff_coherence` hard-zero. `diff_minimality` and the two recovery scorers **abstain** and
-report `n/a`. Reporting an abstention as a zero is a specific, recurring error in this repo's
-history. Before writing any sentence about what a trace scores, run the tool on it.
+**An empty or no-tool-call trace does not score 0 across the board, and the three non-zero
+outcomes are not the same thing.** `tool_selection` and `diff_coherence` hard-zero.
+`diff_minimality` and `apply_recovery` **abstain** and report `n/a`. `editor_recovery` is
+**omitted entirely**: on a trace with no `editor` call it gets no line at all, which is a third
+outcome and not an `n/a`. Reporting an abstention as a zero is a specific, recurring error in
+this repo's history. Before writing any sentence about what a trace scores, run the tool on it.
 
 **The report and the gate read that hard zero differently, on purpose.** The report keeps
 showing `diff_coherence 0/100` with its reason, because a missing artifact should be loud.
@@ -176,7 +180,9 @@ mypy src
 pytest -q --cov=clinescope --cov-report=term-missing --cov-fail-under=90
 ```
 
-Those four are exactly what CI runs, on Python 3.11, 3.12 and 3.13. Coverage below 90 percent
+Those four, plus a fifth step that dogfoods `clinescope-gate` against two committed traces
+(asserting both a pass and an expected exit-1 regression), are what CI runs, on Python 3.11,
+3.12 and 3.13. Coverage below 90 percent
 fails the build. `mypy` runs strict and rejects a bare `# type: ignore`: every suppression must
 name its error code.
 
@@ -268,7 +274,7 @@ will not create alerts for actions pinned to SHA values").
 `CLAUDE-SECURITY-<ts>/` directory carrying its own `.gitignore`, so nothing in it reaches a
 commit. Scans are nondeterministic: two scans of the same code can surface different findings, so
 a clean run is evidence about that run and not proof the code is safe. It complements code review
-and the three required checks; it does not replace either. Pair it with a read of the workflow
+and the four required checks; it does not replace either. Pair it with a read of the workflow
 files and the exit-code contract by hand: the scan is strong on taint chains through code and
 weak on contracts, which is where the Day 56 review found three findings it did not return.
 

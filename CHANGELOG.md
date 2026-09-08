@@ -66,6 +66,35 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Fixed
 
+- An internal-consistency audit reconciled 21 places where the repository
+  contradicted itself. The ones a reader would have acted on:
+  `docs/judge-validation.md` said Clinescope has four core scorers and that all of
+  them are what `clinescope-gate` gates on, when five ship and the gate exposes
+  three `--min-*` flags. `docs/quickstart.md` showed a four-row
+  `clinescope-corpus` scorecard where the command prints six rows plus a verdict
+  block, and said the tool reports whether patches were "committed cleanly" when
+  `diff_coherence` reads grammar from the patch text and does not prove the patch
+  applies. `docs/harness-gap.md` and `examples/harness-gap/README.md` carried no
+  `editor_recovery` column, which recorded Granite's harness delta as zero on
+  every scorer when the harnessed run in fact scores `editor_recovery 100/100`.
+  `CONTRIBUTING.md` claimed 94 percent coverage, called its four commands "exactly
+  what CI checks" when CI also dogfoods `clinescope-gate`, and recommended
+  `pip install -e .` inside a worktree, which `CLAUDE.md` forbids because it
+  repins the shared virtualenv for every other worktree. `CLAUDE.md` itself said
+  both recovery scorers abstain and report `n/a` on an empty trace, when
+  `editor_recovery` is omitted entirely and prints no line at all, and said the
+  three `apply_patch` scorers "go silent" on an `editor` trace when
+  `diff_coherence` hard-zeros with its reason. `.claude/claude-security-guidance.md`
+  called `release.yml` the only path here that reaches a third party, which stopped
+  being true when the two Claude workflows landed. No scorer, exit code, threshold,
+  test assertion or published figure changed value.
+- `CONTRIBUTING.md` now warns that a pull request from a fork cannot pass the
+  required `claude-review` check, because GitHub withholds secrets from fork runs
+  on a public repository. The fork path stays documented; it just needs a
+  maintainer to land it.
+- `docs/judge-validation.md` no longer lists `judge_multidraw --report-only` under
+  "Reproduce it yourself (no model call)". Its cache is not committed, so on a
+  fresh clone it exits `2`, and building the cache makes live model calls.
 - Quickstart step 2 no longer tells the reader to pass `--timeout 120`, and no
   longer claims Cline's default request timeout is 30 seconds. Both were wrong, and
   together they caused the failure the step exists to prevent. `--timeout` defaults

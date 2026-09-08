@@ -2,7 +2,7 @@
 
 > Clinescope is an independent, unofficial tool - not affiliated with, endorsed by, or sponsored by Cline or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used only to describe compatibility.
 
-Use the `clinescope` tool to score your last Cline run by pointing it to the `messages.json` file that Cline saves to disk. Then, it will tell you if you used the right tools, committed patches cleanly, and recovered from failed patches successfully!
+Use the `clinescope` tool to score your last Cline run by pointing it to the `messages.json` file that Cline saves to disk. Then, it will tell you if you used the right tools, wrote patches in valid `apply_patch` grammar, and recovered from failed patches successfully!
 
 Clinescope is pure Python and runs on macOS, Linux, and Windows. The `cline` commands below are identical on all three; only the shell differs (examples use PowerShell on Windows).
 
@@ -34,12 +34,29 @@ clinescope-corpus
 `clinescope-corpus` scores six real Cline runs and prints a scorecard:
 
 ```
+=== clinescope compare ===
 trace                                                  tool_selection  diff_coherence  diff_minimality  apply_recovery
 -----------------------------------------------------  --------------  --------------  ---------------  --------------
 gpt-oss:20b update-1hunk (clean)                       100/100 PASS    100/100 PASS    100/100 PASS     n/a
+gpt-oss:20b add-file (clean)                           100/100 PASS    100/100 PASS    100/100 PASS     n/a
+gpt-oss:20b update-2hunk (clean)                       100/100 PASS    100/100 PASS    100/100 PASS     n/a
 gpt-oss:20b apply-fail (no recovery)                   100/100 PASS    100/100 PASS    100/100 PASS     0/100 FAIL
 qwen2.5-coder:1.5b hallucinated-tool (no apply_patch)  0/100           0/100 FAIL      n/a              n/a
 llama3.1:8b code-dump (no apply_patch)                 0/100           0/100 FAIL      n/a              n/a
+
+=== corpus verdict ===
+6/6 items match their labels
+  [PASS] gpt-oss:20b update-1hunk (clean) (real)
+  [PASS] gpt-oss:20b add-file (clean) (real)
+  [PASS] gpt-oss:20b update-2hunk (clean) (real)
+  [PASS] gpt-oss:20b apply-fail (no recovery) (real)
+  [PASS] qwen2.5-coder:1.5b hallucinated-tool (no apply_patch) (real)
+  [PASS] llama3.1:8b code-dump (no apply_patch) (real)
+
+failure modes covered:
+  malformed_patch: 2
+  missing_tools: 2
+  no_apply_recovery: 1
 ```
 
 Clean runs pass; a run whose patch failed and was never retried shows `apply_recovery 0/100 FAIL`; a run where a weak model never emitted a real tool call shows `tool_selection 0/100`. That is the whole idea, on real data. Now score your own run.

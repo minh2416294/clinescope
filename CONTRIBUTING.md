@@ -21,7 +21,8 @@ The `[dev]` extra pulls in `pytest`, `pytest-cov`, `ruff`, and `mypy` — the sa
 
 ## Running the tests and linters
 
-Run these before you push; they are exactly what CI checks:
+Run these before you push. CI runs the same four, plus a fifth step that dogfoods `clinescope-gate`
+against two committed traces (asserting both a pass and an expected exit-1 regression):
 
 ```bash
 pytest -q                 # tests
@@ -34,7 +35,7 @@ mypy src                  # type-check
 so `pytest -q` finds the package whether or not it's installed.
 
 CI additionally runs the suite under coverage and **fails if line coverage drops below 90%**
-(measured at 94%). To reproduce that gate locally:
+(measured at 93%). To reproduce that gate locally:
 
 ```bash
 pytest -q --cov=clinescope --cov-report=term-missing --cov-fail-under=90
@@ -50,14 +51,16 @@ An editable install (`pip install -e .`) writes a `.pth` into the active virtual
 whichever worktree ran `pip install -e .` **last** wins — the others import stale code, or fail with
 `No module named clinescope`, even though their own source is correct.
 
-Two ways to stay safe:
+**Use `PYTHONPATH=src`** for a one-off run, which needs no install:
 
-- **Re-run `pip install -e .` inside the worktree you're working in** (repoints the `.pth`), **or**
-- **Use `PYTHONPATH=src`** for a one-off run, which needs no install:
+```bash
+PYTHONPATH=src python -m clinescope examples/sample-trace.json --expected read_files apply_patch
+```
 
-  ```bash
-  PYTHONPATH=src python -m clinescope examples/sample-trace.json --expected read_files apply_patch
-  ```
+**Do not run `pip install -e .` inside a worktree to fix this.** It repins the shared virtualenv for
+every other worktree, and if that worktree is later removed the pin points at a directory that no
+longer exists, which silently breaks `python -m clinescope` everywhere. If the pin is already
+broken, repair it with a single `pip install -e .` in the main checkout.
 
 The gotcha only bites `python -m clinescope` (and editor type-checkers), which don't read
 `pyproject.toml`; `pytest` is already immune via the setting above.
@@ -68,6 +71,11 @@ The gotcha only bites `python -m clinescope` (and editor type-checkers), which d
 2. Make the change; keep the diff focused on one thing.
 3. Run the tests + linters above until they're all green.
 4. Push to your fork and open a PR against `minh2416294/clinescope:main`. CI runs on the PR.
+
+**One thing to know about a PR from a fork.** `main` requires four green checks, and one of them,
+`claude-review`, cannot pass on a fork: GitHub withholds secrets from fork runs on a public
+repository, so the action cannot authenticate. Your PR is still welcome and still reviewed. It just
+needs a maintainer to land it another way, rather than merging itself once the tests go green.
 
 ## What a PR should include
 

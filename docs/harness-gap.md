@@ -33,14 +33,17 @@ session, scored with `clinescope ... --expected read_files apply_patch`.
 
 ## The result
 
-| Model | Harness | tool_selection | diff_coherence | diff_minimality | apply_recovery |
-|---|---|---|---|---|---|
-| qwen2.5-coder:7b | no | 0/100 | 0/100 | n/a | n/a |
-| qwen2.5-coder:7b | yes | 0/100 | 0/100 | n/a | n/a |
-| granite4.1:8b | no | 50/100 | 0/100 | n/a | n/a |
-| granite4.1:8b | yes | 50/100 | 0/100 | n/a | n/a |
-| gpt-oss:20b | no | (empty, see note) | (empty) | (empty) | (empty) |
-| gpt-oss:20b | yes | 100/100 | 100/100 | 100/100 | n/a |
+| Model | Harness | tool_selection | diff_coherence | diff_minimality | apply_recovery | editor_recovery |
+|---|---|---|---|---|---|---|
+| qwen2.5-coder:7b | no | 0/100 | 0/100 | n/a | n/a | not rendered |
+| qwen2.5-coder:7b | yes | 0/100 | 0/100 | n/a | n/a | not rendered |
+| granite4.1:8b | no | 50/100 | 0/100 | n/a | n/a | not rendered |
+| granite4.1:8b | yes | 50/100 | 0/100 | n/a | n/a | 100/100 |
+| gpt-oss:20b | no | (empty, see note) | (empty) | (empty) | (empty) | not rendered |
+| gpt-oss:20b | yes | 100/100 | 100/100 | 100/100 | n/a | not rendered |
+
+"not rendered" is not `n/a`. A trace with no `editor` call gets no `editor_recovery` line at all,
+so there is no cell to compare. Only the harnessed Granite run emits `editor` calls.
 
 On qwen2.5-coder:7b, the community member's exact recipe, the measured delta is zero on all four
 scorers. But the scores hide the interesting part. Without the harness, qwen reached for the default
@@ -60,8 +63,10 @@ tool path an eval grades; it cannot manufacture tool-calling ability a weak mode
 The third model, `granite4.1:8b`, was suggested by the same community member on the theory that a
 model built with a curated, task-designed data mix might behave differently from a general model of
 the same size. It does, and the difference is the most interesting part of the result. Granite's
-per-scorer delta is also zero on all four scorers, the same headline as qwen, but for the
-opposite reason. Where qwen could not emit a single real tool call in either run (it wrote its edit
+per-scorer delta is zero on the four `apply_patch`-era scorers in the table above, the same
+headline as qwen, but for the opposite reason. The fifth scorer is where the two models part:
+`editor_recovery` does not render at all on Granite's bare run and scores `100/100` (2 of 2
+failed edits recovered) on the harnessed one, which is the only movement anywhere in the table. Where qwen could not emit a single real tool call in either run (it wrote its edit
 as prose JSON), Granite emitted real tool calls in both runs: one `read_files` call bare (then an
 empty response before it edited), and six calls harnessed (`read_files`, `run_commands`, three
 `editor` calls) that actually edited the file correctly. Granite clears the "can this model emit

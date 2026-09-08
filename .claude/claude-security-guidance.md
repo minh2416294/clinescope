@@ -12,9 +12,15 @@ documented workflow. So every string lifted out of a trace is attacker-chosen: a
 `apply_patch` target path, an `editor` path, a tool name, an extension task title.
 
 The second adversary is the **supply chain into `.github/workflows/release.yml`**, the only path
-here that reaches a third party. That workflow holds `id-token: write` and publishes to PyPI over
-Trusted Publishing, and its build job hands `dist/` to the publish job, so a compromised action in
-either job can poison a wheel before it is uploaded.
+here that publishes an artifact to a third party. That workflow holds `id-token: write` and
+publishes to PyPI over Trusted Publishing, and its build job hands `dist/` to the publish job, so
+a compromised action in either job can poison a wheel before it is uploaded.
+
+Two other workflows also reach a third party and are in scope for the same supply-chain review,
+even though they publish nothing. `.github/workflows/claude.yml` and
+`.github/workflows/claude-code-review.yml` both run `anthropics/claude-code-action` with a secret
+OAuth token and `id-token: write`, sending repository and pull-request content to an external
+service. `claude-code-review.yml` is a required check, so it runs on every pull request.
 
 Damage from the first adversary is specific rather than generic: terminal escape sequences land
 ahead of the scorer lines in the report and can overwrite them, displaying a score the tool never

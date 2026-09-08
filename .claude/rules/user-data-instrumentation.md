@@ -95,9 +95,11 @@ real trace -> scored -> a scorer produces a number OR abstains
 **Abstention rate is the product signal, not the score.** A scorer that abstains on most real
 traces is not a weak scorer, it is a scorer aimed at the wrong thing.
 
-**This loop has run exactly once, and not on user data.** The three `apply_patch` scorers abstain
-on nearly every current Cline session, because almost no session emits `apply_patch` any more.
-That was noticed on the maintainer's own traces, and `editor_recovery` was built in response.
+**This loop has run exactly once, and not on user data.** On nearly every current Cline session
+the three `apply_patch` scorers produce no usable number, because almost no session emits
+`apply_patch` any more. They do not all do it the same way: `diff_minimality` and `apply_recovery`
+abstain and report `n/a`, while `diff_coherence` hard-zeros with its reason. That was noticed on
+the maintainer's own traces, and `editor_recovery` was built in response.
 
 One instance, from one person's own traces, is not a flywheel and is not described as one here.
 It is written down because it is evidence the loop design is sound, and because a loop that has
