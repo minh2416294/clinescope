@@ -21,7 +21,7 @@ SOME hunk to that path (the same fuzzy-match caveat :mod:`diff_coherence` states
 It does NOT verify the retry addressed the same HUNK/region (file granularity: a
 later unrelated edit to the same file counts), does NOT verify semantic correctness,
 and is BLIND to cross-tool recovery: an agent that abandons ``apply_patch`` and
-correctly fixes the file via ``write_to_file`` / ``str_replace`` scores that failure
+correctly fixes the file via ``write_to_file`` / ``replace_in_file`` scores that failure
 as UNrecovered -- a disclosed false-negative, so a LOW score means "did not recover
 via a same-file confirmed apply_patch", NOT "did not recover". Literal path matching
 (no case-fold, no slash/relative normalization) false-MISSES the same file spelled

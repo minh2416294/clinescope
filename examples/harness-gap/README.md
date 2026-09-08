@@ -37,14 +37,17 @@ file using your tools." Each workspace started from an identical `calc.py` conta
 All six are real Cline CLI (World-A) traces, scored with `read_files apply_patch` as the
 expected tools.
 
-| Trace | Model | Harness | tool_selection | diff_coherence | diff_minimality | apply_recovery |
-|---|---|---|---|---|---|---|
-| `qwen-bare.messages.json` | qwen2.5-coder:7b | no | 0/100 | 0/100 | n/a | n/a |
-| `qwen-harness.messages.json` | qwen2.5-coder:7b | yes | 0/100 | 0/100 | n/a | n/a |
-| `granite-bare.messages.json` | granite4.1:8b | no | 50/100 | 0/100 | n/a | n/a |
-| `granite-harness.messages.json` | granite4.1:8b | yes | 50/100 | 0/100 | n/a | n/a |
-| `gptoss-bare.messages.json` | gpt-oss:20b | no | (empty, see note) | (empty) | (empty) | (empty) |
-| `gptoss-harness.messages.json` | gpt-oss:20b | yes | 100/100 | 100/100 | 100/100 | n/a |
+| Trace | Model | Harness | tool_selection | diff_coherence | diff_minimality | apply_recovery | editor_recovery |
+|---|---|---|---|---|---|---|---|
+| `qwen-bare.messages.json` | qwen2.5-coder:7b | no | 0/100 | 0/100 | n/a | n/a | not rendered |
+| `qwen-harness.messages.json` | qwen2.5-coder:7b | yes | 0/100 | 0/100 | n/a | n/a | not rendered |
+| `granite-bare.messages.json` | granite4.1:8b | no | 50/100 | 0/100 | n/a | n/a | not rendered |
+| `granite-harness.messages.json` | granite4.1:8b | yes | 50/100 | 0/100 | n/a | n/a | 100/100 |
+| `gptoss-bare.messages.json` | gpt-oss:20b | no | (empty, see note) | (empty) | (empty) | (empty) | not rendered |
+| `gptoss-harness.messages.json` | gpt-oss:20b | yes | 100/100 | 100/100 | 100/100 | n/a | not rendered |
+
+"not rendered" is not `n/a`: a trace with no `editor` call gets no `editor_recovery` line at all.
+Only `granite-harness.messages.json` emits `editor` calls.
 
 What each shows:
 

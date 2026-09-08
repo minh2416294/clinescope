@@ -8,7 +8,7 @@ Two input sources, one scoring path. Without ``--vscode`` it loads a Cline CLI
 World-A trace (``{version:1, messages:[...]}``). With ``--vscode`` it reads a
 Cline VS Code *extension* session instead: it auto-discovers the extension's
 per-OS global storage, lists recent sessions with a picker (or takes ``--path`` /
-``--latest``), and scores the chosen one through the same four scorers. Both
+``--latest``), and scores the chosen one through the same five scorers. Both
 paths render via :func:`clinescope.report.render_report` (a pure ``str``-returning
 function) so the report is testable WITHOUT a subprocess; this module is only
 argument parsing plus glue.

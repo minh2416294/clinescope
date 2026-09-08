@@ -1,7 +1,8 @@
 # Judge validation
 
-Clinescope's four core scorers are deterministic -- no LLM is involved, and they are what
-`clinescope-gate` gates on. Clinescope also ships one optional LLM judge, asked the same holistic
+Clinescope's five scorers are all deterministic -- no LLM is involved. Three of them
+(`diff_coherence`, `diff_minimality`, `apply_recovery`) are what `clinescope-gate` gates on, via
+its three `--min-*` flags. Clinescope also ships one optional LLM judge, asked the same holistic
 "is this patch wasteful?" question the human labelers answer. It was built to test whether a cheap
 local model could stand in for that human judgement. Measured against them, it cannot: the numbers
 below are why it is advisory-only and why nothing gates on it.
@@ -70,8 +71,12 @@ the judge is at chance, and it is heavily biased toward calling patches fine.
 
 ```bash
 python -m clinescope.judge_run --report-only         # reads the committed cache; prints κ + CI
-python -m clinescope.judge_multidraw --report-only    # how much κ moves across repeated draws
 ```
+
+The multi-draw figure is not reproducible this way. `python -m clinescope.judge_multidraw
+--report-only` reads `gold/diff_minimality.multidraw.jsonl`, which is **not committed**, so on a
+fresh clone it exits `2` with `no multi-draw cache`. Building that cache means
+`python -m clinescope.judge_multidraw` first, which does make live model calls.
 
 ## Honest caveats
 
