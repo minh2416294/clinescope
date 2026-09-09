@@ -3,8 +3,10 @@
 Things that must stay true, what breaks when they do not, and which of them an agent must
 not decide alone. Ordered by blast radius.
 
-Each entry names the file that owns the detail. None of them restates a value, a threshold or
-a figure, because a copied value is the failure mode this whole directory exists to avoid.
+Each entry names the file that owns the detail and does not restate it. That covers the owner's
+reasoning, not only its figures: writing out the reason a rule exists, in a sentence that also
+names the file owning that rule, is a copy with a citation attached to it. Where an entry has
+nothing to add beyond the pointer, it says so and stops.
 
 **No-agent zone** marks an invariant where the right move on finding a reason to change it is
 to stop and ask a person, not to weigh it up and proceed. The label is about who decides, not
@@ -13,13 +15,12 @@ dangerous.
 
 ## Zero runtime dependencies
 
-`pyproject.toml` declares an empty runtime dependency list, and that is a shipped guarantee
-rather than a preference. `REVIEW.md` treats any addition to it as a real finding, and
-`.claude/claude-security-guidance.md` relies on it to dismiss a whole class of supply-chain
-question as not applicable here.
+`CLAUDE.md` states this in its opening Precedence list, `pyproject.toml` is where it is declared,
+and `REVIEW.md` and `.claude/claude-security-guidance.md` both rest on it.
 
-Adding one falsifies both of those at once, and it is watched by nothing: the dependency
-updater is configured for workflow actions only, precisely because the runtime list is empty.
+What this entry adds is the blast radius. Adding a dependency falsifies all of those at once, and
+nothing would catch it: the dependency updater watches workflow actions only, precisely because
+the runtime list is empty.
 
 **No-agent zone.**
 
@@ -117,11 +118,10 @@ Both files live side by side in `gold/` and are governed oppositely, which an ea
 of this project's own documentation flattened into one rule and got wrong. `CLAUDE.md`, under
 "Layout", owns the split; `gold/README.md` owns the format and the protocol.
 
-The part worth repeating as an invariant is the failure nothing detects: each cached row
-carries a digest of the patch it judged, so a drifting trace is caught loudly, but nothing
-pins the prompt. Rewording the judge's prompt therefore invalidates every cached verdict
-silently. The recompute has to ride the same commit as the prompt change, or the repository
-publishes a figure describing a prompt that is no longer in the tree.
+What this entry adds is the asymmetry that makes the rule bite. Each cached row carries a digest
+of the patch it judged, so a drifting trace is caught loudly, but nothing pins the prompt.
+Rewording the judge's prompt therefore invalidates every cached verdict with no mechanical
+detector anywhere. `CLAUDE.md`, under "Layout", states what must happen when it does.
 
 **No-agent zone**, because the recompute needs live model calls and moves a published figure.
 
@@ -152,22 +152,23 @@ fixture is ingested, never edited".
 
 ## Every workflow action is pinned to a full commit
 
-A tag and a branch are both mutable, so an upstream repoint would run new code inside the
-release path. `CLAUDE.md`, under "Shipping a change", owns this rule, the requirement to keep
-the readable version in a trailing comment, and the alerting trade that pinning makes.
+`CLAUDE.md`, under "Shipping a change", owns this rule in full: why a mutable reference is the
+risk, the requirement to keep the readable version in a trailing comment, and the alerting trade
+that pinning makes. `.claude/claude-security-guidance.md` carries it again as a review checklist
+item.
 
-`.github/workflows/release.yml` is the reason it matters most: read it for how the privilege
-is split, with the job that executes project code holding no publishing rights.
+What this entry adds is where it bites hardest. Read `.github/workflows/release.yml` for how the
+privilege is split there, with the job that executes project code holding no publishing rights.
 
 ## The default branch takes no direct pushes, and the review check must keep reporting
 
-`CLAUDE.md`, under "Shipping a change", owns the named required checks and the reason the
-review workflow must keep triggering on a push to a pull request: a required check reports
-against a head commit, so a workflow that skips one leaves the check pending forever and the
-pull request permanently unmergeable.
+`CLAUDE.md`, under "Shipping a change", owns all of it: the named required checks, why the review
+workflow must keep triggering on a push to a pull request, and what happens to the pull request if
+it stops. `CONTRIBUTING.md`, under "Fork, branch, PR", owns the accepted consequence for a pull
+request opened from a fork.
 
-`CONTRIBUTING.md`, under "Fork, branch, PR", owns the accepted consequence that a pull
-request from a fork cannot pass that check.
+This entry adds nothing to either, and is listed only because both are invariants an agent can
+break with a one-line edit to a workflow file.
 
 ## A joined output line is never neutralised twice
 
