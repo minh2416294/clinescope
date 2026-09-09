@@ -48,7 +48,7 @@ stays a read.
 | The named required checks on the default branch | `CLAUDE.md`, under "Shipping a change" | Undercounted elsewhere in this project's history more than once. |
 | The gate's exit-code contract, and which confusions between codes are forbidden | `src/clinescope/gate.py`, module docstring | `REVIEW.md` and `.claude/claude-security-guidance.md` both treat a break in it as a real finding, and both point here. |
 | The line-coverage floor that fails the build | `pyproject.toml`, coverage report settings | A different fact from the one below, despite sharing a word. |
-| The coverage figure the suite currently measures | `pyproject.toml`, in the comment beside the floor it justifies | See "Known copies" below. |
+| The coverage figure the suite currently measures | `pyproject.toml`, in the comment beside the floor it justifies | See "Known copies, not yet collapsed" below. |
 | Which failure modes the committed corpus covers, and which is a stated gap | `examples/corpus/README.md`, under "Coverage" and "Known gap" | The composition, not a count, is what the suite asserts. |
 | The gold set's size and how many items carry a human label | `gold/README.md` | `CLAUDE.md`, under "Layout", owns why those labels may never be machine-written. |
 | The gate's threshold flags | `src/clinescope/gate.py` | There is no flag for the trajectory scorer added most recently; `LIMITATIONS.md` says so. |
@@ -65,12 +65,17 @@ The heading quoted verbatim, so the pointer above resolves by search: **"The fiv
 the honest caveat on each"**. It is reproduced exactly because a paraphrased heading is not a
 locator.
 
-**Quoting a heading is not a restatement, and this holds everywhere in this directory.** The rule
-above asks for a file plus a stable heading, so the heading has to be reproduced word for word or
-the pointer does not resolve. That is true of every quoted heading here, not only the one above.
-What the rule forbids is carrying across what the owner *says* under that heading. If you are
-checking this directory for copies, expect quoted headings to match their owners and judge the
-sentences around them instead.
+**Quoting a heading is not a restatement, and that holds wherever one appears in this directory.**
+The rule above asks for a file plus a stable heading, so a quoted heading is a locator, and it is
+quoted rather than paraphrased because a paraphrase does not resolve. What the rule forbids is
+carrying across what the owner *says* under that heading. If you are checking this directory for
+copies, judge the sentences around a quoted heading rather than the heading itself.
+
+**A pointer may quote only the front of a heading, when the rest of it carries a fact somebody
+else owns.** The pointer to "Known gap" in `examples/corpus/README.md` is that case: the remainder
+of that heading names which failure mode the gap is, and naming it here would be the copy this
+file exists to prevent. So quote as much of a heading as finds it by search, and stop early when
+going further would carry a fact across.
 
 ## Deliberate second statements
 
