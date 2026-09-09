@@ -13,18 +13,28 @@ drift, which would make this file part of the problem it was written to solve.
 
 ## The rule
 
-**Name the owner. Never copy the value.**
+**Name the owner. Do not restate what it says.**
 
 - Every recurring fact has exactly one owning file.
 - Everywhere else points at that file by name plus a stable heading or symbol. Never by line
   number: a line number is itself a copied value, and it moves whenever anything above it is
   edited, including in a change that touches no code at all.
+- What must not be restated is more than a figure. The owner's reasoning counts as well: writing
+  out why a rule exists, in a sentence that also names the file owning that rule, is a copy with a
+  citation attached to it. That is spelled out rather than left implied because it is the form the
+  rule was first broken in, one commit after it was written.
 - A second statement of a fact is allowed only when it is deliberate, has a reason, and is
   listed under "Deliberate second statements" below. Anything else is a copy.
 
 `tests/test_docs_internal_contract.py` enforces the mechanical half: it rejects a line-number
 pointer anywhere in this directory and asserts that every repository path named here still
-resolves. Whether a sentence is quietly restating a figure owned elsewhere is a judgement, and
+resolves.
+
+The other half cannot be a grep, and that is worth knowing before trusting a green check. A
+restated reason carries no figure, no percentage and no positional pointer, so every mechanical
+check passes on it. `CLAUDE.md` makes the same point about the limits of its own honesty grep, in
+the paragraph directly after the grep command. What caught it here was comparing this directory's
+phrasing against the owner files and looking for shared runs of words. That is a read, and it
 stays a read.
 
 ## Who owns what
