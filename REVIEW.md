@@ -45,8 +45,9 @@ production calibration does not fit. Reserve Important for these five:
   how good a patch is. There are five scorers, not four.
 - An abstention is reported as `n/a`, never as a zero.
 - `dependencies = []` is unchanged.
-- A behaviour change carries its README, CHANGELOG and CLAUDE.md update in the same commit.
-  Drift is a latency problem, and same-commit leaves no window for a stale claim to survive.
+- A behaviour change carries its README, CHANGELOG, CLAUDE.md and `docs/internal/` update in the
+  same commit. Drift is a latency problem, and same-commit leaves no window for a stale claim to
+  survive.
 - A new sink for trace-derived text neutralises at the source, not at the join.
 
 ## Verification bar

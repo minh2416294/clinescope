@@ -255,9 +255,15 @@ you change either piece:
 Conventional commit subjects. Branches are short kebab-case, for example
 `fix/abstention-not-zero`.
 
-**The docs update rides the same commit as the code.** Never let a behaviour change and its
-README, CHANGELOG or CLAUDE.md update land separately. Drift is a latency problem, and
-same-commit leaves no window for a stale claim to survive in.
+**The docs update rides the same commit as the code, and `docs/internal/` is read before the
+code.** Never let a behaviour change and its README, CHANGELOG, CLAUDE.md or `docs/internal/`
+update land separately. Drift is a latency problem, and same-commit leaves no window for a stale
+claim to survive in; when a change leaves `docs/internal/` unaffected, say so in one line rather
+than leaving it unsaid. Read that directory before working in this repo:
+`docs/internal/README.md` routes you to the invariants, the boundaries, and the file that owns
+each recurring fact, so a session does not have to rediscover them. Begin any research request
+there as well, and escalate to a repo-wide research pass only when those files do not answer the
+question. When they do not, the answer belongs back in them.
 
 **Every action in `.github/workflows/` is pinned to a full commit SHA**, with the readable
 version kept in a trailing comment (`uses: actions/checkout@<sha> # v7`). A tag or a branch is
