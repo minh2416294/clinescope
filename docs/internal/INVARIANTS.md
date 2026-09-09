@@ -61,10 +61,9 @@ Owner: each scorer module in `src/clinescope/`, at its result dataclass.
 ## The gate decides applicability on a call count, not on a score
 
 Because one scorer cannot abstain, something else has to carry "this did not apply to this
-trace". That signal is a call count published on each result in the patch-grammar family,
-and `src/clinescope/gate.py` keys its not-applicable verdict on the count rather than on the
-score. This is what keeps a malformed patch that really is present failing the build, instead
-of being excused along with the traces that contain no patch at all.
+trace". That signal is a call count published on each result in the patch-grammar family.
+`src/clinescope/gate.py` owns what it does with that count, and why, in its module docstring.
+`CLAUDE.md` states the consequence for a build.
 
 The field looks like an incidental counter surfaced for the report, so dropping or renaming
 it on one result reads as safe cleanup. It is load-bearing for the gate's exit behaviour.
@@ -114,9 +113,8 @@ Owner: `gold/README.md`, under "Labeling protocol (for a human labeler)".
 
 ## The human labels are frozen; the judge cache is regenerable
 
-Both files live side by side in `gold/` and are governed oppositely, which an earlier version
-of this project's own documentation flattened into one rule and got wrong. `CLAUDE.md`, under
-"Layout", owns the split; `gold/README.md` owns the format and the protocol.
+The two files in `gold/` are governed oppositely. `CLAUDE.md`, under "Layout", owns that split
+and the history behind it; `gold/README.md` owns the format and the protocol.
 
 What this entry adds is the asymmetry that makes the rule bite. Each cached row carries a digest
 of the patch it judged, so a drifting trace is caught loudly, but nothing pins the prompt.
@@ -152,10 +150,9 @@ fixture is ingested, never edited".
 
 ## Every workflow action is pinned to a full commit
 
-`CLAUDE.md`, under "Shipping a change", owns this rule in full: why a mutable reference is the
-risk, the requirement to keep the readable version in a trailing comment, and the alerting trade
-that pinning makes. `.claude/claude-security-guidance.md` carries it again as a review checklist
-item.
+`CLAUDE.md`, under "Shipping a change", owns this rule in full: the risk, the accompanying
+comment requirement, and the alerting trade pinning makes.
+`.claude/claude-security-guidance.md` carries it again as a review checklist item.
 
 What this entry adds is where it bites hardest. Read `.github/workflows/release.yml` for how the
 privilege is split there, with the job that executes project code holding no publishing rights.

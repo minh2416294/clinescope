@@ -50,7 +50,7 @@ stays a read.
 | The line-coverage floor that fails the build | `pyproject.toml`, coverage report settings | A different fact from the one below, despite sharing a word. |
 | The coverage figure the suite currently measures | `pyproject.toml`, in the comment beside the floor it justifies | See "Known copies" below. |
 | Which failure modes the committed corpus covers, and which is a stated gap | `examples/corpus/README.md`, under "Coverage" and "Known gap" | The composition, not a count, is what the suite asserts. |
-| The gold set's size and how many items carry a human label | `gold/README.md` | The labels are the fixed side of every agreement figure. |
+| The gold set's size and how many items carry a human label | `gold/README.md` | `CLAUDE.md`, under "Layout", owns why those labels may never be machine-written. |
 | The gate's threshold flags | `src/clinescope/gate.py` | There is no flag for the trajectory scorer added most recently; `LIMITATIONS.md` says so. |
 | The advice taxonomy's label set | `src/clinescope/advice.py` | Enumerated once, at the enum. |
 | The released package version | `pyproject.toml` | Deliberately mirrored in the package. See below. |
@@ -64,6 +64,13 @@ stays a read.
 The heading quoted verbatim, so the pointer above resolves by search: **"The five scorers, and
 the honest caveat on each"**. It is reproduced exactly because a paraphrased heading is not a
 locator.
+
+**Quoting a heading is not a restatement, and this holds everywhere in this directory.** The rule
+above asks for a file plus a stable heading, so the heading has to be reproduced word for word or
+the pointer does not resolve. That is true of every quoted heading here, not only the one above.
+What the rule forbids is carrying across what the owner *says* under that heading. If you are
+checking this directory for copies, expect quoted headings to match their owners and judge the
+sentences around them instead.
 
 ## Deliberate second statements
 
