@@ -45,7 +45,8 @@ Flags for `--vscode`:
   `api_conversation_history.json`, or the extension's `globalStorage` root.
 - `--variant <name>` limits discovery to one editor (`Code`, `Cursor`, `VSCodium`, `Windsurf`, ...) when
   several are installed.
-- `--all` shows every session in the picker instead of only the most recent.
+- `--all` shows every session in the picker. Without it the picker lists the twenty newest and
+  says how many older ones it left out.
 
 The diff scorers grade `apply_patch` grammar. When an extension session edits with `write_to_file` or
 `replace_in_file`, `tool_selection` still scores; `diff_coherence` reports a hard `0/100` (it found no

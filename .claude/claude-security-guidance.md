@@ -38,14 +38,31 @@ false positive:
 - No user data, no PII, no telemetry, no analytics.
 - No runtime dependencies at all (`pyproject.toml`, `dependencies = []`), so no transitive
   supply chain in the shipped package.
-- Exactly one outbound network call, to `http://localhost:11434`, in an opt-in advisory path.
+- Exactly one outbound network DESTINATION, `http://localhost:11434` by default, in an opt-in
+  advisory path. Two call sites reach it, both in `judge.py`: the POST that asks the model, and the
+  cheap GET reachability probe the live test's skip gate uses. `--base-url` repoints both, and it is
+  operator input from the command line, never anything read out of a trace.
 
 ## Checklist
 
 **1. Trace-derived text is neutralised at the source, never at the join.** Anything lifted from a
-trace passes through `render_safety.quote_untrusted_text` at the point it is read. Existing call
-sites: `report.py:409,429,539,559,573`, `advice.py:115,141`, `__main__.py:449,452,475,476`. A new
-sink that interpolates a path, id, tool name or title into output without it is a real finding.
+trace passes through `render_safety.quote_untrusted_text` at the point it is read, in `report.py`,
+`advice.py`, `__main__.py` and `extension_discovery.py`. Enumerate them with
+`grep -rn "quote_untrusted_text(" src/clinescope/` rather than trusting a list here; the list this
+paragraph used to carry went stale the first time a sink moved. A new sink that interpolates a
+path, id, tool name or title into output without it is a real finding.
+
+**The stderr paths count, and are the ones that got missed.** Two sinks in the `--vscode` discovery
+flow printed a raw path until they were fixed: the extension load-error line in `__main__.py` and
+the two corrupt-file warnings in `extension_discovery._read_json_list`. Both run BEFORE any scorer
+line exists, which is the strongest overwrite position there is, and both take their path from a
+task directory name off disk. Do not assume a sink is safe because it is not a report line.
+
+**One deliberate exception.** `label_gold.py` renders the lifted patch text straight to the
+labeller's terminal and does NOT neutralise it. Escaping it would render the patch unreadable and
+destroy the labelling task, and the blind-render test in `tests/test_label_gold.py` pins the patch
+as shown verbatim. The items it renders resolve to committed `examples/` traces the maintainer
+owns, so the input is not a stranger's. Do not report this one, and do not "fix" it.
 
 Do **not** flag the reverse. Scorer-built violation strings already escape their own paths with
 `!r` in `apply_recovery.py` and `editor_recovery.py`, so neutralising a joined line double-escapes

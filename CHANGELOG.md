@@ -66,6 +66,31 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Fixed
 
+- A second audit, run by reading every claim against the code it describes rather
+  than by grepping, reconciled nine more contradictions. The ones a reader would have
+  acted on: `.claude/claude-security-guidance.md` said there is exactly one outbound
+  network call when `judge.py` has two call sites, both to the same opt-in local
+  endpoint, and told reviewers not to look further. `docs/internal/ARCHITECTURE.md`
+  cited `docs/internal/INVARIANTS.md` as recording a cross-command exit-code
+  invariant that file did not contain; the invariant is now written, and the pointer
+  no longer restates its reasoning. `CLAUDE.md` named three `python -m` commands where
+  four exist (`judge_multidraw` was missing) and its Layout tree listed 15 of 27
+  modules, omitting `__main__.py`, which is the `clinescope` console-script target.
+  `docs/quickstart.md` showed report headers with an unquoted session id and a
+  double-quoted extension title, where the tool prints both quoted by
+  `render_safety.quote_untrusted_text`. `docs/internal/INVARIANTS.md` said the
+  labelling harness's content half "is not pinned by anything" when
+  `tests/test_label_gold.py` does pin it, narrowly. `docs/internal/FACT-OWNERSHIP.md`
+  claimed `REVIEW.md` points at the gate's exit-code owner when it restates the
+  contract instead; both restatements are now recorded as known copies.
+  `docs/usage.md` described `--all` as replacing "only the most recent" when the
+  default picker shows the twenty newest.
+- `docs/internal/TESTING-AND-CI.md` said the type checker is scoped to the package and
+  the scripts directory. The configuration says that, but the build passes an explicit
+  path and mypy then ignores its configured paths, so `scripts/` is never
+  type-checked. Measured on this tree: 29 source files configured, 27 actually
+  checked. The same file's description of the corpus provenance guard was narrowed to
+  what the test can detect, since the source field it asserts on is self-declared.
 - An internal-consistency audit reconciled 21 places where the repository
   contradicted itself. The ones a reader would have acted on:
   `docs/judge-validation.md` said Clinescope has four core scorers and that all of
@@ -140,6 +165,21 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Security
 
+- Two stderr sinks in the `--vscode` discovery flow printed a trace-derived path
+  without neutralising it, against the rule stated in `CLAUDE.md` and
+  `.claude/claude-security-guidance.md`: the extension load-error line in
+  `__main__.py`, and the two corrupt-file warnings in
+  `extension_discovery._read_json_list`. Both take their path from a task directory
+  name off disk, and both run before any scorer line exists, which is the position an
+  escape sequence needs in order to overwrite the scores. Both now route through
+  `render_safety.quote_untrusted_text`, and `tests/test_render_safety.py` covers each
+  with a hostile path. The escaping rule was previously documented as universal while
+  these two did not follow it.
+- `label_gold.py` still prints lifted patch text to the labeller's terminal
+  unescaped. That is now written down as a deliberate exception rather than left as an
+  undocumented gap: escaping it would make the patch unreadable and defeat the
+  labelling task, its items resolve to committed `examples/` traces this repository
+  owns, and the blind-render test pins the patch as shown verbatim.
 - Every GitHub Action is now referenced by a full 40-character commit SHA instead of
   a mutable tag or branch, with the readable version kept in a trailing comment.
   Seven references moved: five in `release.yml` and two in `ci.yml`. This closes the

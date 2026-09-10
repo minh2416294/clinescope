@@ -332,8 +332,13 @@ def _run_extension_flow(
     try:
         trace = load_extension_trace(session.api_history_path)
     except Exception as err:  # noqa: BLE001 -- same deliberate load boundary as above
+        # The path embeds the task DIRECTORY NAME off disk, which on a POSIX host may
+        # contain anything, and this line prints before any scorer line exists -- the
+        # same overwrite position render_safety describes. Neutralized at the source
+        # like the taskId is in _extension_label / _picker_line below.
         print(
-            f"error: could not load extension session {session.api_history_path}: "
+            f"error: could not load extension session "
+            f"{quote_untrusted_text(str(session.api_history_path))}: "
             f"{type(err).__name__}: {err}",
             file=sys.stderr,
         )

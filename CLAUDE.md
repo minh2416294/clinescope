@@ -159,10 +159,13 @@ clinescope-gate <trace.json> --min-diff-coherence 0.75   # CI gate: exit 0 pass,
 clinescope-corpus                                        # the real-trace regression corpus
 python -m clinescope.compare A.json B.json               # multi-trace scorecard
 python -m clinescope.judge_run --report-only             # recompute kappa, no model call
+python -m clinescope.judge_multidraw --report-only       # judge stability across draws
 ```
 
-Three console scripts exist: `clinescope`, `clinescope-gate`, `clinescope-corpus`. `compare`,
-`judge_run` and `label_gold` are `python -m clinescope.<module>` only.
+Three console scripts exist: `clinescope`, `clinescope-gate`, `clinescope-corpus`. Four more are
+`python -m clinescope.<module>` only: `compare`, `judge_run`, `judge_multidraw` and `label_gold`.
+`judge_multidraw` reads a cache that is not committed, so on a fresh clone `--report-only` exits
+`2`; `gold/README.md` owns what it measures.
 
 **Where a trace comes from.** The Cline CLI writes
 `~/.cline/data/sessions/<id>/<id>.messages.json`, and `cline history --json` lists each session
@@ -286,31 +289,50 @@ weak on contracts, which is where the Day 56 review found three findings it did 
 
 ## Layout
 
+Every module in the package, so this tree can be checked against `ls` rather than read as a
+highlight reel. An earlier version listed 15 of them and omitted the console-script entry point.
+
 ```
 src/clinescope/        the package
+  __main__.py          the `clinescope` CLI: argv, discovery, glue (console-script target)
+  __init__.py          version, mirrored from pyproject.toml
   world_a.py           trace loading (Cline CLI messages.json v1)
-  cline_extension.py   VS Code extension trace loading
+  cline_extension.py   VS Code extension trace loading (adapter onto world_a)
+  extension_discovery.py  finds extension sessions on disk, per-OS
+  _datafiles.py        locates bundled examples/ + gold/ from an installed wheel
   tool_selection.py    scorer
-  diff_coherence.py    scorer
+  diff_coherence.py    scorer (owns the apply_patch grammar parser the other two reuse)
   diff_minimality.py   scorer
   apply_recovery.py    scorer
   editor_recovery.py   scorer
+  tool_verdict.py      shared failure/success oracle for the two recovery scorers
+  tool_vocab.py        pinned Cline tool-name vocabulary for --expected
   report.py            rendering
   render_safety.py     escapes trace-derived text before it is rendered
   advice.py            rule-based zero-LLM coach
   gate.py              clinescope-gate CLI
   corpus.py            clinescope-corpus CLI
-  judge*.py            opt-in advisory judge, kept out of the gate
+  compare.py           multi-trace scorecard (python -m only)
+  labels.py            failure-taxonomy label plumbing
+  gold.py              gold-set loading and resolution
+  label_gold.py        blind human-labelling harness (python -m only)
+  agreement.py         Cohen's kappa + bootstrap CI
+  agreement_multi.py   Fleiss' kappa, multi-rater
+  judge.py             opt-in advisory judge, kept out of the gate
+  judge_run.py         single-draw kappa report (python -m only)
+  judge_multidraw.py   judge stability across draws (python -m only)
 examples/              committed real traces (frozen test artifacts)
-gold/                  human-labeled gold set (frozen)
+gold/                  human-labeled gold set (frozen) + the regenerable judge cache
+scripts/               committed generators (NOT type-checked by CI; see docs/internal/)
 tests/
+docs/internal/         agent-facing contracts; read before changing code
 .claude/rules/         project rule files, committed
 ```
 
 `examples/` is a **frozen contract**. Do not regenerate or reformat it.
 
-`gold/` holds two files and they are governed differently, which an earlier version of this
-line flattened into one rule and got wrong:
+`gold/` holds two DATA files, alongside its `README.md`, and the two are governed differently,
+which an earlier version of this line flattened into one rule and got wrong:
 
 - **`gold/diff_minimality.gold.jsonl` is frozen.** These are the human labels. They are the
   fixed side of every agreement number, so a machine never writes one. Adding an item means
@@ -328,6 +350,18 @@ title) is chosen by whoever wrote it. Route every such value through
 `render_safety.quote_untrusted_text` at the point it is read, not at the join: scorer-built
 violation strings already escape their own paths with `!r`, so neutralizing a joined line
 would escape it twice. Values the operator typed, such as `--expected` names, are left alone.
+
+**That covers stderr, not only the report, and the stderr sinks are the ones that got missed.**
+The extension load-error line and the two corrupt-file warnings in `--vscode` discovery each
+printed a raw path until they were fixed, and each runs before any scorer line exists, which is
+the strongest position an escape sequence can occupy. A sink is not safe because it is a warning.
+
+**One deliberate exception, and it is the only one.** `label_gold.py` prints the lifted patch
+text to the labeller's terminal unescaped. Escaping it would make the patch unreadable and
+destroy the labelling task, and the blind-render test pins the patch as shown verbatim. Its
+items resolve to committed `examples/` traces this repository owns, so that input is not a
+stranger's. Do not close this gap; it is a choice, and `.claude/claude-security-guidance.md`
+tells a reviewer not to report it.
 
 The patch text handed to the optional judge is the same kind of untrusted input, and it is
 handled a second way because it goes to a model rather than to a terminal:

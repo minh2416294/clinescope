@@ -268,8 +268,11 @@ def test_enumerate_tolerates_corrupt_task_history(
     assert [s.task_id for s in sessions] == ["9"]
     # ...but a present-but-corrupt file is a real anomaly, so it is NOT silent: a
     # warning naming the unreadable file goes to stderr (fail-loud, not swallowed).
+    # The path is quoted because it is built from a task directory name off disk and
+    # is therefore untrusted; expected form pinned from Python's documented repr, not
+    # copied from what the helper happens to emit.
     err = capsys.readouterr().err
-    assert f"warning: could not parse {corrupt}: JSONDecodeError" in err
+    assert f"warning: could not parse {str(corrupt)!r}: JSONDecodeError" in err
 
 
 def test_enumerate_absent_task_history_is_silent(

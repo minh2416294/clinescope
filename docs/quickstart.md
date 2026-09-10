@@ -212,7 +212,7 @@ You get one line per scorer:
 Here is a real run of a small local model asked to fix a bug. It answered in fluent prose ("the fix is complete, a patch was applied") but never actually called a tool, and the file was never touched. Clinescope caught it (your session id will be a timestamp Cline assigned, like `1783823285576_8f1km`):
 
 ```
-clinescope report - session 1783823285576_8f1km (0 tool calls)
+clinescope report - session '1783823285576_8f1km' (0 tool calls)
 tool_selection    0/100   (missing: apply_patch, read_files)
 diff_coherence    0/100  FAIL   (no apply_patch tool call in trace)
 diff_minimality     n/a  n/a   (no apply_patch - nothing to check)
@@ -224,7 +224,7 @@ Reading it: the agent claimed it fixed the bug, but the trace records zero tool 
 **If your run used the `editor` tool instead of `apply_patch`.** Most current Cline CLI sessions do. Cline only routes a session to `apply_patch` when the provider is `openai-native` or the model id contains `codex` or `gpt`, and only in act mode; everything else gets `editor`. On those sessions the three `apply_patch` scorers go quiet and a fifth line appears:
 
 ```
-clinescope report - session 1787455395427_4abgw (3 tool calls)
+clinescope report - session '1787455395427_4abgw' (3 tool calls)
 tool_selection  100/100  PASS
 diff_coherence    0/100  FAIL   (no apply_patch tool call in trace)
 diff_minimality     n/a  n/a   (no apply_patch - nothing to check)
@@ -274,7 +274,9 @@ That opens an interactive picker (newest first; press Enter for the newest, `q` 
 - `clinescope --vscode --path <task-dir>` points at one session explicitly (a task directory, its `api_conversation_history.json`, or the extension's `globalStorage` root).
 - `clinescope --vscode --variant Cursor` limits discovery to one editor when you have several (Code, Cursor, VSCodium, ...).
 
-The report header reads `extension session <taskId> "<title>" [<variant>]`, so it is clear you are looking at an extension run, not a CLI one.
+The report header reads `extension session '<taskId>' '<title>' [<variant>]`, so it is clear you are looking at an extension run, not a CLI one. The title is dropped when the extension recorded none.
+
+**Why the id and title are in quotes.** Both are chosen by whatever wrote the session on disk, so Clinescope prints them quoted with any non-printable character escaped, and the same is true of the `session '<id>'` line in the CLI reports above. The quotes are part of the output, not a typo in this guide: they mark where untrusted text starts and ends, so a path or a title cannot blend into the label beside it.
 
 **One tool-name difference to know.** The CLI uses `apply_patch` / `read_files`; the extension often uses `write_to_file` / `replace_in_file` / `read_file` instead (it depends on your Cline and model). Run `clinescope --list-tools` to see the full set for `--expected` (both the CLI and extension names). The three diff scorers grade `apply_patch` grammar, so on a `write_to_file` session `tool_selection` still scores; `diff_coherence` reports a hard `0/100` (it found no `apply_patch` to grade), and `diff_minimality` / `apply_recovery` abstain (`n/a`). That `0/100` means "no `apply_patch` to grade here," not "your agent wrote a broken patch." A `write_to_file` grammar scorer is on the roadmap.
 
