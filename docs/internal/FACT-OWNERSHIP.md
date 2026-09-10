@@ -84,10 +84,15 @@ copies is that a test fails when the two disagree, or the comment beside them sa
 duplication is load-bearing.
 
 - **The gated proxy's agreement figure and its layout-dependence sentence** appear in
-  `src/clinescope/gate.py`'s help text and are asserted by `tests/test_gate.py`. The reason is
-  written above those tests: somebody wiring this into their build reads the help text and
-  never opens the repository, so the disclosure belongs where the decision is made. The test
-  is what stops it being quietly dropped.
+  `src/clinescope/gate.py`'s help text and are asserted by `tests/test_gate.py`. The reason the
+  duplication is load-bearing is written above those tests. The test is what stops it being
+  quietly dropped.
+- **The canonical rule line above** appears again in `docs/internal/README.md`, because a router
+  a reader abandons after the first screen still has to carry the one rule this directory exists
+  for. `tests/test_docs_internal_contract.py` compares the two verbatim. Before it did, the two
+  disagreed for three merged pull requests: this file widened the rule and the README kept the
+  older wording, which is the drift this whole directory is meant to prevent, occurring in the
+  statement of the rule against it.
 - **The package version** appears in `pyproject.toml` and in `src/clinescope/__init__.py`,
   and `tests/test_version_consistency.py` is the only thing comparing them. Its docstring
   explains what bumping one and forgetting the other would ship.

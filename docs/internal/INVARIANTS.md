@@ -3,10 +3,10 @@
 Things that must stay true, what breaks when they do not, and which of them an agent must
 not decide alone. Ordered by blast radius.
 
-Each entry names the file that owns the detail and does not restate it. That covers the owner's
-reasoning, not only its figures: writing out the reason a rule exists, in a sentence that also
-names the file owning that rule, is a copy with a citation attached to it. Where an entry has
-nothing to add beyond the pointer, it says so and stops.
+Each entry names the file that owns the detail and does not restate it.
+`docs/internal/FACT-OWNERSHIP.md` owns what counts as a restatement, including the case an entry
+here is most likely to fall into. Where an entry has nothing to add beyond the pointer, it says
+so and stops.
 
 **No-agent zone** marks an invariant where the right move on finding a reason to change it is
 to stop and ask a person, not to weigh it up and proceed. The label is about who decides, not
@@ -44,12 +44,13 @@ for the resolution helper and its fail-closed rule.
 
 ## Whether a scorer can abstain is a property of its type
 
-Each scorer's result declares its score either as a plain float or as an optional one, and
-that declaration is the whole mechanism: a plain float cannot express "not applicable", so
-the scorer reports a loud zero instead. The strict type checker configured in
-`pyproject.toml` is what enforces it.
+`docs/internal/ARCHITECTURE.md`, under "What no single module owns", owns which layer decides
+each outcome and the type that produces one; `src/clinescope/gate.py`'s docstring owns why the
+distinction exists. The strict type checker configured in `pyproject.toml` is what enforces it.
 
-"Make this scorer abstain like the others" is therefore not a one-line change. It is a public
+What this entry adds is the cost of changing it, which reads much lower than it is.
+
+"Make this scorer abstain like the others" is not a one-line change. It is a public
 type change that rewrites the report contract and removes the loudness the zero exists to
 provide. Going the other way forces a fabricated number where the metric is genuinely
 undefined, which is the abstention-reported-as-zero error `CLAUDE.md` warns about by name.
@@ -169,10 +170,9 @@ break with a one-line edit to a workflow file.
 
 ## A joined output line is never neutralised twice
 
-Violation strings built by the scorers already escape the paths they interpolate. Passing
-such a line through the neutralising helper again double-escapes it, which is why
-`.claude/claude-security-guidance.md` states the rule as neutralise at the source rather than
-at the join, and explicitly tells a reviewer not to flag the reverse.
+`.claude/claude-security-guidance.md` owns this rule in full, including what it tells a reviewer
+not to do about it. `src/clinescope/render_safety.py`'s own module docstring owns why the helper
+is a leaf module and where neutralising belongs.
 
-That file owns the checklist, and `src/clinescope/render_safety.py`'s own module docstring owns
-why the helper is a leaf module and why it neutralises the way it does.
+This entry adds nothing to either, and is listed only because it is an invariant an agent can
+break with a one-line edit while believing it is hardening the code.

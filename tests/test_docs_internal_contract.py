@@ -1,4 +1,4 @@
-"""Guard the ``docs/internal/`` contract set against the two ways it rots silently.
+"""Guard the ``docs/internal/`` contract set against the three ways it rots silently.
 
 ``docs/internal/`` is agent-facing documentation whose entire value is that a later
 session can trust its pointers instead of re-deriving them. Nothing else in this suite
@@ -13,6 +13,11 @@ below are invisible to every other check in the build.
    numbers the honesty rule in ``CLAUDE.md`` tracks, because it added lines above them.
    So this set locates a fact by file plus a stable heading or symbol name, and this test
    is what stops that decision decaying into a convention nobody remembers.
+3. The one rule the directory exists for is stated in two files and they disagree. That is
+   not hypothetical: ``FACT-OWNERSHIP.md`` widened the rule and ``README.md`` kept the older
+   wording, and the set that exists to stop a fact having two versions shipped its own
+   headline rule in two versions. A required review check read both files and did not catch
+   it, because each reads correctly on its own.
 """
 
 from __future__ import annotations
@@ -44,6 +49,7 @@ _KNOWN_ROOT_FILES = frozenset(
 )
 
 _BACKTICKED = re.compile(r"`([^`\n]+)`")
+_STANDALONE_BOLD = re.compile(r"^\*\*(.+?)\*\*$", re.MULTILINE)
 _MARKDOWN_LINK = re.compile(r"\]\(([^)\s]+)\)")
 _POSITIONAL_POINTER = re.compile(
     r"[\w./-]+\.(?:py|md|yml|yaml|toml|json|jsonl|svg):\d+"
@@ -89,6 +95,28 @@ def test_every_repo_path_named_in_docs_internal_resolves() -> None:
         "docs/internal/ points at paths that do not exist: "
         + "; ".join(missing)
         + ". Update the pointer in the same commit that moved the file."
+    )
+
+
+def test_the_readme_states_the_canonical_rule_in_its_owner_s_words() -> None:
+    """``README.md`` repeats the rule on purpose, so something must fail when it drifts.
+
+    A second statement of a fact is allowed in this directory only when it is a pin
+    rather than a copy, and what makes it a pin is a test that fails on disagreement.
+    This is that test. Comparing the line verbatim is the point: a paraphrase is exactly
+    the drift being guarded against, so a looser check would pass on the failure it
+    exists to catch.
+    """
+    owner = _DOCS_INTERNAL / "FACT-OWNERSHIP.md"
+    readme = _DOCS_INTERNAL / "README.md"
+    owned = set(_STANDALONE_BOLD.findall(owner.read_text(encoding="utf-8")))
+    stated = _STANDALONE_BOLD.findall(readme.read_text(encoding="utf-8"))
+
+    assert stated, f"{readme.name} states no rule line at all."
+    assert stated[0] in owned, (
+        f"{readme.name} states the rule as {stated[0]!r}, which is not a rule line in "
+        f"{owner.name}. That file owns the wording. Either copy it verbatim or drop the "
+        f"restatement from {readme.name} and point at the owner instead."
     )
 
 

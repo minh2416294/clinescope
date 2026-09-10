@@ -25,16 +25,14 @@ that happens the answer belongs back in here.
 
 ## The rule every file here follows
 
-**Name the owner. Never copy the value.**
+**Name the owner. Do not restate what it says.**
 
-A recurring fact belongs to exactly one file. Every other mention points at that file by name
-plus a stable heading or symbol, and never by line number, because a line number is itself a
-copied value that moves whenever anything above it is edited.
+`docs/internal/FACT-OWNERSHIP.md` owns that rule: what counts as a restatement, how a pointer has
+to be written, which half of it a test can check, and where each recurring fact actually lives.
 
-`tests/test_docs_internal_contract.py` enforces the mechanical half of that: it rejects a
-line-number pointer and asserts every repository path named here still resolves. The judgement
-half, whether a sentence is quietly restating something owned elsewhere, is a read.
-`docs/internal/FACT-OWNERSHIP.md` is where the ownership itself is recorded.
+The rule is repeated here rather than only pointed at because it is the reason this directory
+exists, and a reader who takes nothing else from this page should take that line. The wording is
+`FACT-OWNERSHIP.md`'s, so if the two ever differ, that file is right and this one is stale.
 
 ## Owned elsewhere, referenced not restated
 
