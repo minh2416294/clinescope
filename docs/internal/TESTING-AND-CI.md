@@ -11,7 +11,9 @@ are each already owned:
 - `CONTRIBUTING.md` owns dev setup, the coverage reproduction, the multi-worktree
   editable-install gotcha, and the full release procedure.
 - `pyproject.toml` comments own why the coverage flags sit on the command line rather than in
-  the defaults, and the scope of the type checker.
+  the defaults. Its type-checker block declares a scope but carries no comment explaining one,
+  and what the build actually checks is narrower than that declaration; see "What a green build
+  does not tell you" below before trusting it.
 
 What this file adds is the part nothing else collects: which tests are load-bearing in a way
 their names do not reveal, and what a green build is silent about.
@@ -29,7 +31,7 @@ plausible edit and a silent regression, and none is obvious from its filename.
 | `tests/test_label_gold.py`, the import pin | A human labeller being shown the automated answer they are meant to be an independent check on. |
 | `tests/test_version_consistency.py` | Publishing a package whose reported version is not the one that was built. The only thing comparing the two. |
 | `tests/test_fixture_drift.py` | An upstream change to Cline's own captured fixture passing as a local behaviour change. Pins content and size. |
-| `tests/test_corpus.py` | The evidence corpus degrading to all-clean or all-failing, or an authored trace passing as a real capture. Asserts composition, not a count. |
+| `tests/test_corpus.py` | The evidence corpus degrading to all-clean or all-failing, and a trace DECLARED authored being used as a failing item. Asserts composition, not a count. Provenance is a self-declared manifest field, so it cannot catch a trace that is authored but declared real; that one rests on the contributor. |
 | `tests/test_render_demo_svg.py` | The committed hero image drifting from its generator. Byte identity, because a weaker check would pass on a spacing change. |
 | `tests/test_editor_recovery_report.py` | The report's existing output shifting when a newer scorer is not in play. Byte identity, for the same reason. |
 | `tests/test_docs_internal_contract.py` | This directory pointing at a path that no longer exists, or locating a fact by line number. |
@@ -52,10 +54,19 @@ repository-relative path constants and the corpus runner resolves manifest keys 
 process working directory. Run it from elsewhere and the failures read exactly like a real
 regression, which is the most expensive kind of false alarm for somebody new here.
 
-**The type checker does not cover `tests/`.** `pyproject.toml` scopes it to the package and the
-scripts directory, so a type-ignore inside a test is unvalidated and a test helper can drift
-out of step with the value object it constructs with no type-level signal. The linter and
-formatter do cover `tests/`, which makes the gap easy to misjudge.
+**The type checker covers less than the configuration says.** `pyproject.toml` names both the
+package and the scripts directory, but the build passes an explicit path on the command line,
+and mypy ignores its configured paths whenever it is given one. So the build type-checks the
+package ONLY: `tests/` is out, which is the widely-known half, and `scripts/` is out too, which
+is not. Measured on this tree: the configured invocation reports 29 source files and the one
+the build runs reports 27, and the two missing files are the two in `scripts/`.
+
+Two consequences worth separating. A type-ignore inside a test is unvalidated, and a test
+helper can drift out of step with the value object it constructs with no type-level signal.
+And a committed generator under `scripts/` gets no type-checking at all despite appearing in
+the configuration, which is the more surprising of the two because reading `pyproject.toml`
+alone tells you the opposite. The linter and formatter do cover both directories, which makes
+the whole gap easy to misjudge.
 
 **A local pass says nothing about the tested interpreter range.**
 `.github/workflows/ci.yml` owns the matrix and `pyproject.toml` owns the supported floor. A

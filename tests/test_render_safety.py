@@ -17,7 +17,10 @@ exactly the non-printable set), NOT copied from what this module happens to emit
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
+
+import pytest
 
 from clinescope.apply_recovery import ApplyRecoveryScore
 from clinescope.render_safety import quote_untrusted_text
@@ -160,3 +163,52 @@ def test_hostile_tool_name_cannot_repaint_the_verbose_dump() -> None:
     )
     assert "\x1b" not in report
     assert "\r" not in report
+
+
+# --- stderr sinks reached BEFORE the report ------------------------------------
+# The two below are not report lines. They print during --vscode discovery, which
+# runs before any scorer line exists, so an escape sequence here occupies the same
+# overwrite position the module docstring describes. Both take their path from a
+# task directory name off disk, which on a POSIX host may contain anything.
+
+
+def test_hostile_path_cannot_repaint_a_discovery_warning(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from clinescope.extension_discovery import _read_json_list
+
+    # A present-but-corrupt ui_messages.json is the documented warn case; the path
+    # is patched rather than created because a control byte is not a legal filename
+    # on every platform this suite runs on.
+    monkeypatch.setattr(Path, "read_text", lambda self, **kwargs: "not json")
+    assert _read_json_list(Path(f"{_ERASE_LINE}ui_messages.json")) is None
+
+    err = capsys.readouterr().err
+    assert "warning: could not parse" in err
+    assert "\x1b" not in err
+    assert "\r" not in err
+
+
+def test_hostile_api_history_path_cannot_repaint_the_load_error(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from clinescope import __main__ as cli
+    from clinescope.extension_discovery import ExtensionSession
+
+    session = ExtensionSession(
+        task_id="task-1",
+        task_dir=Path("."),
+        api_history_path=Path(f"{_ERASE_LINE}api_conversation_history.json"),
+        variant="Code",
+        title=None,
+        timestamp_ms=None,
+    )
+    monkeypatch.setattr(cli, "_select_extension_session", lambda *a, **k: session)
+
+    exit_code = cli._run_extension_flow(argparse.Namespace(), [], False, input)
+
+    assert exit_code == 1
+    err = capsys.readouterr().err
+    assert "error: could not load extension session" in err
+    assert "\x1b" not in err
+    assert "\r" not in err

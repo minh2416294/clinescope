@@ -71,6 +71,25 @@ it on one result reads as safe cleanup. It is load-bearing for the gate's exit b
 
 Owner: `src/clinescope/gate.py`.
 
+## The same exit code means different things in different commands
+
+Each command here defines its own exit contract, and they deliberately disagree. In the
+`clinescope` CLI a `1` is a trace that could not be loaded and a `2` is a `--vscode` usage
+problem. In `clinescope-gate` a `1` is a gated scorer that regressed and a `2` is a usage error
+or a trace on which nothing was verified. `clinescope-corpus` and the multi-trace scorecard
+each differ again. `src/clinescope/gate.py`'s module docstring owns the gate's contract, which
+is the only one a build depends on precisely.
+
+The tidy-up this entry exists to stop is hoisting the integers into one shared constant, which
+reads as removing duplication. It would change several observable contracts at the same time,
+and one of them is asserted in both directions by this project's own continuous integration:
+the dogfood step requires a pass on one committed trace and an exact `1` on another, so a
+renumbering that still "works" locally fails there for a reason nobody will connect to the
+change. Anything that unifies them needs each command's contract re-derived first.
+
+Owners: `src/clinescope/gate.py`, `src/clinescope/__main__.py`, `src/clinescope/corpus.py` and
+`src/clinescope/compare.py`, each at its own exit-code constants.
+
 ## Position in the loaded tool-call sequence is time
 
 Both recovery scorers implement "a strictly later call" as a comparison of positions in the
@@ -107,8 +126,13 @@ automated score or the judge's answer. `tests/test_label_gold.py` enforces the s
 half by parsing `src/clinescope/label_gold.py` and rejecting an import of the proxy scorer or
 the judge.
 
-The content half is not pinned by anything. A leak through the rendered text that a labeller
-reads would fail no test and would invalidate every label collected afterwards.
+The content half is pinned, but more narrowly than the structural half, and the gap is the part
+worth knowing. The same test renders every gold item and asserts two things: that the harness's
+own framing carries none of a small fixed set of verdict and intent words, and that an item's
+authored notes never appear anywhere in the render. What it cannot check is a leak phrased in
+none of those words. Such a leak would fail no test and would invalidate every label collected
+afterwards, so read the check as a tripwire on the known wording rather than a guarantee about
+the rendered text.
 
 Owner: `gold/README.md`, under "Labeling protocol (for a human labeler)".
 

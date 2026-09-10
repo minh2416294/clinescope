@@ -46,7 +46,7 @@ stays a read.
 | The gated proxy scorer's agreement with the same labels, and its recall | `src/clinescope/gate.py`, in the help text for its minimality threshold flag | Deliberately mirrored in a test. See below. |
 | What each scorer checks, and the caveat on each | `CLAUDE.md`, at the scorer table (heading quoted verbatim below) | `LIMITATIONS.md` owns the long form, one subsection per scorer. |
 | The named required checks on the default branch | `CLAUDE.md`, under "Shipping a change" | Undercounted elsewhere in this project's history more than once. |
-| The gate's exit-code contract, and which confusions between codes are forbidden | `src/clinescope/gate.py`, module docstring | `REVIEW.md` and `.claude/claude-security-guidance.md` both treat a break in it as a real finding, and both point here. |
+| The gate's exit-code contract, and which confusions between codes are forbidden | `src/clinescope/gate.py`, module docstring | `REVIEW.md` and `.claude/claude-security-guidance.md` both treat a break in it as a real finding, and both restate it rather than pointing here. See "Known copies, not yet collapsed". |
 | The line-coverage floor that fails the build | `pyproject.toml`, coverage report settings | A different fact from the one below, despite sharing a word. |
 | The coverage figure the suite currently measures | `pyproject.toml`, in the comment beside the floor it justifies | See "Known copies, not yet collapsed" below. |
 | Which failure modes the committed corpus covers, and which is a stated gap | `examples/corpus/README.md`, under "Coverage" and "Known gap" | The composition, not a count, is what the suite asserts. |
@@ -105,6 +105,13 @@ to weigh.
 - The **measured coverage figure** appears both in `pyproject.toml`, beside the floor it
   justifies, and in `CONTRIBUTING.md`, where a contributor reads it. The second is a copy
   rather than a pin: nothing compares them, and they have already disagreed once.
+- The **gate's three exit codes** are written out again in `REVIEW.md`, under what counts as an
+  Important finding, and in `.claude/claude-security-guidance.md`, in its checklist. Both are
+  accurate against the owner today and neither is compared to it by anything. They are copies
+  rather than pointers, and the second additionally locates the owner by line number, which the
+  rule above bans. Recorded rather than fixed because both files are read by a reviewer who has
+  not opened the source, and a bare pointer would make them do so mid-review; collapsing them
+  means deciding that trade, not just deleting a sentence.
 
 ## Terms this repository uses that no file in it defines
 

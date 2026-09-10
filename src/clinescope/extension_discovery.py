@@ -31,6 +31,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from clinescope.render_safety import quote_untrusted_text
 from clinescope.world_a import WorldATraceError
 
 _EXTENSION_ID = "saoudrizwan.claude-dev"
@@ -312,6 +313,10 @@ def _read_json_list(path: Path) -> list[object] | None:
     encoding, permission denied) is a real anomaly the user should know about, so it
     warns to stderr before returning None. Either way the caller still degrades
     gracefully (no crash), but a broken file is never mistaken for an absent one.
+
+    Both warnings neutralize ``path`` before printing it. It is built from a task
+    DIRECTORY NAME off disk, so it is untrusted, and discovery runs before any
+    scorer line exists -- the overwrite position ``render_safety`` describes.
     """
     try:
         text = path.read_text(encoding="utf-8")
@@ -319,7 +324,8 @@ def _read_json_list(path: Path) -> list[object] | None:
         return None
     except (OSError, UnicodeDecodeError) as err:
         print(
-            f"warning: could not read {path}: {type(err).__name__}: {err}",
+            f"warning: could not read {quote_untrusted_text(str(path))}: "
+            f"{type(err).__name__}: {err}",
             file=sys.stderr,
         )
         return None
@@ -327,7 +333,8 @@ def _read_json_list(path: Path) -> list[object] | None:
         raw = json.loads(text)
     except json.JSONDecodeError as err:
         print(
-            f"warning: could not parse {path}: {type(err).__name__}: {err}",
+            f"warning: could not parse {quote_untrusted_text(str(path))}: "
+            f"{type(err).__name__}: {err}",
             file=sys.stderr,
         )
         return None

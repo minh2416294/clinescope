@@ -66,12 +66,18 @@ And stdout carries the report and nothing else: warnings, banners, the interacti
 errors and the feedback footer all go to stderr, with the footer additionally checking that
 stdout is a terminal.
 
+**One command does not follow that split, and it is the one nobody drives from a test.**
+`src/clinescope/label_gold.py`'s `main` takes no argument vector and reads the process
+arguments itself, and its run function prints and blocks on input inline rather than
+returning a string. That is why the blind-labelling harness is exercised through its
+rendering and loading helpers instead of end to end. Read the exception as a live gap rather
+than a second sanctioned pattern: a new command copying it would not be testable either.
+
 ## Where the exit codes are, and why they differ
 
 `src/clinescope/gate.py` owns the gate's contract, including which confusions between codes
 are forbidden. Read it there.
 
 The cross-command fact is that the same integers mean different things in different commands
-here, deliberately. `docs/internal/INVARIANTS.md` records it as an invariant, because
-unifying them behind a shared constant would change several observable contracts at once,
-including the one this project's own build asserts against in both directions.
+here, deliberately. `docs/internal/INVARIANTS.md` owns that, under "The same exit code means
+different things in different commands", including what breaks if somebody unifies them.
