@@ -63,6 +63,37 @@ All notable changes to Clinescope are recorded here. The format follows
 - The README no longer claims the quickstart "walks you from installing Cline". It
   walks you from installing Clinescope, and now links out to Cline's own docs for
   the Cline CLI itself.
+- The "Why Clinescope" paragraph no longer carries three comparative clauses about
+  five other eval frameworks. Nobody had opened any of those tools when the clauses
+  were written, which made this the largest unverified block in the repository, in
+  the most-read paragraph on the front page. All five were chased to first-party
+  sources on 2026-09-13 and each finding was then handed to a second reader whose
+  only job was to break it. The narrow technical core held: none of DeepEval,
+  promptfoo, Langfuse, Braintrust or UK AISI's Inspect ships a built-in scorer for
+  patch grammar, for edit minimality, or for apply-failure recovery. That one
+  sentence is what the README now says, and `docs/internal/COMPARISONS.md` owns the
+  per-tool evidence with the source read and the date.
+- **Two of the cut clauses were false, not merely unverified.** "promptfoo hands the
+  diff scorer to you" is wrong: promptfoo ships a code-scanning product with a
+  diffs-only pull-request scan and severity grading, needing no user-written
+  assertion. And "Inspect grades SWE-bench by running the repo's tests against the
+  files the agent edited" describes a mechanism the code does not have: it runs a
+  fixed per-instance directive list rather than the repo's suite, applies no patch
+  because the agent edits the checkout in place, reverts the agent's edits to any
+  test file the dataset's test patch touches, and delegates the verdict to the
+  upstream `swebench` grader. That scorer also lives in a different repository from
+  `inspect_ai`.
+- The paragraph now concedes an axis it previously implied it won. Two of the five
+  check tool-call arguments and `tool_selection` does not, so the old sentence
+  "DeepEval scores tool selection but not code patches or diffs" pointed the
+  comparison backwards on the one capability it named.
+- `tool_selection`'s docstring no longer describes the scorer as DeepEval's
+  `ToolCorrectness` default. Two of the three words it used were wrong against the
+  shipped release: the default is not name-only, because it compares tool name and
+  `ToolCall.type` as of `python-v4.2.0`, and it is not set-based, because it is
+  recall over expected tools and never penalises extra calls. The docstring now
+  defines the metric shape as this project's own and cites DeepEval as the prior art
+  it diverged from.
 
 ### Fixed
 

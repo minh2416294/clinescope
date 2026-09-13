@@ -60,6 +60,7 @@ stays a read.
 | The run length at which a retyped block counts as a blind rewrite | `src/clinescope/diff_minimality.py` | Also interpolated into the violation message, so a second copy would contradict what a user reads. |
 | The interpreter versions the build is tested against | `.github/workflows/ci.yml`, the matrix | `pyproject.toml` declares a floor, which is a different fact. |
 | The expected surviving hit count for the honesty grep | `CLAUDE.md`, in the honesty rule | Notable for having no copies anywhere. It is structurally safe, and worth leaving that way. |
+| What another eval framework does and does not ship, and the date somebody read its source | `docs/internal/COMPARISONS.md` | The only facts here about code this project does not control. They go stale when a vendor ships, with nobody here touching a file, so every one carries a date. |
 
 The heading quoted verbatim, so the pointer above resolves by search: **"The five scorers, and
 the honest caveat on each"**. It is reproduced exactly because a paraphrased heading is not a
