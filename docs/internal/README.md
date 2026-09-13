@@ -14,6 +14,7 @@ touching code, none of which somebody who ran `pip install clinescope` ever need
 |---|---|
 | change any code | `docs/internal/INVARIANTS.md` first |
 | write a sentence stating a number, a count, or a measured figure | `docs/internal/FACT-OWNERSHIP.md` |
+| write a sentence comparing this project to another eval tool | `docs/internal/COMPARISONS.md` |
 | decide where new code belongs, or why a boundary is where it is | `docs/internal/ARCHITECTURE.md` |
 | work out why a check failed, or why the environment is misbehaving | `docs/internal/TESTING-AND-CI.md` |
 

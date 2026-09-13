@@ -6,8 +6,15 @@ caller-supplied set of expected tool names, using name-only *recall*:
 
     score = |used names intersect expected| / |expected|
 
-This is DeepEval's ``ToolCorrectness`` default (name-only, set-based, unordered).
-It is NOT the ordered or argument-matching variant.
+That shape is this scorer's own definition, not a mirror of another tool's.
+DeepEval's ``ToolCorrectnessMetric`` is the prior art it was taken from. The two
+agree on recall over the expected names and on ignoring call order; they differ
+on the match condition, because as of deepeval ``python-v4.2.0`` (released
+2026-08-24) DeepEval's default compares tool name AND ``ToolCall.type`` where
+this scorer compares the name alone. Neither matches arguments by default.
+``docs/internal/COMPARISONS.md`` owns that comparison, its source and its date;
+do not restate it here, and do not describe this scorer as mirroring a default
+another project is free to change.
 
 Deliberate decisions (each a stated choice, not undefined behaviour):
 
