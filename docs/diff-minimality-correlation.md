@@ -61,6 +61,16 @@ plausible number rather than an error, and 0.5 here is that number.
 There is a second, independent blocker underneath the first. Ten of the fifteen sessions
 abstain, so even if the remaining five varied, the correlation would be computed over n = 5.
 
+**`diff_coherence` does not rescue this, despite not being constant.** The keystone names both
+scorers, and the table above shows `diff_coherence` taking two values on real captures where
+`diff_minimality` takes one, which looks at first like a usable spread. It is not. Those two
+values separate the five sessions that contain a patch from the ten that contain none: every
+capture with an `apply_patch` call scores 1.0, and every capture without one hard-zeros. The
+variance is therefore entirely "did this trace contain a patch at all", which is not a question
+any human labeler is being asked, and across the five traces that do have a patch to judge the
+score is again a single value. Correlating all fifteen would measure the presence of the
+artifact rather than agreement about its content.
+
 ## Pre-registration
 
 Locked 2026-09-20, before any correlation data exists.
@@ -190,8 +200,9 @@ clinescope-gate examples/corpus/live-gpt-oss-trace.json --min-diff-minimality 1.
   them by `sessionId` is therefore nominal; it happens to be correct here because the two
   files are two different tasks, but it would not catch the same extension task shipped
   twice under two names.
-- **`diff_coherence` is shown for context and is not the keystone's subject.** Its 10
-  hard-zeros are the documented no-`apply_patch` case, not 10 malformed patches.
+- **`diff_coherence` is reported for context.** Its 10 hard-zeros are the documented
+  no-`apply_patch` case, not 10 malformed patches. Why its two values still cannot carry the
+  keystone is above, under "Why that makes the keystone undefined".
 - **One distinct value is the finding, not a sample-size problem.** Collecting 50 more
   sessions of the same kind would not fix it. What the gate above asks for is specifically
   sessions that score below 1.0, which is a different collection problem and may need
