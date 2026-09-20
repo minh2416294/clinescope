@@ -188,7 +188,8 @@ against an imported benchmark, because no sourced retention benchmark for develo
 
 ## Thresholds (dated, revisable, and subject to the hard rule)
 
-Set 2026-08-24. Each carries its reasoning so a future revision has something to argue against.
+Set 2026-08-24 unless a row names its own date. Each carries its reasoning so a future revision has
+something to argue against.
 
 | Threshold | Value | Why this number |
 |---|---|---|
@@ -199,6 +200,8 @@ Set 2026-08-24. Each carries its reasoning so a future revision has something to
 | Spike-revert window that disqualifies a spike | 48 hours | One business day either side of a spike. Adoption that arrives and leaves inside that window was an event, not a change in behaviour. |
 | Slope comparison window after a spike | 14 days | Long enough for a referral tail to show up, short enough to still be attributable to the spike rather than to whatever came next. |
 | Post-log lookback when a number moves | 7 days | Covers the week a post, release or comment would plausibly still be driving traffic. |
+| Distinct real captured sessions scoring below 1.0 before any diff-score correlation may be computed | 20 | Set 2026-09-20. Below roughly that, a rank correlation's interval is too wide to separate rho = 0 from rho = 0.6, so a number computed there could not answer the question it was computed to answer. Pre-registered in `docs/diff-minimality-correlation.md`, which owns the block and the count standing against it. |
+| Spearman rho below which a diff score does not track human judgment | 0.3 | Set 2026-09-20. The 0.5 figure in this repository is defined in the judge modules only, as an advisory tripwire for an LLM signal, and has never been a project-wide validity bar for a deterministic scorer, so adopting it here would be a new claim rather than an inherited one. |
 
 **Every number that sets a bar appears in this table, including the ones embedded in the procedures
 above.** A number hiding inside a procedure is still a number that can rot, and the first version of

@@ -28,9 +28,25 @@ All notable changes to Clinescope are recorded here. The format follows
   anything at all. To be exact about what this is: it is dogfooding inside the
   maintainer's own repository, not a third party adopting the gate. Nobody else's
   CI runs it.
+- `docs/diff-minimality-correlation.md`, a published null. The question of whether a
+  reference-free diff score tracks human judgment on real traces cannot be answered
+  from the traces shipped here: `diff_minimality` returns a single value on every real
+  captured Cline session, so a rank correlation divides by zero and AUC comes back as
+  exactly 0.5 by arithmetic, having never read the labels. The page carries the
+  distribution it rests on, the command that reproduces it, and a pre-registration
+  fixing what has to be true before any such number is published. Nothing was added to
+  the package: neither Spearman nor AUC is implemented anywhere here, and the reproduce
+  command is the standard library plus the shipped scorers.
 
 ### Changed
 
+- `LIMITATIONS.md` no longer keeps its own count of the captured Cline sessions shipped
+  here. The figure it carried covered `examples/corpus/` and `examples/harness-gap/` and
+  missed the captures sitting elsewhere under `examples/`, so it understated both the
+  population and the share of it that abstains. Those counts now belong to
+  `docs/diff-minimality-correlation.md` and are not duplicated. What they support is
+  unchanged: no threshold makes `--min-diff-minimality` fail a build on a real trace
+  shipped with it.
 - `clinescope-gate` no longer reports a regression on a trace it never scored. A trace
   with no `apply_patch` is now treated as not applicable to the whole apply_patch
   family, so the gate exits `2` ("nothing was verified") instead of `1` ("a scorer

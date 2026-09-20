@@ -221,11 +221,16 @@ If you are deciding whether to gate on this, recall matters more than kappa. `di
 flagged 7 of 24 patches a human called WASTEFUL, which is 29 percent. It scored a clean 1.0 on
 the other 17.
 
-**The gate flag has never fired on a real trace shipped here.** Twelve distinct captured Cline sessions ship in
-this repository, across the corpus and the harness-gap experiment. Five score 1.0, seven abstain,
-and none scores below 1.0. Running `clinescope-gate --min-diff-minimality` over the six corpus
-traces at thresholds 0.0, 0.25, 0.5, 0.75, 0.99 and 1.0 gives no build-failing exit 1 in any of
-the 36 runs. Every `diff_minimality` score below 1.0 anywhere in this repository comes from an
+**The gate flag has never fired on a real trace shipped here.** No captured Cline session in this
+repository scores below 1.0 on `diff_minimality`. Most abstain and the rest score exactly 1.0; the
+counts, across the CLI captures and the extension captures alike, are owned by
+[`docs/diff-minimality-correlation.md`](docs/diff-minimality-correlation.md) and are not repeated
+here. An earlier version of this paragraph put that population at twelve sessions, which counted
+the corpus and the harness-gap experiment and missed the captures sitting elsewhere under
+`examples/`. The gate passes a scorer when its score is at or above the threshold, so checking the
+strictest value the flag accepts settles every lower one, and `--min-diff-minimality 1.0` produces
+no build-failing exit 1 on any captured session here. Every `diff_minimality` score below 1.0
+anywhere in this repository comes from an
 authored `examples/gold` fixture. The scorer itself is not broken, and it fires on all eight of
 those. The gate is unexercised. This is the corpus gap described in the next section, stated as
 its consequence: because no captured trace here contains a blind whole-block rewrite, there is no
@@ -291,6 +296,13 @@ idiosyncratic". The 24-to-26 class balance is a design choice rather than an obs
 nothing here calibrates a false-positive rate or generalizes to real traces. What it does support
 is a lower bound on recall for the bloat shapes its author chose to build, and the judge-to-scorer
 comparison above, since both were measured on identical items by identical code.
+
+**The keystone question is undefined on real traces, not merely unanswered.** Whether a
+reference-free diff score tracks human judgment on traces agents actually produced was attempted on
+2026-09-20 and returns no number at all, because `diff_minimality` takes a single value across every
+real captured session shipped here. What that implies about the scorer, the distribution behind it,
+and the pre-registered condition that unblocks the experiment are in
+[`docs/diff-minimality-correlation.md`](docs/diff-minimality-correlation.md).
 
 **The other two gated scorers have no agreement number at all.** `diff_coherence` and
 `apply_recovery` are gated the same way and have never been measured against a human label. Read
