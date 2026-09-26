@@ -39,7 +39,7 @@ jobs:
 
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@1f291e1cfe0f5fc21db2aef19af844591600ade7 # v1
+        uses: anthropics/claude-code-action@8cf3482550831fb35a4fc3fbf7ca139cf8028b4c # v1
         with:
           # Subscription auth, NOT an API key. These are different credentials on different
           # inputs: a sk-ant-oat01 token presented as anthropic_api_key is rejected, and the
