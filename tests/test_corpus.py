@@ -70,11 +70,11 @@ def test_committed_corpus_has_at_least_one_real_failing_and_one_clean() -> None:
 def test_committed_corpus_covers_the_real_failure_modes() -> None:
     # The corpus is evidence only if it covers real failure MODES, not a count.
     # These three are captured from REAL weak-model runs; guard that a future
-    # corpus edit cannot silently drop coverage of a mode it once had. The 4th
-    # mode (blind_rewrite) is an honestly-stated gap -- see examples/corpus/
-    # README.md. A local model CAN emit a valid-but-bloated patch (proven
-    # 2026-08-20); that trace is left out because its task was built to elicit
-    # the shape, not because no model produces one.
+    # corpus edit cannot silently drop coverage of a mode it once had. The other
+    # two modes, blind_rewrite and no_editor_recovery, are honestly-stated gaps --
+    # see examples/corpus/README.md. A local model CAN emit a valid-but-bloated
+    # patch (proven 2026-08-20); that trace is left out because its task was
+    # built to elicit the shape, not because no model produces one.
     report = run_corpus(CORPUS_MANIFEST)
     covered = {
         a.label.value for item in report.items for a in item.actual_advice.values()
@@ -86,6 +86,56 @@ def test_committed_corpus_covers_the_real_failure_modes() -> None:
     for item in report.items:
         if item.kind == "failing":
             assert item.source == "real"
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "stated gap: no real captured Cline session has an unrecovered editor "
+        "failure yet (0 of 5 pre-registered ordinary granite4.1:8b runs, "
+        "2026-09-27); see examples/corpus/README.md"
+    ),
+)
+def test_corpus_asserts_a_failing_editor_cell(tmp_path: Path) -> None:
+    # editor_recovery is the only scorer that produces a number on a modern Cline
+    # session. The corpus must hold a real captured case where it says no, and the
+    # runner must COMPARE that cell, not reject it as an unknown scorer name.
+    entries = json.loads(CORPUS_MANIFEST.read_text(encoding="utf-8"))
+    editor_rows = {
+        key: entry
+        for key, entry in entries.items()
+        if "editor_recovery" in entry["scorers"]
+    }
+    assert editor_rows, "no manifest item carries scorers.editor_recovery"
+    for key, entry in editor_rows.items():
+        cell = entry["scorers"]["editor_recovery"]["expected_cell"]
+        assert cell not in ("100/100", "n/a"), f"{key}: {cell!r} is not a failure"
+        assert entry["kind"] == "failing"
+        assert entry["source"] == "real"
+
+    report = run_corpus(CORPUS_MANIFEST)
+    for key in editor_rows:
+        item = _item_for(report, key)
+        assert item.matched, item.mismatches
+        assert (
+            item.actual_cells["editor_recovery"]
+            == item.expected_cells["editor_recovery"]
+        )
+
+    # Claim the real failing cell passed. The runner must name that exact cell.
+    key = sorted(editor_rows)[0]
+    mutated = json.loads(json.dumps(editor_rows[key]))
+    mutated["scorers"]["editor_recovery"]["expected_cell"] = "100/100"
+    manifest = _write_corpus(tmp_path, {key: mutated})
+
+    mutated_report = run_corpus(manifest)
+
+    assert mutated_report.exit_code == 1
+    (item,) = mutated_report.items
+    assert any(
+        reason.startswith("editor_recovery: cell ") for reason in item.mismatches
+    ), item.mismatches
 
 
 @pytest.mark.parametrize("trace_key", sorted(_manifest_entries()))

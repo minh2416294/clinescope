@@ -375,5 +375,6 @@ agreement figure.
 
 `LIMITATIONS.md` at the repo root is the canonical, shipped version. In short: Cline only, in
 two trace formats; each scorer's caveat above; the judge advisory-only; the regression corpus
-covers 3 of the 4 failure modes, with `blind_rewrite` a stated gap; and the judge was validated
+covers 3 of the 5 failure modes, with `blind_rewrite` and `no_editor_recovery` stated gaps (so
+`editor_recovery` has no real failing case); and the judge was validated
 on one local model on small edits, so robustness across models is not claimed.
