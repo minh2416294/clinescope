@@ -312,15 +312,23 @@ What to do instead: treat `--min-diff-minimality` as a regression tripwire for a
 confirmed appears in your own traces, not as a general bloat filter. Score your own traces first.
 If none of them scores below 1.0, this flag will not fail your build whatever threshold you pass.
 
-## The validation corpus covers 3 of 4 failure modes
+## The validation corpus covers 3 of 5 failure modes
 
-The real-trace regression corpus (`clinescope-corpus`) covers 3 of the 4 failure modes with real captured
-Cline traces: `malformed_patch`, `missing_tools`, and `no_apply_recovery`. The fourth, `blind_rewrite`, is
-still uncovered here, but the reason has changed. It used to be that no local model could emit a
-valid-but-bloated patch at all. That is no longer true: on 2026-08-20 `gpt-oss:20b` emitted one, and the
-capture is described above. It is not shipped in the corpus because the task was built to elicit it, so
-it would be evidence that the scorer fires, not evidence about how often agents do this. See
-[`examples/corpus/README.md`](examples/corpus/README.md).
+The real-trace regression corpus (`clinescope-corpus`) covers 3 of the 5 failure modes with real captured
+Cline traces: `malformed_patch`, `missing_tools`, and `no_apply_recovery`. Two are uncovered.
+
+`blind_rewrite` is still uncovered here, but the reason has changed. It used to be that no local model
+could emit a valid-but-bloated patch at all. That is no longer true: on 2026-08-20 `gpt-oss:20b` emitted
+one, and the capture is described above. It is not shipped in the corpus because the task was built to
+elicit it, so it would be evidence that the scorer fires, not evidence about how often agents do this.
+
+`no_editor_recovery` is uncovered because no real session has produced it yet. On 2026-09-27, five
+ordinary editing tasks were fixed in advance and each run once on `granite4.1:8b`. Seven `editor` calls
+failed across the five runs, and a later confirmed `editor` call on the same path followed every one.
+So `editor_recovery`, the only scorer here that grades `editor` calls, has real passing traces in this
+repository and no real failing one.
+
+See [`examples/corpus/README.md`](examples/corpus/README.md) for both.
 
 ## Not intended for
 

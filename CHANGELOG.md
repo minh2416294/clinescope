@@ -209,6 +209,12 @@ All notable changes to Clinescope are recorded here. The format follows
   choice, not penalising identical lines at the edges of a replacement: it is a plain
   append whose `old_text` and `new_text` share a three-line leading run, so a
   definition that counted edge runs would have flagged a correct edit.
+- The validation corpus has no failing `editor` row, so `no_editor_recovery` is now
+  a stated gap beside `blind_rewrite`, and the corpus covers 3 of 5 failure modes,
+  not "3 of 4". Five ordinary tasks, fixed in advance and run once each on
+  `granite4.1:8b`, produced seven failed `editor` calls, and every one was followed
+  by a confirmed `editor` call on the same path. No trace was hunted to fill the
+  row. `examples/corpus/README.md` records the runs.
 
 ### Security
 
