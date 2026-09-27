@@ -71,12 +71,13 @@ it. And operator-supplied values, such as `--expected` tool names, are deliberat
 
 **2. Patch text reaching the judge stays inside its fence.** `judge_user_prompt` wraps patch text
 between `<<<BEGIN PATCH <tag>>>` and `<<<END PATCH <tag>>>` where the tag is a sha256 prefix of the
-patch itself (`judge.py:263-300`, `judge.py:310-315`), so a patch cannot close its own fence. Flag
-any change that interpolates trace text into a prompt outside that fence.
+patch itself (`judge.py`, at `judge_fence_tag` and `judge_user_prompt`), so a patch cannot close
+its own fence. Flag any change that interpolates trace text into a prompt outside that fence.
 
-Read `judge.py:282-286` before rating this: the fence is honoured by the model, not enforced by
-code. It raises the cost of steering a verdict; it does not make it impossible. The judge is
-advisory and is pinned out of the gate at the AST level by `tests/test_gate.py`, so the blast
+Read the paragraph "What an unforgeable tag does not buy" in `judge_fence_tag`'s docstring before
+rating this: the fence is honoured by the model, not enforced by code. It raises the cost of
+steering a verdict; it does not make it impossible. The judge is advisory and is pinned out of
+the gate at the AST level by `tests/test_gate.py`, so the blast
 radius is a published agreement figure, never a build verdict. Rate it accordingly.
 
 **3. The gate's exit-code contract holds.** `clinescope-gate` returns 0 when every gated scorer met

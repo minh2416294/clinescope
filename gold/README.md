@@ -134,7 +134,8 @@ python -m clinescope.judge_run --report-only    # re-print κ from the cache (NO
 It is committed so κ is reproducible with no model call and no cost: the reporter reads
 this cache + the human labels above and computes Cohen's κ. Each row is a JSON object:
 
-- `schema_version` (int), `item_id` (str, joins to the gold row), `dimension` (str).
+- `schema_version` (int, `2` since `prompt_sha256` was added), `item_id` (str, joins to
+  the gold row), `dimension` (str).
 - `outcome`: `"verdict"` (a real judge label), `"unparseable"` (no `VERDICT:` line in the
   model answer), or `"error"` (an endpoint / truncation failure). Only `"verdict"` rows enter
   κ; the others are excluded and counted (never silently defaulted to a class).
@@ -143,6 +144,12 @@ this cache + the human labels above and computes Cohen's κ. Each row is a JSON 
 - `model_id`: the exact model that produced the verdict (the free-vs-paid provenance).
 - `patch_sha256`: the digest of the lifted patch judged; the reporter fails loud if the gold
   trace drifted between the run and the report.
+- `prompt_sha256`: the digest of the request the judge was sent, apart from the model tag
+  and the patch text. `clinescope.judge.judge_prompt_sha256` computes it, and its docstring
+  owns exactly what it covers. The reporter fails loud, exit `2`, if it differs from the
+  request the judge sends today. A mismatch means the cached verdicts answer a question the
+  judge is no longer asked, so the fix is a live re-run. Re-stamping the new digest onto the
+  old rows would make the report pass while the κ still describes the old prompt.
 - `judged_at`: ISO-8601 timestamp.
 
 The cache is written LF-only (`.gitattributes` pins `*.jsonl eol=lf`). The judge is opt-in

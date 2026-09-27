@@ -141,10 +141,16 @@ Owner: `gold/README.md`, under "Labeling protocol (for a human labeler)".
 The two files in `gold/` are governed oppositely. `CLAUDE.md`, under "Layout", owns that split
 and the history behind it; `gold/README.md` owns the format and the protocol.
 
-What this entry adds is the asymmetry that makes the rule bite. Each cached row carries a digest
-of the patch it judged, so a drifting trace is caught loudly, but nothing pins the prompt.
-Rewording the judge's prompt therefore invalidates every cached verdict with no mechanical
-detector anywhere. `CLAUDE.md`, under "Layout", states what must happen when it does.
+What this entry adds is the wrong fix the detector invites. Each cached row carries a digest of
+the patch it judged and of the request the judge was sent, and the reporter refuses a row where
+either differs from today's, so rewording the prompt now stops the report loudly. The tempting
+response to that refusal is to re-stamp the rows with the new digest. It turns the report green
+and publishes a figure measured against a question the judge is no longer asked, which is the
+silent failure the digest exists to prevent. Only a live re-run clears it honestly.
+
+`CLAUDE.md`, under "Layout", states what must happen when the prompt changes.
+`src/clinescope/judge.py`, at `judge_prompt_sha256`, owns what the digest covers and what it
+leaves out.
 
 **No-agent zone**, because the recompute needs live model calls and moves a published figure.
 

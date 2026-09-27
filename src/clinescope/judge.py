@@ -97,6 +97,11 @@ _JUDGE_NUM_PREDICT = 1024
 _JUDGE_TIMEOUT_S = 120.0
 _JUDGE_PROBE_TIMEOUT_S = 2.0
 
+# The stand-in patch rendered into the request when digesting it. The real patch is
+# pinned separately, per cache row, by patch_sha256; the prompt digest must not move
+# with it, or every row would carry a different digest for the same prompt.
+_JUDGE_PROMPT_DIGEST_PLACEHOLDER = "<patch>"
+
 # Length of the fence tag, in hex characters of a sha256 prefix. 16 hex chars is 64
 # bits: far past what a patch author could brute-force into their own patch text, and
 # short enough to stay readable inside a prompt. See judge_fence_tag for why the tag is
@@ -258,6 +263,31 @@ def judge_build_request_body(patch_text: str, *, model_id: str) -> dict[str, obj
             "num_predict": _JUDGE_NUM_PREDICT,
         },
     }
+
+
+def judge_prompt_sha256() -> str:
+    """Return the sha256 of what the judge sends, except the model tag and the patch.
+
+    A cached verdict answers one specific request, so the judge cache stamps this
+    digest on every row and the reporter refuses a row whose digest is not the live
+    one. It hashes the whole body :func:`judge_build_request_body` produces, rendered
+    over a fixed stand-in patch with the ``model`` key removed, as canonical JSON.
+
+    **Why the whole body and not the system prompt.** The one real prompt change so far
+    edited the user-turn wrapper as well as the system prompt, and the sampling options
+    in the same body can flip a verdict too. Hashing the built body covers every field
+    in it, including one added later, with no list of fields to keep in step.
+
+    **What it leaves out, and where each is pinned instead.** The model tag is recorded
+    per row as ``model_id``, and the patch as ``patch_sha256``. The weights behind a
+    model tag are not pinned by anything: a tag is mutable. The verdict parser is not
+    part of the request; the committed cache's labels are checked against their own
+    rationales instead.
+    """
+    body = judge_build_request_body(_JUDGE_PROMPT_DIGEST_PLACEHOLDER, model_id="")
+    body.pop("model")
+    canonical = json.dumps(body, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def judge_fence_tag(patch_text: str) -> str:

@@ -338,6 +338,7 @@ def _row(item_id: str, outcome: str, label: str | None) -> JudgeCacheRow:
         rationale="r",
         model_id="gpt-oss:20b",
         patch_sha256="0" * 64,
+        prompt_sha256="1" * 64,
         judged_at="2026-07-11T00:00:00+00:00",
     )
 
@@ -360,9 +361,11 @@ def test_cache_writer_emits_lf_only_one_object_per_line(tmp_path: Path) -> None:
     lines = raw.decode("utf-8").splitlines()
     assert len(lines) == 2
     first = json.loads(lines[0])
+    assert first["schema_version"] == 2
     assert first["item_id"] == "a"
     assert first["outcome"] == "verdict"
     assert first["judge_label"] == "WASTEFUL"
+    assert first["prompt_sha256"] == "1" * 64
     second = json.loads(lines[1])
     assert second["outcome"] == "unparseable"
     assert second["judge_label"] is None
@@ -391,8 +394,10 @@ def _gold_item(item_id: str, trace: str, label: str) -> dict[str, object]:
 
 
 def _cache_row(item_id: str, sha: str, label: str) -> dict[str, object]:
+    from clinescope.judge import judge_prompt_sha256
+
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "item_id": item_id,
         "dimension": "diff_minimality",
         "outcome": "verdict",
@@ -400,6 +405,7 @@ def _cache_row(item_id: str, sha: str, label: str) -> dict[str, object]:
         "rationale": "r",
         "model_id": "gpt-oss:20b",
         "patch_sha256": sha,
+        "prompt_sha256": judge_prompt_sha256(),
         "judged_at": "2026-07-11T00:00:00+00:00",
     }
 
@@ -455,15 +461,10 @@ def test_kappa_report_excludes_unparseable_from_kappa(tmp_path: Path) -> None:
     cache = tmp_path / "c.jsonl"
     _write_gold(gold, [_gold_item("x", trace, "WASTEFUL")])
     unparseable = {
-        "schema_version": 1,
-        "item_id": "x",
-        "dimension": "diff_minimality",
+        **_cache_row("x", _sha_of_trace(trace), "WASTEFUL"),
         "outcome": "unparseable",
         "judge_label": None,
         "rationale": "no verdict",
-        "model_id": "gpt-oss:20b",
-        "patch_sha256": _sha_of_trace(trace),
-        "judged_at": "2026-07-11T00:00:00+00:00",
     }
     _write_gold(cache, [unparseable])
     inputs = judge_kappa_load_pairs(gold, cache, repo_root=_REPO_ROOT)
@@ -483,7 +484,7 @@ def test_kappa_load_pairs_fails_loud_on_patch_drift(tmp_path: Path) -> None:
     _write_gold(cache, [_cache_row("x", "0" * 64, "WASTEFUL")])
     from clinescope.judge import JudgeError
 
-    with pytest.raises(JudgeError):
+    with pytest.raises(JudgeError, match="patch drifted"):
         judge_kappa_load_pairs(gold, cache, repo_root=_REPO_ROOT)
 
 
@@ -514,6 +515,147 @@ def test_kappa_load_pairs_missing_cache_is_a_clean_error(tmp_path: Path) -> None
         judge_kappa_load_pairs(
             gold, tmp_path / "does-not-exist.jsonl", repo_root=_REPO_ROOT
         )
+
+
+# ---- the cache pins the request it was judged with ----------------------------
+# A cached verdict is an answer to one specific request. Before the prompt digest
+# existed, rewording the prompt left every cached verdict in place and the report kept
+# printing a kappa measured against a question the judge is no longer asked.
+
+
+def test_report_only_fails_on_prompt_drift(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    # The row is valid in every other respect, including its patch digest, so the only
+    # thing wrong with it is the request it claims to have been judged with.
+    from clinescope.judge_run import main
+
+    trace = "examples/apply-patch-trace.json"
+    gold = tmp_path / "g.jsonl"
+    cache = tmp_path / "c.jsonl"
+    _write_gold(gold, [_gold_item("x", trace, "WASTEFUL")])
+    drifted = {
+        **_cache_row("x", _sha_of_trace(trace), "WASTEFUL"),
+        "prompt_sha256": "0" * 64,
+    }
+    _write_gold(cache, [drifted])
+
+    exit_code = main(
+        [
+            "--report-only",
+            "--gold",
+            str(gold),
+            "--cache",
+            str(cache),
+            "--repo-root",
+            str(_REPO_ROOT),
+        ]
+    )
+
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert "prompt drifted" in captured.err
+    assert "cohen_kappa" not in captured.out
+
+
+def test_every_committed_cache_row_pins_the_live_prompt_digest() -> None:
+    # Fails the moment the judge's request changes without the cache being re-judged
+    # live in the same change, which is the rule CLAUDE.md states under "Layout".
+    from clinescope.judge import judge_prompt_sha256
+
+    cache = _REPO_ROOT / "gold" / "diff_minimality.judge.jsonl"
+    rows = [
+        json.loads(line)
+        for line in cache.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert len(rows) == 50
+    assert {row["schema_version"] for row in rows} == {2}
+    live = judge_prompt_sha256()
+    stale = [row["item_id"] for row in rows if row.get("prompt_sha256") != live]
+    assert stale == [], f"{len(stale)} rows were judged under a different request"
+
+
+def test_report_only_over_the_committed_cache_prints_the_published_kappa(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Pinning the prompt changes the cache's schema and not one verdict, so the
+    # published figure has to come out exactly as it did before the pin.
+    from clinescope.judge_run import main
+
+    exit_code = main(
+        [
+            "--report-only",
+            "--gold",
+            str(_REPO_ROOT / "gold" / "diff_minimality.gold.jsonl"),
+            "--cache",
+            str(_REPO_ROOT / "gold" / "diff_minimality.judge.jsonl"),
+            "--repo-root",
+            str(_REPO_ROOT),
+        ]
+    )
+
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "n_for_kappa:     50" in out
+    assert "cohen_kappa:     0.0433" in out
+    assert "95% CI:          [0.0000, 0.1503]" in out
+
+
+@pytest.mark.parametrize(
+    "attribute, replacement",
+    [
+        ("_JUDGE_SYSTEM_PROMPT", "A different system prompt."),
+        ("judge_user_prompt", lambda patch_text: f"Judge this:\n{patch_text}"),
+        ("_JUDGE_NUM_PREDICT", 512),
+    ],
+)
+def test_prompt_digest_moves_with_everything_the_model_is_asked(
+    monkeypatch: pytest.MonkeyPatch, attribute: str, replacement: object
+) -> None:
+    # The digest covers the whole request body except the model tag and the patch.
+    # A digest of the system prompt alone would miss the wrapper and the sampling
+    # options, and #104 edited the wrapper as well as the system prompt.
+    from clinescope import judge
+
+    before = judge.judge_prompt_sha256()
+    monkeypatch.setattr(judge, attribute, replacement)
+    assert judge.judge_prompt_sha256() != before
+
+
+def test_a_judge_run_stamps_the_live_prompt_digest_on_every_row(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # The write half of the pin. No model is called: the judge is replaced with a stub
+    # that answers the same verdict for every trace.
+    from clinescope import judge_run
+    from clinescope.judge import JudgeLabel, judge_prompt_sha256
+
+    def stub_judge(trace: object, *, model_id: str, base_url: str) -> JudgeLabel:
+        return JudgeLabel(
+            label="NOT-WASTEFUL", rationale="VERDICT: NOT-WASTEFUL", model_id=model_id
+        )
+
+    monkeypatch.setattr(judge_run, "judge_diff_minimality", stub_judge)
+    gold = tmp_path / "g.jsonl"
+    _write_gold(
+        gold,
+        [
+            _gold_item("x", "examples/apply-patch-trace.json", "WASTEFUL"),
+            _gold_item("y", "examples/multi-op-trace.json", "NOT-WASTEFUL"),
+        ],
+    )
+
+    result = judge_run.judge_run_over_gold(
+        gold,
+        repo_root=_REPO_ROOT,
+        model_id="m",
+        base_url="http://unused",
+        now_iso="2026-09-27T00:00:00+00:00",
+    )
+
+    live = judge_prompt_sha256()
+    assert [row.prompt_sha256 for row in result.rows] == [live, live]
 
 
 def test_kappa_report_tripwire_text_appears_below_floor() -> None:

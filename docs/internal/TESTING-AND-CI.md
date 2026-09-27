@@ -28,6 +28,7 @@ plausible edit and a silent regression, and none is obvious from its filename.
 |---|---|
 | `tests/test_gate.py`, the import pin | A chance-level advisory signal reaching a build verdict. Parses the gate's source rather than trusting a convention. |
 | `tests/test_gate.py`, the help-text pins | The gate shipping without disclosing the weak measured agreement of the scorer it gates on, its catch rate without its false-alarm rate, or the sentence about that score depending on file layout. The honesty rule, made mechanical where a person setting a threshold will actually read it. The two rates are recomputed from the frozen gold set, so a published rate that stops matching the labels fails too. |
+| `tests/test_judge_run.py`, the prompt pin | The published judge agreement being printed from verdicts that answered a different request from the one the judge sends today. Compares every committed cache row's prompt digest with the live one, so a prompt edit fails the build until the cache is re-judged live in the same change. |
 | `tests/test_label_gold.py`, the import pin | A human labeller being shown the automated answer they are meant to be an independent check on. |
 | `tests/test_version_consistency.py` | Publishing a package whose reported version is not the one that was built. The only thing comparing the two. |
 | `tests/test_fixture_drift.py` | An upstream change to Cline's own captured fixture passing as a local behaviour change. Pins content and size. |
@@ -45,8 +46,10 @@ provides none of those prerequisites.** The tests that validate against Cline's 
 fixture are gated on
 that file existing at an absolute path in another checkout on the author's machine. The tests
 that exercise the judge against a live model are gated on a local endpoint answering. Both skip
-quietly. So a change to how the judge builds, sends or parses a request can pass every required
-check without executing once, and the same is true of the upstream fixture comparison.
+quietly. So a change to how the judge sends or parses a request can pass every required check
+without executing once, and the same is true of the upstream fixture comparison. A change to the
+request it builds is the exception: it moves the prompt digest, so the committed cache fails the
+prompt pin above, although the new request is still never sent.
 
 **The suite assumes the working directory is the repository root.** There is no `conftest.py`
 anywhere. Most modules recompute the root from their own location, but some hold
