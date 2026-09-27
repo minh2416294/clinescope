@@ -139,6 +139,17 @@ All notable changes to Clinescope are recorded here. The format follows
   match the live one, a missing cache, or a malformed or duplicated row. It used to end
   in a Python traceback and exit `1`. A trace edited under a pinned gold label is still
   caught first by the gold loader, which keeps the traceback and exit `1`.
+- Each item in the validation corpus manifest, `examples/corpus/corpus.json`, now
+  records its capture provenance: `session_id` and `captured_at`, copied exactly from
+  the trace's own `sessionId` and `updated_at`, and `cline_version`, which is
+  `"unknown"` on all six because no trace records it and the original sessions are
+  gone. A new test checks that every item carries all three and that the first two
+  equal the trace file's own fields, so a trace file replaced by a different capture,
+  or by a later save of the same session, under an unchanged manifest entry now fails
+  the build. That proves the two files agree. It does not prove a
+  trace is a real capture, which still rests on its `source` field. The keys were added
+  as new lines only: no trace file, corpus cell or runner output changed, and
+  `clinescope-corpus` does not read them.
 
 ### Fixed
 

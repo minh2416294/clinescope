@@ -52,7 +52,8 @@ stays a read.
 | The gate's exit-code contract, and which confusions between codes are forbidden | `src/clinescope/gate.py`, module docstring | `REVIEW.md` and `.claude/claude-security-guidance.md` both treat a break in it as a real finding, and both restate it rather than pointing here. See "Known copies, not yet collapsed". |
 | The line-coverage floor that fails the build | `pyproject.toml`, coverage report settings | A different fact from the one below, despite sharing a word. |
 | The coverage figure the suite currently measures | `pyproject.toml`, in the comment beside the floor it justifies | See "Known copies, not yet collapsed" below. |
-| Which failure modes the committed corpus covers, and which are stated gaps | `examples/corpus/README.md`, under "Coverage" and each "Known gap" | The composition, not a count, is what the suite asserts. |
+| Which failure modes the committed corpus covers, and which are stated gaps | `examples/corpus/README.md`, under "Coverage" and each "Known gap" | The composition is what the suite asserts. The one count it pins is the number of items, in the provenance test. |
+| Each corpus trace's capture provenance: where each value came from, why the Cline version is unknown, and what checking it proves | `examples/corpus/README.md`, under "Provenance" | The values themselves sit in `examples/corpus/corpus.json`. |
 | The gold set's size and how many items carry a human label | `gold/README.md` | `CLAUDE.md`, under "Layout", owns why those labels may never be machine-written. |
 | The gate's threshold flags | `src/clinescope/gate.py` | There is no flag for the trajectory scorer added most recently; `LIMITATIONS.md` says so. |
 | The advice taxonomy's label set | `src/clinescope/advice.py` | Enumerated once, at the enum. |
