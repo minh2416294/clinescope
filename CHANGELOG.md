@@ -183,6 +183,16 @@ All notable changes to Clinescope are recorded here. The format follows
   the judge answered every item in one run over 50 authored patches. It says nothing
   about whether those answers were right, and the judge stays advisory-only and outside
   the gate.
+- `examples/corpus/README.md` now says which kind of eval the validation corpus is.
+  Every row is a regression case for clinescope's scorers and advice, so 6 of 6
+  matching is the expected state. That shows clinescope reproduces labels the author
+  wrote on 6 traces the author captured, not detection power. No capability eval
+  exists, of clinescope or of the Cline agent: the traces are frozen and nothing here
+  re-runs an agent. The one strict expected failure in `tests/test_corpus.py` marks a
+  coverage gap, not a capability case. The assignment is prose only. A per-row manifest
+  field was left out because it would hold the same value on every row, so no test,
+  manifest entry, trace or runner output changed. `docs/usage.md` now calls the corpus
+  a regression set rather than a suite, because "suite" means the pytest suite here.
 
 ### Fixed
 

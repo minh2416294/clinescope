@@ -56,6 +56,7 @@ stays a read.
 | The coverage figure the suite currently measures | `pyproject.toml`, in the comment beside the floor it justifies | See "Known copies, not yet collapsed" below. |
 | Which failure modes the committed corpus covers, and which are stated gaps | `examples/corpus/README.md`, under "Coverage" and each "Known gap" | The composition is what the suite asserts. The one count it pins is the number of items, in the provenance test. |
 | Each corpus trace's capture provenance: where each value came from, why the Cline version is unknown, and what checking it proves | `examples/corpus/README.md`, under "Provenance" | The values themselves sit in `examples/corpus/corpus.json`. |
+| Which kind of eval each corpus case is, for which system under test, why no capability eval exists, and why the assignment is not a manifest field | `examples/corpus/README.md`, under "What kind of eval this is" | `docs/usage.md` names the corpus in one phrase in its related links, and `docs/internal/TESTING-AND-CI.md` points here. |
 | The gold set's size and how many items carry a human label | `gold/README.md` | `CLAUDE.md`, under "Layout", owns why those labels may never be machine-written. |
 | The gate's threshold flags | `src/clinescope/gate.py` | There is no flag for the trajectory scorer added most recently; `LIMITATIONS.md` says so. |
 | The advice taxonomy's label set | `src/clinescope/advice.py` | Enumerated once, at the enum. |

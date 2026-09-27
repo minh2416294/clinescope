@@ -13,6 +13,53 @@ check is the declaration itself: a trace written by hand and declared real would
 pass. [Provenance](#provenance) below says what each item records about its capture
 and what checking that proves.
 
+## What kind of eval this is
+
+Every row here is a **regression case**. The system under test is clinescope itself: its scorers
+and its advice. The Cline agent is not under test.
+
+Agent evals come in two kinds, and they read the same score in opposite ways. A capability eval asks
+whether a system can do something it may not manage yet, so it starts at a low pass rate and leaves
+room to climb. A regression eval asks whether a change broke something that already worked, so it
+should sit at or near 100 percent. The kind is written down here, before any score is read, because
+100 percent means "healthy" for one kind and "no longer measuring anything" for the other.
+
+Take `live-gpt-oss-apply-fail.json`. Its label says `apply_recovery` scores `0/100` and the advice
+names `no_apply_recovery`. If a change to clinescope makes that row score `100/100`, clinescope
+regressed: it stopped catching a failure it used to catch. The three clean rows guard the other
+direction. If clinescope starts giving advice on one of them, it started flagging a good run.
+
+**6/6 is the expected state, and it is not evidence of detection power.** A regression set at 100
+percent is doing its job. What 6/6 shows is narrow: clinescope reproduces labels the author wrote, on
+6 traces the author captured. It says nothing about how often clinescope catches a failure on a trace
+it has not seen, nothing about users, and nothing about what the Cline agent can do.
+
+**No capability eval exists here, of clinescope or of the Cline agent.**
+
+- *Not of Cline.* The rows are frozen traces. clinescope reads a finished session and cannot re-run
+  an agent, so there is no trial loop and no Cline pass rate to measure. Each trace records what
+  Cline did once, on a task chosen to exercise clinescope's scorers, not to measure Cline. Calling these rows capability or
+  regression cases for Cline would be a category error. A real capability eval of Cline would need a
+  trial runner, which this project does not have and nobody has asked for.
+- *Not of clinescope.* `tests/test_corpus.py::test_corpus_asserts_a_failing_editor_cell` is the one
+  corpus check that fails today, so it can look like a capability case. It is not one. It turns green
+  when a real Cline session fails an `editor` call without recovering and that trace is committed
+  here. clinescope does not have to change for that to happen. It marks a coverage gap, described
+  under [Known gap: `no_editor_recovery`](#known-gap-no_editor_recovery-is-not-yet-covered-by-a-real-trace)
+  below.
+
+**Why this is written here and not as a field in `corpus.json`.** A per-row field was considered and
+not added. Every row would carry the same value, the runner would ignore it as it ignores the
+provenance fields, and a test pinning it could only change on the day a capability case exists. A
+field that holds one value on every row is documentation shaped like data, so it stays
+documentation. If a capability case is ever added, that is when a per-row field starts to carry
+information.
+
+**Why "regression set" and not "regression suite".** In this repository "suite" means the pytest
+suite under `tests/`, as it does throughout `docs/internal/`. Calling the corpus a set keeps the two
+apart, and keeps `"kind": "failing"` on a row reading as "a real failure clinescope must catch",
+never as a broken test.
+
 ## Coverage
 
 Six real traces cover three of the five failure modes in the taxonomy (`clinescope.advice.FailureLabel`):
