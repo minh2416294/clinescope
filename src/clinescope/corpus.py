@@ -1,8 +1,9 @@
 """Real-trace validation corpus runner (deterministic, zero-LLM, stdlib-only).
 
-The corpus is clinescope's un-fakeable evidence layer. It has NO users yet, so a
-maintainer or recruiter cannot take "it works" on faith; the corpus answers that
-by pinning clinescope's behaviour to REAL captured Cline traces. Each committed
+The corpus is clinescope's evidence layer. It has NO users yet, so a maintainer
+or recruiter cannot take "it works" on faith; the corpus answers that by pinning
+clinescope's behaviour to traces declared as real Cline captures; nothing here can
+detect a false one (see "Provenance" in ``examples/corpus/README.md``). Each committed
 trace carries a hand-written label (:class:`~clinescope.labels.TraceLabel`, the
 corpus superset) naming its model + task, its expected per-scorer cell, its
 expected failure taxonomy, and the concrete evidence the advice must name. This

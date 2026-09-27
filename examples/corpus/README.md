@@ -6,9 +6,12 @@ Real captured Cline runs that pin clinescope's behaviour to ground truth. Each t
 python -m clinescope.corpus
 ```
 
-This is clinescope's un-fakeable evidence layer: the traces are real, the failures
-are real, and the runner proves clinescope catches each one (and stays quiet on
-clean runs).
+The traces are declared real captures of local Cline runs, and the runner asserts
+every labelled cell on each one, so a change that stops clinescope catching one of
+these failures, or makes it flag a clean run, fails the corpus. What the suite cannot
+check is the declaration itself: a trace written by hand and declared real would
+pass. [Provenance](#provenance) below says what each item records about its capture
+and what checking that proves.
 
 ## Coverage
 

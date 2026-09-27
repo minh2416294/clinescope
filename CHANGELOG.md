@@ -150,6 +150,11 @@ All notable changes to Clinescope are recorded here. The format follows
   trace is a real capture, which still rests on its `source` field. The keys were added
   as new lines only: no trace file, corpus cell or runner output changed, and
   `clinescope-corpus` does not read them.
+- The validation corpus is no longer called un-fakeable, in `examples/corpus/README.md`
+  or in the module docstrings of `clinescope.corpus` and `tests/test_corpus.py`. Its
+  traces are declared real captures, and nothing in the suite can detect a trace
+  written by hand and declared real, which the README's "Provenance" section already
+  said. The README's opening now says what the runner does check and points there.
 
 ### Fixed
 
