@@ -88,6 +88,22 @@ def test_committed_corpus_covers_the_real_failure_modes() -> None:
             assert item.source == "real"
 
 
+def test_every_item_declares_provenance() -> None:
+    # The runner never reads these keys, so this test is the only check on them.
+    # session_id and captured_at must equal the trace's own sessionId and
+    # updated_at. That proves the manifest and the trace file agree, not that the
+    # trace is a real capture: see "Provenance" in examples/corpus/README.md.
+    entries = _manifest_entries()
+    assert len(entries) == 6
+    for key, entry in entries.items():
+        for field in ("captured_at", "session_id", "cline_version"):
+            value = entry.get(field)
+            assert isinstance(value, str) and value.strip(), f"{key}: {field}"
+        trace = json.loads(Path(key).read_text(encoding="utf-8"))
+        assert entry["session_id"] == trace["sessionId"], key
+        assert entry["captured_at"] == trace["updated_at"], key
+
+
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,

@@ -27,6 +27,44 @@ Plus three clean `gpt-oss:20b` runs (`live-gpt-oss-trace.json`,
 false-positive check -- a corpus is only evidence if it also proves clinescope
 does *not* cry wolf on a good run.
 
+## Provenance
+
+Every item in `corpus.json` records three facts about its capture. `clinescope-corpus` does not read
+them. `tests/test_corpus.py::test_every_item_declares_provenance` checks that all six items carry all
+three, and that the first two equal the trace file's own fields.
+
+| Field | Where the value came from |
+|---|---|
+| `session_id` | The trace's own `sessionId`, copied exactly. |
+| `captured_at` | The trace's own `updated_at`, copied exactly. |
+| `cline_version` | Nowhere. It is `"unknown"` on all six, for the reason below. |
+
+**`captured_at` is when the session was last saved, not when it started.** Cline rewrites `updated_at`
+each time it saves the messages file. In all six traces it lands within 25 milliseconds of the last
+message, and 7 to 95 seconds after the session began. Two other dates were considered and not used. The
+digits before the underscore in a session id are the start time in epoch milliseconds, but that is a
+detail of how Cline builds the id, a caller can supply its own, and a date read out of `session_id`
+would repeat what the `session_id` check already covers. The date of the commit that added these files
+(#40) records when a trace entered this repository: about 20 minutes after capture for the
+`qwen2.5-coder:1.5b` and `llama3.1:8b` traces, and 28 to 32 hours after for the four `gpt-oss:20b`
+traces.
+
+**`cline_version` is `"unknown"`, written down rather than guessed.** No trace records it. The
+`"version": 1` inside each trace is the version of the messages file format, not of Cline. None of the
+six sessions is still in the author's local Cline session store, and no commit message or note from
+July 2026 names the Cline version that ran them. An explicit unknown is different from a missing field:
+it records that the question was asked and had no answer. The `no_editor_recovery` runs below do name
+their version, because it was written down on the day they ran.
+
+**What the check proves, and what it does not.** When `session_id` and `captured_at` match, the manifest
+item and the trace file under its key name the same Cline session and the same last save. That catches a
+trace file swapped for a different capture, or for a later save of the same session, while its manifest
+entry stays the same. It does not prove the trace is a real capture: any file can carry any `sessionId`
+and `updated_at`, and the original sessions are gone, so nothing outside this repository is left to
+compare against. It does not prove the messages are unedited either: a change that leaves both fields
+alone still passes. Whether a trace is real still rests on its `source` field and on whoever declared it,
+as it did before these fields existed.
+
 ## Known gap: `blind_rewrite` is not yet covered by a real trace
 
 `blind_rewrite` is the `diff_minimality` failure -- an `apply_patch` whose Update hunk deletes a whole block and retypes it wholesale instead of a surgical edit. It requires a trace that is **both** things at once:

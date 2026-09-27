@@ -4,6 +4,9 @@
     "model": "gpt-oss:20b",
     "task": "single-hunk update to an existing file",
     "source": "real",
+    "captured_at": "2026-07-10T18:51:58.937Z",
+    "session_id": "1783709423832_y5y2f",
+    "cline_version": "unknown",
     "kind": "clean",
     "expected_tools": ["read_files", "apply_patch"],
     "scorers": {
@@ -20,6 +23,9 @@
     "model": "gpt-oss:20b",
     "task": "create a new file via apply_patch add-file",
     "source": "real",
+    "captured_at": "2026-07-10T22:47:30.619Z",
+    "session_id": "1783723627933_rc9ej",
+    "cline_version": "unknown",
     "kind": "clean",
     "expected_tools": ["read_files", "apply_patch", "run_commands"],
     "scorers": {
@@ -36,6 +42,9 @@
     "model": "gpt-oss:20b",
     "task": "two-hunk update to an existing file",
     "source": "real",
+    "captured_at": "2026-07-10T22:44:59.660Z",
+    "session_id": "1783723477082_2rc3c",
+    "cline_version": "unknown",
     "kind": "clean",
     "expected_tools": ["read_files", "apply_patch"],
     "scorers": {
@@ -52,6 +61,9 @@
     "model": "gpt-oss:20b",
     "task": "edit validator.py; the first apply_patch failed and was never recovered",
     "source": "real",
+    "captured_at": "2026-07-10T22:50:48.052Z",
+    "session_id": "1783723826783_g3hi7",
+    "cline_version": "unknown",
     "kind": "failing",
     "expected_tools": ["read_files", "apply_patch"],
     "scorers": {
@@ -68,6 +80,9 @@
     "model": "qwen2.5-coder:1.5b",
     "task": "change max age 150->120 in validator.py; model emitted a hallucinated JSON tool, never a real Cline tool call",
     "source": "real",
+    "captured_at": "2026-07-12T02:28:12.487Z",
+    "session_id": "1783823285576_8f1km",
+    "cline_version": "unknown",
     "kind": "failing",
     "expected_tools": ["read_files", "apply_patch"],
     "scorers": {
@@ -84,6 +99,9 @@
     "model": "llama3.1:8b",
     "task": "add two validation checks to validator.py; model dumped a rewritten file as plain-text markdown, never a tool call",
     "source": "real",
+    "captured_at": "2026-07-12T02:29:04.100Z",
+    "session_id": "1783823326027_o96p6",
+    "cline_version": "unknown",
     "kind": "failing",
     "expected_tools": ["read_files", "apply_patch"],
     "scorers": {
