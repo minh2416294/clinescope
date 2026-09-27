@@ -118,7 +118,8 @@ All notable changes to Clinescope are recorded here. The format follows
   never failed a build on a real captured trace shipped here. `LIMITATIONS.md`,
   `docs/judge-validation.md` and the honesty rule in `CLAUDE.md` now pair every other
   published catch rate the same way, the judge's included: 1 of 24 caught, 0 of 26
-  false alarms.
+  false alarms. `docs/diff-minimality-correlation.md` also stops saying the help text
+  carries the scorer's interval and cut; both are in `LIMITATIONS.md`.
 
 ### Fixed
 
