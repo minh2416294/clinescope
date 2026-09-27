@@ -1,6 +1,6 @@
 """Tests for the real-trace validation corpus runner (clinescope.corpus).
 
-The corpus is the un-fakeable evidence layer: real captured Cline traces, each
+The corpus is the evidence layer: traces declared as real Cline captures, each
 hand-labeled with its expected score profile + failure taxonomy, and a runner
 that asserts clinescope reproduces every label and gives the right advice. These
 tests pin the runner's contract:
