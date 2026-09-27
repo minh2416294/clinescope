@@ -28,6 +28,13 @@ Two responsibilities, deliberately split so re-running κ never re-hits the mode
   reimplemented. Alignment is positional over the gold file order; each cache row
   carries the item's ``patch_sha256`` so the reporter fails LOUD if the gold patch
   drifted since the cache was written.
+* Each cache row also carries ``prompt_sha256``, the digest of the request the judge
+  was sent (:func:`clinescope.judge.judge_prompt_sha256`). The reporter refuses a row
+  whose digest is not the live one. A reworded prompt therefore stops the report
+  instead of quietly re-printing a κ measured against a question the judge is no longer
+  asked; the fix is a live re-run, never a re-stamp. ``main`` turns that refusal, and
+  every other :class:`~clinescope.judge.JudgeError` from the report, into one
+  ``error:`` line and exit ``2``.
 """
 
 from __future__ import annotations
@@ -47,9 +54,10 @@ from clinescope.gold import ResolvedGoldItem, gold_load_resolved
 from clinescope.judge import (
     JudgeError,
     judge_diff_minimality,
+    judge_prompt_sha256,
 )
 
-_JUDGE_CACHE_SCHEMA_VERSION = 1
+_JUDGE_CACHE_SCHEMA_VERSION = 2
 _DIMENSION = "diff_minimality"
 
 # A cache row's outcome: a usable verdict, an unparseable answer, or a call error.
@@ -70,6 +78,8 @@ class JudgeCacheRow:
       EXCLUDED from κ. ``rationale`` / ``raw_response`` keep the model text for audit.
     * ``patch_sha256`` pins the exact lifted patch text judged, so the reporter can
       fail loud if the gold trace drifted between the run and the report.
+    * ``prompt_sha256`` pins the request the judge was sent, so the reporter can fail
+      loud if the prompt changed between the run and the report.
     """
 
     item_id: str
@@ -78,6 +88,7 @@ class JudgeCacheRow:
     rationale: str
     model_id: str
     patch_sha256: str
+    prompt_sha256: str
     judged_at: str
 
 
@@ -142,6 +153,7 @@ def _judge_run_one(
 ) -> JudgeCacheRow:
     """Judge one resolved gold item, mapping any JudgeError to an explicit outcome."""
     patch_sha256 = _judge_run_patch_sha256(item)
+    prompt_sha256 = judge_prompt_sha256()
     try:
         label = judge_diff_minimality(item.trace, model_id=model_id, base_url=base_url)
     except JudgeError as err:
@@ -153,6 +165,7 @@ def _judge_run_one(
             rationale=f"{type(err).__name__}: {err}",
             model_id=model_id,
             patch_sha256=patch_sha256,
+            prompt_sha256=prompt_sha256,
             judged_at=now_iso,
         )
     return JudgeCacheRow(
@@ -162,6 +175,7 @@ def _judge_run_one(
         rationale=label.rationale,
         model_id=label.model_id,
         patch_sha256=patch_sha256,
+        prompt_sha256=prompt_sha256,
         judged_at=now_iso,
     )
 
@@ -206,6 +220,7 @@ def _judge_cache_row_json(row: JudgeCacheRow) -> str:
         "rationale": row.rationale,
         "model_id": row.model_id,
         "patch_sha256": row.patch_sha256,
+        "prompt_sha256": row.prompt_sha256,
         "judged_at": row.judged_at,
     }
     return json.dumps(record, ensure_ascii=False)
@@ -225,16 +240,18 @@ def judge_kappa_load_pairs(
     """Join human gold labels with cached judge labels; build aligned verdict-only lists.
 
     Aligns by ``item_id`` in gold file order. Verifies each cache row's ``patch_sha256``
-    against the gold patch (fail loud on drift). Only ``outcome == "verdict"`` items with
-    a non-null human label enter the κ lists; unparseable / error items are dropped and
-    counted.
+    against the gold patch and its ``prompt_sha256`` against the live request (fail
+    loud on either drift). Only ``outcome == "verdict"`` items with a non-null human
+    label enter the κ lists; unparseable / error items are dropped and counted.
 
     Raises:
-        JudgeError: A gold item is unlabeled, has no cache row, or the cached patch
-            digest disagrees with the gold trace (drift).
+        JudgeError: A gold item is unlabeled or has no cache row, the cached patch
+            digest disagrees with the gold trace, or the cached prompt digest disagrees
+            with the request the judge sends today.
     """
     resolved = gold_load_resolved(gold_path, repo_root=repo_root)
     cache = _judge_load_cache(cache_path)
+    live_prompt_sha256 = judge_prompt_sha256()
     human: list[str] = []
     judge: list[str] = []
     model_ids: set[str] = set()
@@ -244,6 +261,7 @@ def judge_kappa_load_pairs(
         row = _judge_require_cache_row(cache, item)
         model_ids.add(row.model_id)
         _judge_verify_no_drift(item, row)
+        _judge_verify_prompt_pinned(row, live_prompt_sha256)
         if row.outcome == "unparseable":
             n_unparseable += 1
             continue
@@ -331,6 +349,7 @@ def _judge_parse_cache_row(line: str, line_number: int) -> JudgeCacheRow:
         rationale=_judge_cache_str(raw, "rationale", line_number, default=""),
         model_id=_judge_cache_str(raw, "model_id", line_number),
         patch_sha256=_judge_cache_str(raw, "patch_sha256", line_number),
+        prompt_sha256=_judge_cache_str(raw, "prompt_sha256", line_number),
         judged_at=_judge_cache_str(raw, "judged_at", line_number, default=""),
     )
 
@@ -369,6 +388,15 @@ def _judge_verify_no_drift(item: ResolvedGoldItem, row: JudgeCacheRow) -> None:
         raise JudgeError(
             f"gold item {item.item.item_id!r}: patch drifted since it was judged "
             f"(cache {row.patch_sha256}, now {actual}); re-run the judge"
+        )
+
+
+def _judge_verify_prompt_pinned(row: JudgeCacheRow, live_prompt_sha256: str) -> None:
+    if row.prompt_sha256 != live_prompt_sha256:
+        raise JudgeError(
+            f"gold item {row.item_id!r}: judge prompt drifted since it was judged "
+            f"(cache {row.prompt_sha256}, now {live_prompt_sha256}); the cached "
+            f"verdicts answer a different request, so re-run the judge live"
         )
 
 
@@ -622,7 +650,11 @@ def main(argv: list[str] | None = None) -> int:
             f"{result.n_error} error) -> {cache}"
         )
     if args.report or args.report_only:
-        inputs = judge_kappa_load_pairs(gold, cache, repo_root=repo_root)
+        try:
+            inputs = judge_kappa_load_pairs(gold, cache, repo_root=repo_root)
+        except JudgeError as err:
+            print(f"error: {err}", file=sys.stderr)
+            return 2
         print(judge_kappa_report(inputs))
     return 0
 

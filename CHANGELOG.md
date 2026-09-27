@@ -120,6 +120,25 @@ All notable changes to Clinescope are recorded here. The format follows
   published catch rate the same way, the judge's included: 1 of 24 caught, 0 of 26
   false alarms. `docs/diff-minimality-correlation.md` also stops saying the help text
   carries the scorer's interval and cut; both are in `LIMITATIONS.md`.
+- The judge cache now records the request each verdict answered. Every row of
+  `gold/diff_minimality.judge.jsonl` carries `prompt_sha256`, a digest of what the
+  judge sends the model apart from the model tag and the patch: the system prompt, the
+  wrapper around the patch, and the sampling options. `schema_version` goes from 1 to
+  2. `python -m clinescope.judge_run --report-only` refuses a row whose digest differs
+  from the live one, so a reworded prompt stops the report instead of re-printing a
+  kappa measured against a question the judge is no longer asked. Until now nothing
+  mechanical detected a prompt change; the one in #104 was handled because the person
+  making it knew to re-judge. The 50 committed rows were stamped with no model call,
+  because nothing that reaches the model has changed since #104 judged them: the only
+  edit to `judge.py` since is one docstring word. The published figure is unchanged at
+  kappa 0.0433, 95% CI [0.0000, 0.1503], N=50. This protects that figure from a silent
+  prompt change. It does not make the judge any better: it is still at chance, still
+  advisory-only, and still outside the gate.
+- `python -m clinescope.judge_run` now exits `2` with one `error:` line when the report
+  cannot be built from the cache, for example a prompt or patch digest that does not
+  match the live one, a missing cache, or a malformed or duplicated row. It used to end
+  in a Python traceback and exit `1`. A trace edited under a pinned gold label is still
+  caught first by the gold loader, which keeps the traceback and exit `1`.
 
 ### Fixed
 
