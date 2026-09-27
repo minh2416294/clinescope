@@ -42,9 +42,10 @@ it has not seen, nothing about users, and nothing about what the Cline agent can
   regression cases for Cline would be a category error. A real capability eval of Cline would need a
   trial runner, which this project does not have and nobody has asked for.
 - *Not of clinescope.* `tests/test_corpus.py::test_corpus_asserts_a_failing_editor_cell` is the one
-  corpus check that fails today, so it can look like a capability case. It is not one. It turns green
-  when a real Cline session fails an `editor` call without recovering and that trace is committed
-  here. clinescope does not have to change for that to happen. It marks a coverage gap, described
+  corpus check that is an expected failure today, so it can look like a capability case. It is not
+  one. It is a strict expected failure, so the day a real Cline session fails an `editor` call
+  without recovering and that trace is committed here, it goes red and its marker has to come off.
+  clinescope itself does not have to change for that to happen. It marks a coverage gap, described
   under [Known gap: `no_editor_recovery`](#known-gap-no_editor_recovery-is-not-yet-covered-by-a-real-trace)
   below.
 
