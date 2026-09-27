@@ -165,9 +165,9 @@ All notable changes to Clinescope are recorded here. The format follows
   patches, not how either signal behaves on real traces. No point estimate, kappa or
   threshold moved. The help test now recomputes both scorer intervals from the counts it
   already recomputes, so a mistyped interval fails the build. The gate's module
-  docstring, `README.md` and the honesty rule in `CLAUDE.md` keep the point estimates,
-  so no interval gains a third copy. The superseded pre-fence judge rates in
-  `LIMITATIONS.md` stay without one.
+  docstring and `README.md` keep the scorer's point estimates, and the honesty rule in
+  `CLAUDE.md` keeps the judge's, so no interval gains another copy. The superseded
+  pre-fence judge rates in `LIMITATIONS.md` stay without one.
 - `README.md` now gives `diff_minimality`'s false-alarm rate beside its catch rate: 7 of
   the 24 patches a human called wasteful and 1 of the 26 a human did not. #125 said every
   other published catch rate was paired and missed this one.
