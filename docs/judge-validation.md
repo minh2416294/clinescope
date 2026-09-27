@@ -38,6 +38,21 @@ level.
 That negative result is the point: Clinescope gates on the signals it trusts and, provably, not on the
 one it doesn't.
 
+The judge gave a verdict on all 50 items, so its **no-verdict rate is 0 of 50** (Wilson 95% CI
+[0.000, 0.071]). The report prints that rate beside κ, because κ covers verdicts only and a row with
+no verdict counts against the judge, never for it. [`../gold/README.md`](../gold/README.md), under
+"The judge cache", owns which rows count and why. Like every figure on this page, the rate comes from
+one judge run over the 50 authored gold patches, not from real traces. It says the judge answered
+every item. It says nothing about whether those answers were right.
+
+The judge cannot answer "I don't know". Its prompt allows only `VERDICT: WASTEFUL` or
+`VERDICT: NOT-WASTEFUL`, so today a row gets no verdict only when the answer broke that format or the
+call failed. Adding an `Unknown` answer is parked, not built. It would change the prompt, so all 50
+items would have to be judged again live, and κ would become a new single draw, while the judge stays
+out of the gate either way. The rate had to come first: an `Unknown` answer would also leave κ, so
+without the rate a judge could raise its κ by declining the hard patches, and the report would not
+show it.
+
 ### Read the interval before you read the point estimate
 
 The lower bound is `0.0000` and the interval no longer runs negative. **That is not the judge getting

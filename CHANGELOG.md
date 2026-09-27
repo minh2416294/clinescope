@@ -171,6 +171,18 @@ All notable changes to Clinescope are recorded here. The format follows
 - `README.md` now gives `diff_minimality`'s false-alarm rate beside its catch rate: 7 of
   the 24 patches a human called wasteful and 1 of the 26 a human did not. #125 said every
   other published catch rate was paired and missed this one.
+- `python -m clinescope.judge_run` now prints the judge's no-verdict rate beside kappa:
+  the unparseable and error rows over the gold items, `0/50` on the committed cache. A
+  new interpretation line says those rows count against the judge, never for it. Both
+  also print when no verdict survives, a case where the report used to stop before its
+  interpretation. Kappa, its interval and its N are unchanged at 0.0433, 95% CI
+  [0.0000, 0.1503], N=50, and neither gold file changed. `docs/judge-validation.md`
+  publishes the rate as 0 of 50 (Wilson 95% CI [0.000, 0.071]), and `gold/README.md`
+  says which rows count and why errors count too. The judge still cannot answer
+  "Unknown"; that half is parked, and `docs/judge-validation.md` says why. The rate says
+  the judge answered every item in one run over 50 authored patches. It says nothing
+  about whether those answers were right, and the judge stays advisory-only and outside
+  the gate.
 
 ### Fixed
 
