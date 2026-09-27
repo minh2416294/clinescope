@@ -26,7 +26,10 @@ confusion (rows = human, cols = judge):
 ```
 
 The confusion matrix tells the story: the free 20B judge is strongly **NOT-WASTEFUL-biased** -- it calls
-almost everything "fine," so on a balanced set it catches only **1 of 24** genuinely wasteful patches.
+almost everything "fine," so on a balanced set it catches only **1 of 24** genuinely wasteful patches,
+and raises a false alarm on **0 of 26** that a human called NOT-WASTEFUL. That zero is not a strength:
+a judge that almost never answers WASTEFUL gets a false-alarm rate near zero for free, the same way it
+gets a catch rate near zero, so read the two as a pair.
 **κ ≈ 0 is far below the 0.5 floor**, so the judge is treated as **advisory-only and kept out of the CI
 gate** -- `clinescope-gate` fires on the deterministic scorers, never on a judge that measured at chance
 level.

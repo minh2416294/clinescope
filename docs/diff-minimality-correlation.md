@@ -134,12 +134,12 @@ contain the shape the scorer looks for. The keystone asks whether the score trac
 judgment on traces real agents actually produced, which is a different question over a
 population that, as the table above shows, contains none of that shape at all.
 
-The figure, its interval, its recall and its cut live in the help text for the gate's
-minimality flag in `src/clinescope/gate.py`, with the reader-facing discussion under
-"The gated `diff_minimality` flag is weaker than it looks" in `LIMITATIONS.md`. They are not
-repeated here. The separate measurement of the optional LLM judge lives in
-[`judge-validation.md`](judge-validation.md); that is a third distinct number and is not
-comparable to either of the other two.
+The figure, its recall and its false-alarm rate live in the help text for the gate's
+minimality flag in `src/clinescope/gate.py`. Its interval, the cut that turns a score into a
+label, and the reader-facing discussion are in `LIMITATIONS.md`, under
+"The gated `diff_minimality` flag is weaker than it looks". None of them is repeated here. The
+separate measurement of the optional LLM judge lives in [`judge-validation.md`](judge-validation.md);
+that is a third distinct number and is not comparable to either of the other two.
 
 ## Reproduce it yourself (no model call, no new dependency)
 

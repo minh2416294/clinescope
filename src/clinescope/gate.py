@@ -27,7 +27,8 @@ and imports NONE of the judge-arc modules (``judge`` / ``judge_run`` /
 **What the deterministic scorers are NOT (read before you gate on one).**
 Deterministic does not mean validated. Only ``diff_minimality`` has ever been
 measured against a human label: Cohen's kappa 0.2599 (95% CI [0.0574, 0.4777],
-N=50), recall 7 of 24, on a gold set that is authored end to end by one labeler.
+N=50), recall 7 of 24 with a false-alarm rate of 1 of 26, on a gold set that is
+authored end to end by one labeler.
 ``diff_coherence`` and ``apply_recovery`` have no agreement number at all, so
 read their silence as unmeasured rather than as validated. ``LIMITATIONS.md``
 carries the full finding.
@@ -296,9 +297,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="MIN",
         help=(
             "Minimum acceptable diff_minimality score (gates it when given). "
-            "Agreement with 50 human labels is Cohen's kappa 0.2599, recall 7 "
-            "of 24, and this flag has never failed a build on any real captured "
-            "trace shipped with Clinescope, at any threshold. It scores the "
+            "Against 50 human labels it has Cohen's kappa 0.2599: it catches 7 "
+            "of 24 patches a human called wasteful, and raises a false alarm on "
+            "1 of 26 a human did not. Both rates come from authored patches, not "
+            "real traces, so the low false-alarm rate is no reason to gate on "
+            "it: this flag has never failed a build on any real captured trace "
+            "shipped with Clinescope, at any threshold. It scores the "
             "patch text, so the same edit can score 1.0 or 0.0 depending on how "
             "many lines sit between an anchor and the change in the file being "
             "edited. Treat it as a regression tripwire for a shape you have "
