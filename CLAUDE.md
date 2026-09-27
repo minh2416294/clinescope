@@ -95,18 +95,24 @@ defended with a real number.
 **The mechanical half of this rule is a grep. Run it before any release or docs change:**
 
 ```bash
-grep -rn -i -E "diff[- ]quality|quality of (the )?(diff|patch)|[a-z-]*(quality|correctness)[- ]scorer" \
-  --exclude-dir=.git --exclude-dir=.venv --exclude-dir=htmlcov --exclude-dir=__pycache__ --exclude-dir=dist .
+git grep -n -i -E "diff[- ]quality|quality of (the )?(diff|patch)|[a-z-]*(quality|correctness)[- ]scorer"
 ```
 
 It deliberately does not match most legitimate disclaimers ("not argument correctness", "does
 not verify semantic correctness") or DeepEval's `ToolCorrectness` API name.
 
-**Expected surviving hits, as of 2026-08-24: five.** Three in `CHANGELOG.md` (frozen history).
+**It is `git grep`, not `grep -r`, because it must count tracked content only.** A recursive grep
+from the main checkout also descends into agent worktrees under `.claude/worktrees/`, each a full
+copy of the repo: on 2026-09-27 at `a566e14` it printed 15 hits, five per tree. `git grep`
+searches the working-tree text of tracked files, so an uncommitted edit to a tracked file is
+still checked, but a brand-new file is not until it is added (`git add -N <file>` is enough).
+
+**Expected surviving hits, as of 2026-09-27: five.** Three in `CHANGELOG.md` (frozen history).
 One in `LIMITATIONS.md`, under the heading "What Clinescope does NOT claim", stating that no
 shape or quality scorer exists for the `editor` tool. That one **denies** a capability rather
 than claiming one, so it is correct and stays. And one in this file, in the paragraph you are
-reading, because describing the pattern necessarily contains it.
+reading, because restating that denial repeats its wording. The command itself does not match
+its own pattern.
 
 Anything beyond those five is a real hit: read it. If you edit this paragraph, re-count.
 
