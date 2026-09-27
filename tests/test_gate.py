@@ -23,9 +23,13 @@ from pathlib import Path
 
 import pytest
 
+from clinescope.diff_minimality import score_diff_minimality
 from clinescope.gate import GateReport, GateResult, main, render_gate_report, run_gate
+from clinescope.gold import gold_load_resolved
 from clinescope.world_a import ToolCall, Trace
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+GOLD_SET = REPO_ROOT / "gold" / "diff_minimality.gold.jsonl"
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
 BASELINE = EXAMPLES / "apply-patch-trace.json"
 RECOVERY_REGRESSION = EXAMPLES / "live-gpt-oss-apply-fail.json"
@@ -194,6 +198,50 @@ def test_help_discloses_layout_dependence(
     help_text = " ".join(capsys.readouterr().out.split())
     assert "the same edit can score 1.0 or 0.0" in help_text
     assert "lines sit between an anchor and the change" in help_text
+
+
+def test_minimality_help_publishes_both_rates(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # A catch rate alone cannot tell a scorer from one that flags everything:
+    # flagging all 50 gold patches would catch 24 of 24. Only the pair says
+    # anything, so the help carries both. They are recomputed here from the frozen
+    # gold set and the real scorer, never copied from the text they check.
+    caught = missed = false_alarms = cleared = 0
+    for resolved in gold_load_resolved(GOLD_SET, repo_root=REPO_ROOT):
+        label = resolved.item.human_label
+        if label is None:
+            continue
+        score = score_diff_minimality(resolved.trace).score
+        assert score is not None, resolved.item.item_id
+        flagged = score < 1.0
+        if label == "WASTEFUL" and flagged:
+            caught += 1
+        elif label == "WASTEFUL":
+            missed += 1
+        elif flagged:
+            false_alarms += 1
+        else:
+            cleared += 1
+    assert (caught, caught + missed) == (7, 24)
+    assert (false_alarms, false_alarms + cleared) == (1, 26)
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+
+    assert exc_info.value.code == 0
+    help_text = " ".join(capsys.readouterr().out.split())
+    # The last mention of the flag is its own entry; the usage line comes first.
+    flag_help = help_text.rsplit("--min-diff-minimality MIN", 1)[1]
+    flag_help = flag_help.split("--min-apply-recovery", 1)[0]
+    # A low false-alarm rate must not read as a reason to gate, so the sentence
+    # saying the flag has never failed a real build stays in the same paragraph.
+    assert (
+        "this flag has never failed a build on any real captured trace shipped "
+        "with Clinescope, at any threshold"
+    ) in flag_help
+    assert "7 of 24" in flag_help
+    assert "1 of 26" in flag_help
 
 
 # --- main(argv) exit-code contract (the CI-facing seam) ---------------------

@@ -110,6 +110,15 @@ All notable changes to Clinescope are recorded here. The format follows
   recall over expected tools and never penalises extra calls. The docstring now
   defines the metric shape as this project's own and cites DeepEval as the prior art
   it diverged from.
+- `clinescope-gate --help` now gives `--min-diff-minimality`'s false-alarm rate beside
+  its recall. Against the 50 human gold labels it flags 7 of 24 patches a human called
+  WASTEFUL and 1 of 26 a human did not. A recall on its own cannot tell this scorer
+  from one that flags everything. The same paragraph says the low false-alarm rate is
+  no reason to gate, because both rates come from authored patches and the flag has
+  never failed a build on a real captured trace shipped here. `LIMITATIONS.md`,
+  `docs/judge-validation.md` and the honesty rule in `CLAUDE.md` now pair every other
+  published catch rate the same way, the judge's included: 1 of 24 caught, 0 of 26
+  false alarms.
 
 ### Fixed
 

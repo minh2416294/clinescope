@@ -73,7 +73,7 @@ patch that really is present still fails the build.
 Never describe clinescope as having users, traction, or a working judge it does not have.
 **Today: 0 users, 0 revenue.** The optional LLM judge is chance-level (Cohen's kappa 0.0433,
 N=50, 95 percent CI 0.0000 to 0.1503) and stays **out** of any pass/fail claim. It called 1 of
-24 wasteful patches wasteful.
+24 wasteful patches wasteful, and 0 of 26 others: it almost never says WASTEFUL at all.
 
 **That interval's lower bound of zero is not a sign the judge clears chance, and writing it up
 that way would be exactly the inflation this rule exists to stop.** The judge answered one class

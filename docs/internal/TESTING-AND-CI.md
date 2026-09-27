@@ -27,7 +27,7 @@ plausible edit and a silent regression, and none is obvious from its filename.
 | Guard | What it prevents |
 |---|---|
 | `tests/test_gate.py`, the import pin | A chance-level advisory signal reaching a build verdict. Parses the gate's source rather than trusting a convention. |
-| `tests/test_gate.py`, the help-text pins | The gate shipping without disclosing the weak measured agreement of the scorer it gates on, or the sentence about that score depending on file layout. The honesty rule, made mechanical where a person setting a threshold will actually read it. |
+| `tests/test_gate.py`, the help-text pins | The gate shipping without disclosing the weak measured agreement of the scorer it gates on, its catch rate without its false-alarm rate, or the sentence about that score depending on file layout. The honesty rule, made mechanical where a person setting a threshold will actually read it. The two rates are recomputed from the frozen gold set, so a published rate that stops matching the labels fails too. |
 | `tests/test_label_gold.py`, the import pin | A human labeller being shown the automated answer they are meant to be an independent check on. |
 | `tests/test_version_consistency.py` | Publishing a package whose reported version is not the one that was built. The only thing comparing the two. |
 | `tests/test_fixture_drift.py` | An upstream change to Cline's own captured fixture passing as a local behaviour change. Pins content and size. |
