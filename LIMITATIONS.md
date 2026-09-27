@@ -157,7 +157,8 @@ item scores exactly zero rather than something negative, and 36% of resamples om
 holds the bound at 0.0000. The whole positive agreement rests on one patch.
 
 The previous measurement, taken before the judge prompt was fenced, was kappa 0.0496,
-95% CI [-0.1200, 0.2175], N = 50, catching 3 of 24 with 2 false alarms in 26. Both are single
+95% CI [-0.1200, 0.2175], N = 50, catching 3 of 24 with 2 false alarms in 26. Those two rates
+carry no interval on purpose: they measure a prompt that no longer ships. Both are single
 draws on a model that flips labels run-to-run at temperature 0, so the gap between them is inside
 the noise and is not attributable to the prompt change.
 
@@ -218,19 +219,23 @@ that interval is dominated by the judge's degeneracy rather than by sampling err
 full and still be uninformative.
 
 If you are deciding whether to gate on this, recall matters more than kappa. `diff_minimality`
-flagged 7 of 24 patches a human called WASTEFUL, which is 29 percent. It scored a clean 1.0 on
-the other 17.
+flagged 7 of 24 patches a human called WASTEFUL, which is 29 percent (Wilson 95% CI [0.149, 0.492]).
+It scored a clean 1.0 on the other 17.
 
 Recall is half of a pair. Of the 26 patches a human called NOT-WASTEFUL, it flagged 1, a
-false-alarm rate of 1 of 26. Read the two together and never as one accuracy figure: a scorer that
-flagged all 50 would catch 24 of 24, and one that flagged none would never raise a false alarm. The
+false-alarm rate of 1 of 26 (Wilson 95% CI [0.007, 0.189]). Read the two together and never as
+one accuracy figure: a scorer that flagged all 50 would catch 24 of 24, and one that flagged none would never raise a false alarm. The
 one false alarm, `dm-hc-13`, is the exact shape the scorer looks for, three lines deleted and
 retyped, except that every retyped line really changed (three locals renamed). Its labeler judged
 that not wasteful. So the alarm is the shape being acceptable there, not the detector misfiring.
 
-**Do not read that low false-alarm rate as a reason to gate.** Both rates come from authored
-patches, not real traces. How many of this flag's alarms would be real on your traces depends on
-how often the agent writes a wasteful patch in the first place, and nobody has measured that. On the
+Every rate interval in this project is a Wilson score interval, not the textbook Wald interval,
+because Wald breaks at counts this close to zero: it puts the lower bound of 1 of 26 below zero,
+and for a count of zero it returns an interval of zero width, which claims certainty.
+
+**Do not read that low false-alarm rate as a reason to gate.** Both rates and their intervals
+come from authored patches, not real traces. How many of this flag's alarms would be real on your
+traces depends on how often the agent writes a wasteful patch in the first place, and nobody has measured that. On the
 real traces shipped here the flag has not raised a single alarm, true or false, as the next
 paragraph shows.
 

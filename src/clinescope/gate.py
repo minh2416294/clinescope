@@ -297,9 +297,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="MIN",
         help=(
             "Minimum acceptable diff_minimality score (gates it when given). "
-            "Against 50 human labels it has Cohen's kappa 0.2599: it catches 7 "
-            "of 24 patches a human called wasteful, and raises a false alarm on "
-            "1 of 26 a human did not. Both rates come from authored patches, not "
+            "Against 50 human labels it has Cohen's kappa 0.2599. Of the patches "
+            "a human called wasteful it catches "
+            "7 of 24 (Wilson 95%% CI [0.149, 0.492]); of those a human did not, "
+            "it raises a false alarm on "
+            "1 of 26 (Wilson 95%% CI [0.007, 0.189]). Both rates and their "
+            "intervals come from authored patches, not "
             "real traces, so the low false-alarm rate is no reason to gate on "
             "it: this flag has never failed a build on any real captured trace "
             "shipped with Clinescope, at any threshold. It scores the "

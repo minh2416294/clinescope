@@ -19,7 +19,9 @@ Ground-truth is the real scorers, never a hand-asserted score (Day-16 lesson):
 from __future__ import annotations
 
 import ast
+from math import sqrt
 from pathlib import Path
+from statistics import NormalDist
 
 import pytest
 
@@ -200,6 +202,15 @@ def test_help_discloses_layout_dependence(
     assert "lines sit between an anchor and the change" in help_text
 
 
+def _wilson_95(k: int, n: int) -> str:
+    z = NormalDist().inv_cdf(0.975)
+    p = k / n
+    denom = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    half = z * sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
+    return f"[{centre - half:.3f}, {centre + half:.3f}]"
+
+
 def test_minimality_help_publishes_both_rates(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -225,6 +236,13 @@ def test_minimality_help_publishes_both_rates(
             cleared += 1
     assert (caught, caught + missed) == (7, 24)
     assert (false_alarms, false_alarms + cleared) == (1, 26)
+    # Each rate carries a Wilson 95% interval, recomputed here from those counts so
+    # a mistyped or Wald interval in the help fails, not only a changed count. The
+    # literals are the spec values the helper must reproduce.
+    catch_interval = _wilson_95(caught, caught + missed)
+    false_alarm_interval = _wilson_95(false_alarms, false_alarms + cleared)
+    assert catch_interval == "[0.149, 0.492]"
+    assert false_alarm_interval == "[0.007, 0.189]"
 
     with pytest.raises(SystemExit) as exc_info:
         main(["--help"])
@@ -240,8 +258,8 @@ def test_minimality_help_publishes_both_rates(
         "this flag has never failed a build on any real captured trace shipped "
         "with Clinescope, at any threshold"
     ) in flag_help
-    assert "7 of 24" in flag_help
-    assert "1 of 26" in flag_help
+    assert f"7 of 24 (Wilson 95% CI {catch_interval})" in flag_help
+    assert f"1 of 26 (Wilson 95% CI {false_alarm_interval})" in flag_help
 
 
 # --- main(argv) exit-code contract (the CI-facing seam) ---------------------

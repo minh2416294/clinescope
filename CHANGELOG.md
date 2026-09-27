@@ -155,6 +155,22 @@ All notable changes to Clinescope are recorded here. The format follows
   traces are declared real captures, and nothing in the suite can detect a trace
   written by hand and declared real, which the README's "Provenance" section already
   said. The README's opening now says what the runner does check and points there.
+- The four published gold-set rates now each carry a Wilson 95% interval, because "7 of
+  24" read as far more exact than a range of about 15 to 49 percent. `clinescope-gate
+  --help` and `LIMITATIONS.md` give `diff_minimality` 7 of 24 caught (Wilson 95% CI
+  [0.149, 0.492]) and 1 of 26 false alarms (Wilson 95% CI [0.007, 0.189]).
+  `docs/judge-validation.md` gives the judge 1 of 24 (Wilson 95% CI [0.007, 0.202]) and
+  0 of 26 (Wilson 95% CI [0.000, 0.129]). They are Wilson and not Wald intervals for the
+  reason `LIMITATIONS.md` gives. They describe sampling noise on the 50 authored gold
+  patches, not how either signal behaves on real traces. No point estimate, kappa or
+  threshold moved. The help test now recomputes both scorer intervals from the counts it
+  already recomputes, so a mistyped interval fails the build. The gate's module
+  docstring, `README.md` and the honesty rule in `CLAUDE.md` keep the point estimates,
+  so no interval gains a third copy. The superseded pre-fence judge rates in
+  `LIMITATIONS.md` stay without one.
+- `README.md` now gives `diff_minimality`'s false-alarm rate beside its catch rate: 7 of
+  the 24 patches a human called wasteful and 1 of the 26 a human did not. #125 said every
+  other published catch rate was paired and missed this one.
 
 ### Fixed
 

@@ -41,10 +41,12 @@ stays a read.
 
 | Fact | Owner | Note |
 |---|---|---|
-| The judge's agreement with the human labels, its interval, its sample size, and its confusion matrix | `docs/judge-validation.md` | The full measurement. `LIMITATIONS.md` carries the reader-facing summary and points here. |
+| The judge's agreement with the human labels, its interval, its sample size, its confusion matrix, and its catch and false-alarm rates with their intervals | `docs/judge-validation.md` | The full measurement. `LIMITATIONS.md` carries the reader-facing summary and points here. The two rate intervals are stated only there, and no test pins them. |
 | The superseded judge measurement taken before the prompt was fenced | `docs/judge-validation.md`, under "The previous measurement, for comparison" | A separate fact from the current one. They must never be conflated or averaged. |
 | The gated proxy scorer's agreement with the same labels, and its recall | `src/clinescope/gate.py`, in the help text for its minimality threshold flag | Deliberately mirrored in a test. See below. |
 | The gated proxy scorer's false-alarm rate on the same labels | `src/clinescope/gate.py`, in the same help text as its recall | Never stated apart from the recall, and pinned by the same test. `LIMITATIONS.md` carries the reader-facing reading of the pair. The judge's pair is read off the confusion matrix `docs/judge-validation.md` already owns. |
+| The interval on each of the gated proxy scorer's two rates | `src/clinescope/gate.py`, in the same help text as the rates | Pinned by the same test, which recomputes each interval from the counts it recomputes. `LIMITATIONS.md` repeats them in its reader-facing reading of the pair. The module docstring of `src/clinescope/gate.py`, `README.md` and the honesty rule in `CLAUDE.md` keep the point estimates only, by choice, so that no interval gains a third copy. |
+| Why every rate interval is a Wilson interval and not a Wald one | `LIMITATIONS.md`, under "The gated `diff_minimality` flag is weaker than it looks" | Stated once. Each interval names its method where it is printed, so no other file carries the reason. |
 | The diff-scorer distribution over the traces shipped here, and how that population is counted | `docs/diff-minimality-correlation.md`, under "How it's measured" and "The result" | `LIMITATIONS.md` used to carry its own count of the captured sessions and had it wrong, having counted two directories and missed the rest. It points here now. |
 | Whether the keystone correlation has been run, and the pre-registered condition that unblocks it | `docs/diff-minimality-correlation.md`, under "Pre-registration" | The two bar-setting numbers in that block also appear as dated rows in `.claude/rules/measurement.md`, which its own thresholds rule requires. |
 | What each scorer checks, and the caveat on each | `CLAUDE.md`, at the scorer table (heading quoted verbatim below) | `LIMITATIONS.md` owns the long form, one subsection per scorer. |
@@ -88,11 +90,12 @@ Each of these states a fact in a second place on purpose. What makes them pins r
 copies is that a test fails when the two disagree, or the comment beside them says why the
 duplication is load-bearing.
 
-- **The gated proxy's agreement figure, its two rates, and its layout-dependence sentence** appear
-  in `src/clinescope/gate.py`'s help text and are asserted by `tests/test_gate.py`. The reason the
-  duplication is load-bearing is written above those tests. The test is what stops it being
-  quietly dropped. The two rates are the one pin here checked against the data rather than against
-  a copy: their test recomputes them from the frozen gold set before it reads the help.
+- **The gated proxy's agreement figure, its two rates with their intervals, and its
+  layout-dependence sentence** appear in `src/clinescope/gate.py`'s help text and are asserted by
+  `tests/test_gate.py`. The reason the duplication is load-bearing is written above those tests.
+  The test is what stops it being quietly dropped. The two rates and their intervals are the one
+  pin here checked against the data rather than against a copy: their test recomputes the counts
+  from the frozen gold set, and each Wilson interval from those counts, before it reads the help.
 - **The canonical rule line above** appears again in `docs/internal/README.md`, because a router
   a reader abandons after the first screen still has to carry the one rule this directory exists
   for. `tests/test_docs_internal_contract.py` compares the two verbatim. Before it did, the two
@@ -119,9 +122,10 @@ to weigh.
   not opened the source, and a bare pointer would make them do so mid-review; collapsing them
   means deciding that trade, not just deleting a sentence.
 - The **gated proxy's agreement figure and its two rates** appear again in the module docstring
-  of `src/clinescope/gate.py`, beside an interval the help text does not carry. Nothing compares
-  the docstring to the help. The false-alarm rate was added to both in the same change, so that
-  neither place states the recall alone.
+  of `src/clinescope/gate.py`, beside an agreement interval the help text does not carry, and
+  without the rate intervals the help does carry. Nothing compares the docstring to the help. The
+  false-alarm rate was added to both in the same change, so that neither place states the recall
+  alone.
 
 ## Terms this repository uses that no file in it defines
 
