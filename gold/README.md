@@ -137,8 +137,9 @@ this cache + the human labels above and computes Cohen's κ. Each row is a JSON 
 - `schema_version` (int, `2` since `prompt_sha256` was added), `item_id` (str, joins to
   the gold row), `dimension` (str).
 - `outcome`: `"verdict"` (a real judge label), `"unparseable"` (no `VERDICT:` line in the
-  model answer), or `"error"` (an endpoint / truncation failure). Only `"verdict"` rows enter
-  κ; the others are excluded and counted (never silently defaulted to a class).
+  model answer), or `"error"` (an endpoint, truncation or request-building failure). Only
+  `"verdict"` rows enter κ. Every other row counts against the judge, as described below,
+  and is never silently defaulted to a class.
 - `judge_label`: `"WASTEFUL"` / `"NOT-WASTEFUL"`, or `null` for a non-verdict outcome.
 - `rationale`: the raw model answer (audit trail for a low-κ disagreement, never scored).
 - `model_id`: the exact model that produced the verdict (the free-vs-paid provenance).
@@ -151,6 +152,21 @@ this cache + the human labels above and computes Cohen's κ. Each row is a JSON 
   judge is no longer asked, so the fix is a live re-run. Re-stamping the new digest onto the
   old rows would make the report pass while the κ still describes the old prompt.
 - `judged_at`: ISO-8601 timestamp.
+
+**A row with no verdict counts against the judge, never for it.** The report prints every
+`"unparseable"` and `"error"` row as a no-verdict rate over the gold items, beside κ. Leaving a
+row out of κ is not neutral. κ describes only the items that got a verdict, so each such row is
+an item the judge was not measured on. A judge that answers fewer items has earned less trust,
+not the same κ on a smaller N.
+
+Errors count as well as unparseable answers, although a dead endpoint is not the judge's fault.
+A row dropped for any reason still shrinks what κ covers, and counting only some of them would
+let the rest leave the headline quietly. The report keeps the two counts on separate lines, so
+a reader can still tell them apart.
+
+The report calls these rows "no-verdict", not "abstentions". In this repository a scorer
+abstains when it returns `n/a`, and an unparseable answer did not decline to answer: it broke
+the format.
 
 The cache is written LF-only (`.gitattributes` pins `*.jsonl eol=lf`). The judge is opt-in
 and the ONLY LLM surface: the core scorers stay deterministic / zero-LLM / keyless.

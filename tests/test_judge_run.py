@@ -600,6 +600,8 @@ def test_report_only_over_the_committed_cache_prints_the_published_kappa(
     assert "n_for_kappa:     50" in out
     assert "cohen_kappa:     0.0433" in out
     assert "95% CI:          [0.0000, 0.1503]" in out
+    # docs/judge-validation.md publishes this count, with its interval as frozen text.
+    assert "no-verdict rate: 0/50" in out
 
 
 @pytest.mark.parametrize(
@@ -675,6 +677,48 @@ def test_kappa_report_tripwire_text_appears_below_floor() -> None:
     report = judge_kappa_report(inputs)
     assert "ADVISORY-ONLY" in report
     assert "operating-protocol tripwire" in report
+
+
+@pytest.mark.parametrize("n_unparseable, n_error", [(1, 0), (0, 1)])
+def test_no_verdict_rows_count_against_the_judge(
+    n_unparseable: int, n_error: int
+) -> None:
+    # κ is computed over verdicts only, so a row with no verdict sits outside the
+    # headline unless the report prints it as a rate that counts against the judge.
+    # Errors count as well as unparseable answers; gold/README.md says why.
+    from clinescope.judge_run import KappaInputs
+
+    human = tuple(["WASTEFUL", "NOT-WASTEFUL"] * 24 + ["WASTEFUL"])  # 49 verdicts
+    inputs = KappaInputs(
+        human_labels=human,
+        judge_labels=human,
+        model_id="gpt-oss:20b",
+        n_gold=50,
+        n_unparseable=n_unparseable,
+        n_error=n_error,
+    )
+    report = judge_kappa_report(inputs)
+    assert "no-verdict rate: 1/50" in report
+    assert "count AGAINST the judge" in report
+
+
+def test_no_verdict_rate_prints_when_no_verdict_survives() -> None:
+    # This path returns before the interpretation block, and it is the one case where
+    # every row counts against the judge, so it has to print the rate and the line too.
+    from clinescope.judge_run import KappaInputs
+
+    inputs = KappaInputs(
+        human_labels=(),
+        judge_labels=(),
+        model_id="gpt-oss:20b",
+        n_gold=50,
+        n_unparseable=49,
+        n_error=1,
+    )
+    report = judge_kappa_report(inputs)
+    assert "no verdicts to score" in report
+    assert "no-verdict rate: 50/50" in report
+    assert "count AGAINST the judge" in report
 
 
 def test_report_only_does_not_crash_on_a_cp1252_stdout(

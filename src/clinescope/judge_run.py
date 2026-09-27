@@ -19,7 +19,8 @@ Two responsibilities, deliberately split so re-running κ never re-hits the mode
 * The judge is BLIND and answers from patch text alone (see :mod:`clinescope.judge`).
   An unparseable / errored item is recorded EXPLICITLY in the cache and EXCLUDED from
   the κ input lists (never silently defaulted to a class, which would bias κ); the
-  runner surfaces the dropped count loudly.
+  runner surfaces the dropped count loudly, and the report prints it as a no-verdict
+  rate that counts against the judge, never for it.
 * The cache is written LF-only (``.gitattributes`` pins ``*.jsonl eol=lf``) via
   ``write_bytes`` with explicit ``\n`` -- never ``write_text`` / ``print`` (which drift
   CRLF↔LF across platforms). The cache is a fresh authored file, so a full LF rewrite
@@ -65,6 +66,14 @@ JudgeOutcome = Literal["verdict", "unparseable", "error"]
 
 # The κ<0.5 advisory tripwire: below this the judge is advisory-only, never a gate.
 _KAPPA_ADVISORY_FLOOR = 0.5
+
+# Printed on both report paths, because a no-verdict row never enters κ and the report
+# has to say which way it counts. gold/README.md, "The judge cache", owns the reason.
+_NO_VERDICT_NOTE = (
+    "  NO-VERDICT: unparseable and error rows count AGAINST the judge, as failed items "
+    "and never as neutral drops. κ covers verdicts only, so read it beside the "
+    "no-verdict rate."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -451,15 +460,17 @@ def judge_kappa_report(inputs: KappaInputs) -> str:
     """Format the stratified κ report string (pure; no I/O, testable without a model).
 
     Prints the overall Cohen's κ + a seeded bootstrap 95% CI, the counts (gold /
-    verdicts / unparseable / errors / effective N), the 2x2 confusion matrix, per-label
-    agreement, the κ<0.5 → advisory tripwire, and the honest small-N
-    wide-CI caveat.
+    verdicts / unparseable / errors / no-verdict rate / effective N), the 2x2 confusion
+    matrix, per-label agreement, the κ<0.5 → advisory tripwire, the line saying
+    no-verdict rows count against the judge, and the honest small-N wide-CI caveat.
+    The no-verdict rate and that line also print when no verdict survives.
     """
     n_kappa = len(inputs.human_labels)
     lines = _judge_report_header(inputs, n_kappa)
     if n_kappa == 0:
         lines.append("")
         lines.append("no verdicts to score -- κ is undefined (every item dropped).")
+        lines.extend(["", "[interpretation]", _NO_VERDICT_NOTE])
         return "\n".join(lines)
     result = cohen_kappa(inputs.human_labels, inputs.judge_labels)
     lines.extend(_judge_report_kappa(result))
@@ -469,6 +480,7 @@ def judge_kappa_report(inputs: KappaInputs) -> str:
 
 
 def _judge_report_header(inputs: KappaInputs, n_kappa: int) -> list[str]:
+    n_no_verdict = inputs.n_unparseable + inputs.n_error
     return [
         f"=== clinescope judge κ report ({_DIMENSION}) ===",
         f"model_id:        {inputs.model_id}",
@@ -476,6 +488,7 @@ def _judge_report_header(inputs: KappaInputs, n_kappa: int) -> list[str]:
         f"judged_verdicts: {n_kappa}",
         f"unparseable:     {inputs.n_unparseable}   (excluded from κ)",
         f"errors:          {inputs.n_error}   (excluded from κ)",
+        f"no-verdict rate: {n_no_verdict}/{inputs.n_gold}   (unparseable + errors)",
         f"n_for_kappa:     {n_kappa}",
     ]
 
@@ -540,6 +553,7 @@ def _judge_report_interpretation(result: CohenKappaResult, n_kappa: int) -> list
             f"  κ = {result.kappa:.2f} >= {_KAPPA_ADVISORY_FLOOR}: agreement clears the "
             f"advisory floor (target κ >= 0.6)."
         )
+    lines.append(_NO_VERDICT_NOTE)
     lines.append(
         f"  CAVEAT: N is small ({n_kappa}). The 95% CI is WIDE -- read the interval, "
         f"not the point estimate."
