@@ -17,7 +17,21 @@ score (that is recall, not precision); they are surfaced separately so you can s
 `expected` set scores 1.0 (nothing was required, so nothing was missed).
 
 What to do instead: if you need argument-level or ordered checking, this scorer is the wrong tool; pair
-it with your own argument assertions.
+it with your own argument assertions. For `editor` inputs, `tool_input` below checks one key and value at
+a time.
+
+### `tool_input` checks `editor` inputs you name, not whether they were right
+
+With `--expected-input editor KEY=VALUE`, it scores the fraction of the named inputs that at least one
+`editor` call carried. A `path` matches on its ending after the same folding the recovery scorers use
+(`\` versus `/` and the drive prefix), so `src/app.py` matches `C:\proj\src\app.py`. Case is kept, and a
+spelling with `./` or `..` does not match. Every other key matches as exact text. It does NOT check that
+the call succeeded, what the other calls carried, call order, or any tool other than `editor`. A VS Code
+extension trace edits with `write_to_file` and `replace_in_file`, so there every named input is missing.
+Without the flag it prints no line; with it, a trace with no `editor` call scores 0.
+
+What to do instead: for any other tool, or for checks beyond one key and value, pair it with your own
+assertions.
 
 ### `diff_coherence` measures apply_patch grammar, not apply-against-a-real-file success
 
@@ -105,6 +119,8 @@ would largely restate a verdict this repository already surfaces.
 ## What Clinescope does NOT claim
 
 - `tool_selection` scores tool NAMES, not tool ARGUMENTS or success.
+- `tool_input` scores whether some `editor` call carried an input you named, not whether that input was
+  RIGHT or the call SUCCEEDED.
 - `diff_coherence` scores apply_patch GRAMMAR, not whether the patch APPLIES or is CORRECT.
 - `diff_minimality` scores ONE bloat shape, not overall edit MINIMALITY.
 - `apply_recovery` scores a same-file retry TRAJECTORY, not whether the fix is RIGHT.

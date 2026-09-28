@@ -21,7 +21,8 @@ better. It answered WASTEFUL once in fifty, so a bootstrap resample missing that
 item scores exactly zero, and 36% of them do. The prior run, before the judge prompt
 fenced its patch text, measured 0.0496 with a CI of [-0.1200, 0.2175]; both are single
 draws on a label-flipping model, so the gap is noise, not a prompt effect.)
-So this module reads ONLY the five deterministic, keyless, reproducible scorers
+So this module reads ONLY deterministic, keyless, reproducible scorers (five of the
+six; tool_input has no --min-* flag)
 and imports NONE of the judge-arc modules (``judge`` / ``judge_run`` /
 ``agreement`` / ``gold`` / ``label_gold``). An AST test pins that mechanically.
 
@@ -302,7 +303,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         prog="clinescope.gate",
         description=(
             "CI threshold gate: fail the build when a deterministic scorer is "
-            "below its --min-* threshold. Gates on the five deterministic "
+            "below its --min-* threshold. Gates on deterministic "
             "scorers only -- never the advisory judge."
         ),
     )

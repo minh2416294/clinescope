@@ -32,6 +32,21 @@ recorded for the patch `diff_coherence` graded. It reads `applied`, `rejected` f
 reason, or `no verdict`. A `100/100` next to `rejected` means the patch text was well formed but did not
 fit your file. The line is not a score, and the gate ignores it.
 
+## Check the inputs the agent sent
+
+`tool_selection` checks tool names only. To check that an `editor` call carried a value you expect,
+name it after `--expected-input`:
+
+```bash
+clinescope path/to/messages.json --expected-input editor path=src/app.py
+```
+
+The flag takes a tool and a `KEY=VALUE` pair, and you can repeat it. Only `editor` is supported; its keys
+are `path`, `old_text`, `new_text` and `insert_line`. A `path` matches on its ending, so `src/app.py`
+matches the full path Cline recorded. Other keys match as exact text. The `tool_input` line shows the
+share of your inputs that some `editor` call carried and lists the missing ones. It does not check
+whether that call worked. A tool other than `editor`, or a pair with no `=`, exits `2`.
+
 ## Score a VS Code extension session
 
 The Cline VS Code extension stores sessions in a different on-disk format from the CLI. `--vscode` reads

@@ -49,6 +49,7 @@ from clinescope.diff_coherence import (
 from clinescope.diff_minimality import DiffMinimalityScore
 from clinescope.editor_recovery import EditorRecoveryScore
 from clinescope.render_safety import quote_untrusted_text
+from clinescope.tool_input import ExpectedInput, ToolInputScore
 from clinescope.tool_selection import ToolSelectionScore
 from clinescope.tool_verdict import tool_verdict_effective, tool_verdict_error_line
 from clinescope.world_a import Trace
@@ -70,6 +71,7 @@ def render_report(
     diff_minimality: DiffMinimalityScore | None = None,
     apply_recovery: ApplyRecoveryScore | None = None,
     editor_recovery: EditorRecoveryScore | None = None,
+    tool_input: ToolInputScore | None = None,
     expected_provided: bool = True,
     advice: bool = False,
     verbose: bool = False,
@@ -81,7 +83,8 @@ def render_report(
     #
     # editor_recovery is the editor-family sibling of apply_recovery. Callers pass
     # it only when the trace actually contains an editor call, so an apply_patch
-    # trace renders byte-identically to before this scorer existed.
+    # trace renders byte-identically to before this scorer existed. tool_input is
+    # passed only when --expected-input was given, for the same reason.
     if verbose:
         return _render_verbose(
             trace,
@@ -92,6 +95,7 @@ def render_report(
             diff_minimality=diff_minimality,
             apply_recovery=apply_recovery,
             editor_recovery=editor_recovery,
+            tool_input=tool_input,
         )
     summary = _render_summary(
         trace,
@@ -102,6 +106,7 @@ def render_report(
         diff_minimality=diff_minimality,
         apply_recovery=apply_recovery,
         editor_recovery=editor_recovery,
+        tool_input=tool_input,
         expected_provided=expected_provided,
     )
     if not advice:
@@ -171,6 +176,7 @@ def _render_summary(
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
     editor_recovery: EditorRecoveryScore | None = None,
+    tool_input: ToolInputScore | None = None,
     expected_provided: bool,
 ) -> str:
     subject = _header_subject(session_id, session_label)
@@ -179,6 +185,8 @@ def _render_summary(
     if note is not None:
         lines.append(note)
     lines.append(_render_summary_tool_selection(score, expected_provided))
+    if tool_input is not None:
+        lines.append(_render_summary_tool_input(tool_input))
     if diff_coherence is not None:
         lines.append(_render_summary_diff_coherence(diff_coherence, editor_recovery))
     cline_verdict = _cline_verdict_text(trace, diff_coherence)
@@ -204,6 +212,7 @@ def _render_summary(
         diff_minimality,
         apply_recovery,
         editor_recovery,
+        tool_input,
     )
     if footer is not None:
         lines.append(footer)
@@ -325,6 +334,19 @@ def _render_summary_diff_coherence(
     return _render_summary_line("diff_coherence", cell, verdict, extra)
 
 
+def _render_summary_tool_input(score: ToolInputScore) -> str:
+    # Same shape as tool_selection: a recall with no threshold, so PASS at 100 and
+    # no word below it. The expected inputs are the operator's own text, so they
+    # are not neutralized; no trace text reaches this line.
+    verdict = "PASS" if score.score == 1.0 else ""
+    extra = (
+        f"(missing: {_render_expected_inputs(score.missing)})" if score.missing else ""
+    )
+    return _render_summary_line(
+        "tool_input", render_score_out_of_100(score.score), verdict, extra
+    )
+
+
 def _render_summary_tool_selection(
     score: ToolSelectionScore, expected_provided: bool
 ) -> str:
@@ -435,13 +457,17 @@ def _summary_footer(
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
     editor_recovery: EditorRecoveryScore | None = None,
+    tool_input: ToolInputScore | None = None,
 ) -> str | None:
     # A positive takeaway on a clean run (U1): if nothing scored below its bar,
     # say so plainly rather than leaving the reader to eyeball four lines. A
     # scorer that abstained (n/a) is neutral -- it neither passes nor fails, so it
     # does not block the clean verdict. tool_selection counts only when scored, and
     # diff_coherence is neutral on an editor run, where the report shows it as n/a.
-    tool_ok = (not expected_provided) or not score.missing
+    # tool_input, like tool_selection, blocks it with any missing input.
+    tool_ok = ((not expected_provided) or not score.missing) and (
+        tool_input is None or not tool_input.missing
+    )
     coherence_ok = (
         diff_coherence is None
         or diff_coherence.score == 1.0
@@ -524,6 +550,7 @@ def _render_verbose(
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
     editor_recovery: EditorRecoveryScore | None = None,
+    tool_input: ToolInputScore | None = None,
 ) -> str:
     lines = ["=== clinescope report ==="]
     if session_label is not None:
@@ -556,6 +583,16 @@ def _render_verbose(
         f"missing:        {_render_names(score.missing)}",
         f"unexpected:     {_render_trace_names(score.unexpected)}",
     ]
+    if tool_input is not None:
+        # All three sets are the operator's own --expected-input text.
+        lines += [
+            "",
+            "[tool_input]",
+            f"score:          {tool_input.score:.4f}",
+            f"expected:       {_render_expected_inputs(tool_input.expected)}",
+            f"matched:        {_render_expected_inputs(tool_input.matched)}",
+            f"missing:        {_render_expected_inputs(tool_input.missing)}",
+        ]
     if diff_coherence is not None:
         lines.extend(
             _render_diff_coherence(
@@ -671,6 +708,10 @@ def _render_optional_4f(value: float | None) -> str:
 
 def _render_names(names: frozenset[str]) -> str:
     return ", ".join(sorted(names)) if names else "-"
+
+
+def _render_expected_inputs(inputs: frozenset[ExpectedInput]) -> str:
+    return ", ".join(str(item) for item in sorted(inputs)) if inputs else "-"
 
 
 def _render_trace_names(names: frozenset[str]) -> str:

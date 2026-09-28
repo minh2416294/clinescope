@@ -8,6 +8,16 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Added
 
+- `tool_input`, a sixth scorer, and `--expected-input TOOL KEY=VALUE` to drive it.
+  It scores the fraction of the inputs you name that at least one `editor` call
+  carried. A `path` matches on its ending after the recovery scorers' folding, so
+  `--expected-input editor path=calc.py` matches the
+  `C:\Users\...\cs-editor-capture\calc.py` in
+  `examples/live-granite-editor-recovery.json`; other keys match as exact text.
+  `editor` only: another tool, or a pair with no `=`, exits 2, and an unknown key
+  warns and still scores. It does not check that the call succeeded or what other
+  calls sent. Without the flag the report is unchanged. No gate flag and no
+  `compare` or corpus column.
 - A `cline_verdict` line under `diff_coherence`, in the report and in `--verbose`.
   It shows what Cline recorded for the patch `diff_coherence` grades (the first
   `apply_patch`): `applied`, `rejected` with the first line of Cline's own error

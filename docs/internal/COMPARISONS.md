@@ -66,7 +66,9 @@ Two corrections the old README sentence needed:
   metric among roughly fifty. Worse, on that exact axis DeepEval is ahead of this project:
   `ToolCorrectnessMetric` can be escalated to match input parameters and outputs via
   `ToolCallParams`, and DeepEval ships a separate `ArgumentCorrectnessMetric`. Clinescope's
-  `tool_selection` is name-only and says so in `LIMITATIONS.md`.
+  `tool_selection` is name-only and says so in `LIMITATIONS.md`. Its `tool_input` (added
+  2026-09-28) checks `editor` inputs only, one caller-named key and value at a time, so
+  DeepEval stays ahead on this axis for every other tool.
 
 DeepEval does score code, by executing generated functions against tests in its HumanEval
 benchmark. "Not code patches or diffs" is true; "not code" would be false.
@@ -109,7 +111,8 @@ security scan rather than an edit-quality check, which is why the narrowed claim
 three specific checks instead of saying "diffs".
 
 promptfoo is also ahead of this project on tool trajectories: alongside `tool-call-f1` it ships a
-trajectory family whose `trajectory:tool-args-match` checks tool-call arguments.
+trajectory family whose `trajectory:tool-args-match` checks tool-call arguments. Clinescope's
+`tool_input` covers the `editor` tool only.
 
 A scoping note for anyone re-checking: the red-team plugin family is a large separate grader
 vocabulary that a count of the base assertion types does not cover.
