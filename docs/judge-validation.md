@@ -86,6 +86,25 @@ labels run-to-run at temperature 0 by roughly a third on at least one known item
 between two single draws is well inside that noise. What both runs agree on is the part that matters:
 the judge is at chance, and it is heavily biased toward calling patches fine.
 
+## Re-measuring the judge: parked 2026-09-28
+
+A new measurement, with a new prompt or a different local model, was considered on 2026-09-28 and
+parked. Each reason was checked that day:
+
+- There is nothing to test a new prompt on. The gold set is these 50 items, and there is no held-out
+  set. How the judge fails on them is already known, so a prompt changed to fix that and scored on the
+  same 50 would measure its fit to them, not the judge.
+- No bar is written down. The code prints two: an advisory floor of 0.5
+  (`src/clinescope/judge_run.py`, `src/clinescope/judge_multidraw.py`) and a target of 0.6
+  (`src/clinescope/judge_run.py`). Neither is a row in `.claude/rules/measurement.md`, and nothing says
+  which number would have to clear it: the single-draw estimate, the interval's lower bound, or a
+  multi-draw figure.
+- A pass would change nothing that ships. The judge stays out of the gate by design
+  (`.claude/rules/scope.md`).
+
+Reopening it needs two things first: new blind-labeled items the judge has never been scored on, and a
+dated row in `measurement.md` naming the bar and the statistic, committed before any run.
+
 ## Reproduce it yourself (no model call)
 
 ```bash
