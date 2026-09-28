@@ -32,7 +32,7 @@ Two more rule files govern work here:
 - [`.claude/rules/user-data-instrumentation.md`](.claude/rules/user-data-instrumentation.md):
   what to instrument, and the gate on claiming anything about accumulated usage.
 
-## The five scorers, and the honest caveat on each
+## The six scorers, and the honest caveat on each
 
 All are deterministic and use no LLM. Each names what it actually checks, because the gap
 between the check and the thing you might assume it checks is where every false claim starts.
@@ -40,6 +40,7 @@ between the check and the thing you might assume it checks is where every false 
 | Scorer | What it computes | The caveat |
 |---|---|---|
 | `tool_selection` | Name-only recall of a caller-supplied expected set. | Name-only. It does **not** check tool arguments. |
+| `tool_input` | Recall of caller-stated `editor` inputs (`--expected-input editor KEY=VALUE`): the fraction some `editor` call carried. | `editor` only, one key and value at a time. A `path` matches on its ending after `recovery_path.py` folding; other keys as exact text. It does **not** check that the call succeeded or what other calls sent. No line without the flag; with it, a trace with no `editor` call scores a real 0. |
 | `diff_coherence` | Grammar coherence of the first `apply_patch` against Cline's `*** Begin Patch` grammar. | Grammar read from the patch **text alone**. It is **not** apply-against-a-real-file success. Cline's own verdict on that same patch prints beneath it as `cline_verdict` (`applied`, `rejected` with Cline's reason, or `no verdict`): context, never an input to any score, the footer or the gate. |
 | `diff_minimality` | Flags blind whole-block rewrites: 3 or more deleted lines immediately retyped with no anchor. | Reference-free, and detects **one** bloat shape. Its score also depends on file layout. |
 | `apply_recovery` | Of every `apply_patch` Cline marked failed, the fraction recovered by a strictly-later confirmed one. | Trajectory recovery, **not** fix-correctness. |
@@ -166,6 +167,7 @@ pip install clinescope
 
 clinescope --demo                                        # score a bundled real trace, zero args
 clinescope <trace.json> --expected read_files apply_patch --advice
+clinescope <trace.json> --expected-input editor path=src/app.py   # did some editor call carry this input
 clinescope --vscode                                      # find and score a VS Code extension session
 clinescope-gate <trace.json> --min-diff-coherence 0.75   # CI gate: exit 0 pass, 1 fail, 2 usage error
 clinescope-gate <trace.json> --min-editor-recovery 1.0 --min-tool-selection 1.0 --expected editor   # an editor run
@@ -315,6 +317,7 @@ src/clinescope/        the package
   extension_discovery.py  finds extension sessions on disk, per-OS
   _datafiles.py        locates bundled examples/ + gold/ from an installed wheel
   tool_selection.py    scorer
+  tool_input.py        scorer (editor inputs named by --expected-input)
   diff_coherence.py    scorer (owns the apply_patch grammar parser the other two reuse)
   diff_minimality.py   scorer
   apply_recovery.py    scorer

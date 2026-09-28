@@ -8,11 +8,12 @@
 
 **Clinescope runs on the Cline CLI and the VS Code extension.** Run `clinescope --vscode` to auto-discover and score a VS Code extension session (see [Score a VS Code extension session](docs/usage.md#score-a-vs-code-extension-session)).
 
-Clinescope reads the log of one Cline run and scores it on five checks.
+Clinescope reads the log of one Cline run and scores it on six checks.
 
 | Check | What it tells you | What it does not tell you |
 |---|---|---|
 | `tool_selection` | Whether the agent used the tools you listed after `--expected`. | Whether it gave those tools the right inputs. |
+| `tool_input` | Whether some `editor` call carried an input you named after `--expected-input`, such as a file path. On main, not yet on PyPI. | Whether that call worked, or what the other calls sent. |
 | `diff_coherence` | Whether the agent's first `apply_patch` patch is written in the format Cline expects. | Whether that patch would apply to your file. |
 | `diff_minimality` | Whether a patch deleted a block of lines and wrote a new one, keeping none of the old lines. | Whether that rewrite was a mistake. Sometimes it is the right move. |
 | `apply_recovery` | After a failed `apply_patch`, whether a later patch to the same file went through. | Whether the later patch fixed the problem. |

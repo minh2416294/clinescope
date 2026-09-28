@@ -8,7 +8,7 @@ Two input sources, one scoring path. Without ``--vscode`` it loads a Cline CLI
 World-A trace (``{version:1, messages:[...]}``). With ``--vscode`` it reads a
 Cline VS Code *extension* session instead: it auto-discovers the extension's
 per-OS global storage, lists recent sessions with a picker (or takes ``--path`` /
-``--latest``), and scores the chosen one through the same five scorers. Both
+``--latest``), and scores the chosen one through the same scorers. Both
 paths render via :func:`clinescope.report.render_report` (a pure ``str``-returning
 function) so the report is testable WITHOUT a subprocess; this module is only
 argument parsing plus glue.
@@ -19,8 +19,9 @@ lifted here with one cheap read and passed through to the emitter.
 
 A trace that cannot be loaded (missing path, unsupported version, malformed or
 non-object JSON) prints a single ``error: ...`` line to stderr and exits 1 --
-never a raw Python traceback. A ``--vscode`` usage problem (no session selected
-in a non-TTY, or no extension storage found) exits 2.
+never a raw Python traceback. A usage problem exits 2: an ``--expected-input``
+naming a tool other than ``editor`` or lacking ``KEY=VALUE``, or a ``--vscode``
+problem (no session selected in a non-TTY, or no extension storage found).
 """
 
 from __future__ import annotations
@@ -47,12 +48,20 @@ from clinescope.extension_discovery import (
 )
 from clinescope.render_safety import quote_untrusted_text
 from clinescope.report import render_report
+from clinescope.tool_input import (
+    TOOL_INPUT_EDITOR_KEYS,
+    ExpectedInput,
+    ToolInputScore,
+    score_tool_input,
+    tool_input_parse,
+)
 from clinescope.tool_selection import score_tool_selection
 from clinescope.tool_vocab import CLINE_KNOWN_TOOLS, tool_vocab_check
 from clinescope.world_a import Trace, load_trace
 
-# Exit codes: 0 = report emitted; 1 = a trace could not be loaded; 2 = a --vscode
-# usage problem (no session selected in a non-TTY, or no extension storage found).
+# Exit codes: 0 = report emitted; 1 = a trace could not be loaded; 2 = a usage
+# problem (a malformed --expected-input, no session selected in a non-TTY, or no
+# extension storage found).
 _EXIT_OK = 0
 _EXIT_LOAD_ERROR = 1
 _EXIT_USAGE = 2
@@ -112,6 +121,18 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "Expected tool name(s), space-separated (e.g. --expected read_files "
             "apply_patch). Omit to skip tool-selection scoring; run --list-tools "
             "to see valid names."
+        ),
+    )
+    parser.add_argument(
+        "--expected-input",
+        nargs=2,
+        action="append",
+        default=None,
+        metavar=("TOOL", "KEY=VALUE"),
+        help=(
+            "An input you expect some call to carry, e.g. --expected-input editor "
+            "path=src/app.py. Repeatable. editor only; a path matches on its ending. "
+            "Omit to skip tool-input scoring."
         ),
     )
     parser.add_argument(
@@ -193,6 +214,26 @@ def _warn_unknown_expected(expected: list[str]) -> None:
         print(f"warning: unknown tool '{name}'{hint}", file=sys.stderr)
 
 
+def _parse_expected_inputs(
+    raw: list[list[str]] | None,
+) -> frozenset[ExpectedInput] | None:
+    # None when --expected-input was not given, so the report gets no tool_input
+    # line. A tool the scorer cannot read raises ValueError (the caller exits 2);
+    # an unknown key only warns, for the same reason an unknown --expected name does.
+    if raw is None:
+        return None
+    parsed = frozenset(tool_input_parse(tool, pair) for tool, pair in raw)
+    known = ", ".join(sorted(TOOL_INPUT_EDITOR_KEYS))
+    for item in sorted(parsed):
+        if item.key not in TOOL_INPUT_EDITOR_KEYS:
+            print(
+                f"warning: unknown {item.tool} input key '{item.key}' - "
+                f"{item.tool} takes {known}",
+                file=sys.stderr,
+            )
+    return parsed
+
+
 # Links straight at the feedback form rather than the template picker: one
 # fewer click between "I have something to say" and a text box.
 _FEEDBACK_URL = (
@@ -231,10 +272,23 @@ def main(
     expected = args.expected if expected_provided else []
     if expected_provided:
         _warn_unknown_expected(expected)
+    try:
+        expected_inputs = _parse_expected_inputs(args.expected_input)
+    except ValueError as err:
+        print(f"error: {err}", file=sys.stderr)
+        return _EXIT_USAGE
 
     if args.vscode:
-        return _run_extension_flow(args, expected, expected_provided, input_fn)
-    return _run_world_a_flow(args, expected, expected_provided)
+        return _run_extension_flow(
+            args,
+            expected,
+            expected_provided,
+            input_fn,
+            expected_inputs=expected_inputs,
+        )
+    return _run_world_a_flow(
+        args, expected, expected_provided, expected_inputs=expected_inputs
+    )
 
 
 # --- `clinescope --demo`: the zero-args proof-of-work -------------------------
@@ -287,7 +341,11 @@ def _emit_bundled_demo_report() -> int:
 
 
 def _run_world_a_flow(
-    args: argparse.Namespace, expected: list[str], expected_provided: bool
+    args: argparse.Namespace,
+    expected: list[str],
+    expected_provided: bool,
+    *,
+    expected_inputs: frozenset[ExpectedInput] | None = None,
 ) -> int:
     if args.trace is None:
         print("error: a trace path is required (or use --vscode)", file=sys.stderr)
@@ -308,7 +366,12 @@ def _run_world_a_flow(
 
     print(
         _score_and_render(
-            trace, expected, expected_provided, args, session_id=session_id
+            trace,
+            expected,
+            expected_provided,
+            args,
+            session_id=session_id,
+            expected_inputs=expected_inputs,
         )
     )
     _maybe_print_feedback_footer()
@@ -323,6 +386,8 @@ def _run_extension_flow(
     expected: list[str],
     expected_provided: bool,
     input_fn: Callable[[str], str],
+    *,
+    expected_inputs: frozenset[ExpectedInput] | None = None,
 ) -> int:
     try:
         session = _select_extension_session(args, input_fn)
@@ -357,6 +422,7 @@ def _run_extension_flow(
             expected_provided,
             args,
             session_label=_extension_label(session),
+            expected_inputs=expected_inputs,
         )
     )
     _maybe_print_feedback_footer()
@@ -499,8 +565,16 @@ def _score_and_render(
     *,
     session_id: str | None = None,
     session_label: str | None = None,
+    expected_inputs: frozenset[ExpectedInput] | None = None,
 ) -> str:
     score = score_tool_selection(trace, set(expected))
+    # Scored ONLY when --expected-input was given, so a run without the flag keeps
+    # its exact report. Same omit-in-the-caller split as editor_recovery below.
+    input_score: ToolInputScore | None = (
+        score_tool_input(trace, expected_inputs)
+        if expected_inputs is not None
+        else None
+    )
     diff_score: DiffCoherenceScore = score_diff_coherence(trace)
     minimality_score: DiffMinimalityScore = score_diff_minimality(trace)
     recovery_score: ApplyRecoveryScore = score_apply_recovery(trace)
@@ -522,6 +596,7 @@ def _score_and_render(
         diff_minimality=minimality_score,
         apply_recovery=recovery_score,
         editor_recovery=editor_score,
+        tool_input=input_score,
         expected_provided=expected_provided,
         advice=args.advice,
         verbose=args.verbose,

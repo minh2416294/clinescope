@@ -26,7 +26,7 @@ practice.
 
 ## Frozen invariants: the parts an agent may not touch
 
-A small set of files are treated as frozen. The five scorers (`tool_selection`, `diff_coherence`,
+A small set of files are treated as frozen. The six scorers (`tool_selection`, `tool_input`, `diff_coherence`,
 `diff_minimality`, `apply_recovery`, `editor_recovery`), the trace loader (`world_a.py`), the tool vocabulary
 (`tool_vocab.py`), and the ingested golden fixture are held byte-identical from one change to the next
 unless a change is specifically about them. An agent may draft new code around these files, add scorers,

@@ -70,7 +70,7 @@ stays a read.
 | The expected surviving hit count for the honesty grep | `CLAUDE.md`, in the honesty rule | Notable for having no copies anywhere. It is structurally safe, and worth leaving that way. |
 | What another eval framework does and does not ship, and the date somebody read its source | `docs/internal/COMPARISONS.md` | The only facts here about code this project does not control. They go stale when a vendor ships, with nobody here touching a file, so every one carries a date. |
 
-The heading quoted verbatim, so the pointer above resolves by search: **"The five scorers, and
+The heading quoted verbatim, so the pointer above resolves by search: **"The six scorers, and
 the honest caveat on each"**. It is reproduced exactly because a paraphrased heading is not a
 locator.
 
