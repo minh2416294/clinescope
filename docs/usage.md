@@ -88,6 +88,14 @@ Exit non-zero when a score falls below a threshold, so a bad run fails your pipe
 clinescope-gate path/to/messages.json --min-diff-coherence 0.8
 ```
 
+Most Cline sessions today edit with `editor`, not `apply_patch`. Gate those on the editor scorer and on tool selection:
+
+```bash
+clinescope-gate path/to/messages.json --min-editor-recovery 1.0 --min-tool-selection 1.0 --expected read_files editor
+```
+
+`--min-editor-recovery` has nothing to score when no edit failed, so on its own a clean run exits `2` ("nothing was verified"). `--min-tool-selection` checks that each tool after `--expected` was called, by name only, and gives a number on every run. The numbers above are examples, not recommended bars.
+
 ## Related
 
 - [Validation corpus](../examples/corpus/README.md): the real-trace regression set.

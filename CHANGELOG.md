@@ -18,6 +18,18 @@ All notable changes to Clinescope are recorded here. The format follows
   `n/a` when editor ran and nothing failed, and `-` when the trace made no
   `editor` call, matching the single-trace report, which prints no line then.
   The corpus shows the column but does not check it against a label.
+- `clinescope-gate --min-editor-recovery` and `--min-tool-selection` with
+  `--expected`, so the gate can check an editor run, which is what almost every
+  current Cline session is. `editor_recovery` abstains when no edit failed, so a
+  clean editor run passes only through `--min-tool-selection`, which the gate
+  reads on every trace (tool names only, not arguments). Either of
+  `--min-tool-selection` and `--expected` without the other exits 2. An editor
+  run gated only on apply_patch flags still exits 2, now with a hint naming
+  `--min-editor-recovery`. The exit codes themselves are unchanged. No committed
+  real trace has an unrecovered editor failure, so only a synthetic test reaches
+  the exit 1 of `--min-editor-recovery`. This repository's CI dogfood step now
+  also runs the gate on `examples/live-granite-editor-recovery.json`: a pass, and
+  an exact exit 2.
 - `editor_recovery`, a trajectory scorer for Cline's `editor` tool. Of every
   `editor` call Cline marked failed, it scores the fraction later recovered by a
   strictly-later `editor` call Cline confirmed non-failing on the same path. It

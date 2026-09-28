@@ -162,6 +162,7 @@ clinescope --demo                                        # score a bundled real 
 clinescope <trace.json> --expected read_files apply_patch --advice
 clinescope --vscode                                      # find and score a VS Code extension session
 clinescope-gate <trace.json> --min-diff-coherence 0.75   # CI gate: exit 0 pass, 1 fail, 2 usage error
+clinescope-gate <trace.json> --min-editor-recovery 1.0 --min-tool-selection 1.0 --expected editor   # an editor run
 clinescope-corpus                                        # the real-trace regression corpus
 python -m clinescope.compare A.json B.json               # multi-trace scorecard
 python -m clinescope.judge_run --report-only             # recompute kappa, no model call
@@ -189,8 +190,9 @@ mypy src
 pytest -q --cov=clinescope --cov-report=term-missing --cov-fail-under=90
 ```
 
-Those four, plus a fifth step that dogfoods `clinescope-gate` against two committed traces
-(asserting both a pass and an expected exit-1 regression), are what CI runs, on Python 3.11,
+Those four, plus a fifth step that dogfoods `clinescope-gate` against three committed traces
+(passes on two, an expected exit-1 regression, and an exact exit 2 on the editor trace gated only
+on an apply_patch flag), are what CI runs, on Python 3.11,
 3.12 and 3.13. Coverage below 90 percent
 fails the build. `mypy` runs strict and rejects a bare `# type: ignore`: every suppression must
 name its error code.

@@ -125,12 +125,15 @@ gets `editor`, and the two tools are mutually exclusive (`definitions.ts` lines 
 diff-grammar scorer, and any shape scorer for `editor`, are on the roadmap and not shipped.
 `tool_selection` still scores all these tools (every family is in the pinned vocabulary).
 
-**`editor_recovery` is not in the gate yet.** It renders in the `clinescope` report, feeds `--advice`,
-and has a column in the `python -m clinescope.compare` and `clinescope-corpus` tables, where `-` means
-the trace made no `editor` call. The corpus shows that column but does not check it against a label.
-`clinescope-gate` does not read it: the gate still exposes only `--min-diff-coherence`,
-`--min-diff-minimality` and `--min-apply-recovery`. So on an editor-only session the gate has no usable signal at all, because all
-three of those scorers grade `apply_patch` and the trace contains none.
+**`editor_recovery` is in the gate, and a clean editor run needs `tool_selection` to pass.** It renders
+in the `clinescope` report, feeds `--advice`, and has a column in the `python -m clinescope.compare`
+and `clinescope-corpus` tables, where `-` means the trace made no `editor` call. The corpus shows that
+column but does not check it against a label. `clinescope-gate` reads it through
+`--min-editor-recovery`. It abstains when no `editor` call failed, so on a clean editor run it verifies
+nothing on its own and the gate exits `2`. `--min-tool-selection` with `--expected` is the one gated
+scorer that gives a number on every run, so it is what lets a clean editor run pass, and it checks tool
+names only. No real captured trace has an unrecovered `editor` failure yet, so `--min-editor-recovery`
+has never failed a build on a real trace.
 
 **The gate now says that honestly instead of failing the build.** It exits `2`, the "nothing was
 verified" code, rather than `1`, "a scorer regressed". Previously `diff_coherence` contributed a hard
@@ -138,12 +141,14 @@ zero reflecting the absent `apply_patch` rather than anything the agent did, and
 `--min-diff-coherence` to a configuration turned an honest exit `2` into a build failure. The gate now
 reads `apply_patch_call_count` and treats a trace with no `apply_patch` as not applicable to the whole
 apply_patch family. A malformed patch still fails: the check is on whether a patch was present, not on
-whether the score was zero.
+whether the score was zero. When such a trace has `editor` calls, the gate also prints a hint that
+names `--min-editor-recovery`.
 
 The report is unchanged and still shows `diff_coherence 0/100` on such a trace, with the reason beside
 it. That is the honest reading for a report, where a missing artifact should be loud rather than
-silent, and the gate is the place where the distinction had to be made. **Gating CI on an editor-only
-trace still verifies nothing**; the difference is that it now tells you so instead of blaming the agent.
+silent, and the gate is the place where the distinction had to be made. **Gating an editor-only trace
+on the apply_patch flags alone still verifies nothing**; gate it on `--min-editor-recovery` and
+`--min-tool-selection` instead.
 
 ## The LLM judge is advisory-only (kept out of the gate)
 

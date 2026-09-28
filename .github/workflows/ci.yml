@@ -44,6 +44,10 @@ jobs:
       # with no apply_patch, so a looser `if ! gate ...` check would keep passing if
       # this trace were renamed or lost its patch. That would leave CI green while
       # testing nothing, which is the failure this step exists to prevent.
+      #
+      # The editor trace is what almost every current Cline session looks like. It must
+      # pass on --min-editor-recovery, and gated only on an apply_patch flag it must
+      # exit exactly 2 ("nothing was verified"), never 1 ("a scorer regressed").
       - name: Dogfood clinescope-gate on committed traces
         run: |
           clinescope-gate examples/apply-patch-trace.json --min-diff-coherence 0.75 --min-diff-minimality 0.75
@@ -52,3 +56,9 @@ jobs:
           code=$?
           set -e
           test "$code" -eq 1 || { echo "expected exit 1 on the regression trace, got $code"; exit 1; }
+          clinescope-gate examples/live-granite-editor-recovery.json --min-editor-recovery 1.0
+          set +e
+          clinescope-gate examples/live-granite-editor-recovery.json --min-diff-coherence 0.75
+          code=$?
+          set -e
+          test "$code" -eq 2 || { echo "expected exit 2 on the editor trace gated only on apply_patch, got $code"; exit 1; }

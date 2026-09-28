@@ -1,7 +1,8 @@
 """CI threshold pass/fail gate -- the "suffocate a regressing agent version" gate.
 
-Runs the DETERMINISTIC scorers (:mod:`diff_coherence`, :mod:`diff_minimality`,
-:mod:`apply_recovery`) on a trace, compares each against a caller-supplied
+Runs the DETERMINISTIC scorers (:mod:`tool_selection`, :mod:`diff_coherence`,
+:mod:`diff_minimality`, :mod:`apply_recovery`, :mod:`editor_recovery`) on a trace,
+compares each against a caller-supplied
 ``--min-*`` threshold, and EXITS NON-ZERO when any gated score is below its
 threshold -- so a CI job can block a regressing agent version.
 
@@ -20,7 +21,7 @@ better. It answered WASTEFUL once in fifty, so a bootstrap resample missing that
 item scores exactly zero, and 36% of them do. The prior run, before the judge prompt
 fenced its patch text, measured 0.0496 with a CI of [-0.1200, 0.2175]; both are single
 draws on a label-flipping model, so the gap is noise, not a prompt effect.)
-So this module reads ONLY the three deterministic, keyless, reproducible scorers
+So this module reads ONLY the five deterministic, keyless, reproducible scorers
 and imports NONE of the judge-arc modules (``judge`` / ``judge_run`` /
 ``agreement`` / ``gold`` / ``label_gold``). An AST test pins that mechanically.
 
@@ -29,8 +30,9 @@ Deterministic does not mean validated. Only ``diff_minimality`` has ever been
 measured against a human label: Cohen's kappa 0.2599 (95% CI [0.0574, 0.4777],
 N=50), recall 7 of 24 with a false-alarm rate of 1 of 26, on a gold set that is
 authored end to end by one labeler.
-``diff_coherence`` and ``apply_recovery`` have no agreement number at all, so
-read their silence as unmeasured rather than as validated. ``LIMITATIONS.md``
+``tool_selection``, ``diff_coherence``, ``apply_recovery`` and ``editor_recovery``
+have no agreement number at all, so read their silence as unmeasured rather than
+as validated. ``tool_selection`` checks tool names only, never their arguments. ``LIMITATIONS.md``
 carries the full finding.
 
 **The exit-code contract (CI depends on it precisely):**
@@ -39,8 +41,9 @@ carries the full finding.
 * ``1`` -- at least one gated scorer scored below its threshold (the
   build-failing verdict).
 * ``2`` -- a USAGE error: no ``--min-*`` flag given (a gate that gates nothing
-  is a mistake), the trace could not be loaded, OR every gated scorer abstained
-  on this trace (nothing was verified). A usage error must NEVER masquerade as a
+  is a mistake), ``--min-tool-selection`` and ``--expected`` not given together
+  (either alone gates nothing), the trace could not be loaded, OR every gated
+  scorer abstained on this trace (nothing was verified). A usage error must NEVER masquerade as a
   gate pass (0) or a gate failure (1).
 
 **Deliberate decisions (each a stated choice):**
@@ -50,9 +53,12 @@ carries the full finding.
   it used alongside the verdict (a pass/fail is meaningless without the
   thresholds it was measured against -- the charter's "scores are glued to the
   setup"). At least one flag is required.
-* **An abstaining scorer is SKIPPED, not failed.** :class:`DiffMinimalityScore`
-  and :class:`ApplyRecoveryScore` return ``score is None`` when the metric is
-  undefined for the trace (no ``apply_patch`` / nothing failed). ``None`` is not
+* **An abstaining scorer is SKIPPED, not failed.** :class:`DiffMinimalityScore`,
+  :class:`ApplyRecoveryScore` and :class:`EditorRecoveryScore` return
+  ``score is None`` when the metric is undefined for the trace (no ``apply_patch``,
+  no ``editor`` call, or nothing failed). On an editor run where no edit failed,
+  ``editor_recovery`` therefore abstains, and only ``--min-tool-selection`` can
+  make that clean run pass. ``None`` is not
   ``0.0`` -- it cannot pass or fail a threshold, so it is reported "not gated
   (n/a)" and excluded from the verdict. If EVERY gated scorer abstains, that is
   the loud exit ``2`` above -- never a silent pass.
@@ -79,6 +85,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Literal
@@ -86,18 +93,27 @@ from typing import Callable, Literal
 from clinescope.apply_recovery import score_apply_recovery
 from clinescope.diff_coherence import score_diff_coherence
 from clinescope.diff_minimality import score_diff_minimality
+from clinescope.editor_recovery import score_editor_recovery
+from clinescope.tool_selection import score_tool_selection
+from clinescope.tool_vocab import tool_vocab_check
 from clinescope.world_a import Trace, load_trace
 
 Verdict = Literal["pass", "fail", "skip"]
 
-# The gated deterministic scorers, keyed by the name used in the --min-* flag.
-# Each callable takes a Trace and returns a value object exposing ``.score``
+# The gated deterministic scorers, keyed by the name used in the --min-* flag, in
+# single-trace report order. Each callable takes a Trace and the --expected names
+# (read by tool_selection only) and returns a value object exposing ``.score``
 # (a ``float`` or ``float | None``). NO judge-arc module appears here.
-_ScoreFn = Callable[[Trace], object]
+_ScoreFn = Callable[[Trace, frozenset[str]], object]
 _GATED: tuple[tuple[str, _ScoreFn], ...] = (
-    ("diff_coherence", score_diff_coherence),
-    ("diff_minimality", score_diff_minimality),
-    ("apply_recovery", score_apply_recovery),
+    (
+        "tool_selection",
+        lambda trace, expected: score_tool_selection(trace, set(expected)),
+    ),
+    ("diff_coherence", lambda trace, _expected: score_diff_coherence(trace)),
+    ("diff_minimality", lambda trace, _expected: score_diff_minimality(trace)),
+    ("apply_recovery", lambda trace, _expected: score_apply_recovery(trace)),
+    ("editor_recovery", lambda trace, _expected: score_editor_recovery(trace)),
 )
 _GATED_NAMES = tuple(name for name, _ in _GATED)
 
@@ -142,19 +158,27 @@ class GateReport:
     exit_code: int
 
 
-def run_gate(trace: Trace, thresholds: dict[str, float]) -> GateReport:
+def run_gate(
+    trace: Trace,
+    thresholds: dict[str, float],
+    *,
+    expected_tools: Collection[str] = (),
+) -> GateReport:
     """Score ``trace`` and compare each requested scorer against its threshold.
 
     Pure: no I/O, no printing, no ``sys.exit``. ``thresholds`` maps a gated
     scorer name (one of :data:`_GATED_NAMES`) to its minimum acceptable score.
     Unknown names are ignored here (the CLI validates them via argparse).
+    ``expected_tools`` is read by ``tool_selection`` only; :func:`main` refuses
+    one without the other.
     """
+    expected = frozenset(expected_tools)
     results: list[GateResult] = []
     for name, score_fn in _GATED:
         if name not in thresholds:
             continue
         threshold = thresholds[name]
-        actual = _gate_score_value(score_fn(trace))
+        actual = _gate_score_value(score_fn(trace, expected))
         results.append(
             GateResult(
                 name=name,
@@ -276,12 +300,34 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         prog="clinescope.gate",
         description=(
             "CI threshold gate: fail the build when a deterministic scorer is "
-            "below its --min-* threshold. Gates on diff_coherence / "
-            "diff_minimality / apply_recovery only -- never the advisory judge."
+            "below its --min-* threshold. Gates on the five deterministic "
+            "scorers only -- never the advisory judge."
         ),
     )
     parser.add_argument(
         "trace", type=Path, help="Path to a Cline World-A messages.json trace"
+    )
+    parser.add_argument(
+        "--min-tool-selection",
+        type=float,
+        default=None,
+        metavar="MIN",
+        help=(
+            "Minimum acceptable tool_selection score, the share of the --expected "
+            "tools the run called (gates it when given; needs --expected). It "
+            "checks tool names only, not their arguments. It is the one scorer "
+            "that gives a number on every run, so it lets a clean editor run pass"
+        ),
+    )
+    parser.add_argument(
+        "--expected",
+        nargs="+",
+        default=None,
+        metavar="TOOL",
+        help=(
+            "Tool names --min-tool-selection checks for, space-separated; run "
+            "`clinescope --list-tools` to see valid names"
+        ),
     )
     parser.add_argument(
         "--min-diff-coherence",
@@ -320,23 +366,78 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="MIN",
         help="Minimum acceptable apply_recovery score (gates it when given)",
     )
+    parser.add_argument(
+        "--min-editor-recovery",
+        type=float,
+        default=None,
+        metavar="MIN",
+        help=(
+            "Minimum acceptable editor_recovery score (gates it when given). It "
+            "abstains when no editor call failed, so on its own a clean editor "
+            "run verifies nothing and exits 2; add --min-tool-selection for that"
+        ),
+    )
     return parser.parse_args(argv)
 
 
 def _collect_thresholds(args: argparse.Namespace) -> dict[str, float]:
     raw = {
+        "tool_selection": args.min_tool_selection,
         "diff_coherence": args.min_diff_coherence,
         "diff_minimality": args.min_diff_minimality,
         "apply_recovery": args.min_apply_recovery,
+        "editor_recovery": args.min_editor_recovery,
     }
     return {name: value for name, value in raw.items() if value is not None}
+
+
+def _gate_expected_pairing_error(
+    thresholds: dict[str, float], expected: list[str] | None
+) -> str | None:
+    """A named error when --min-tool-selection and --expected are not given together.
+
+    Either one alone gates nothing, which is the same mistake as passing no
+    threshold at all, so both directions are usage errors (exit 2).
+    """
+    if "tool_selection" in thresholds and expected is None:
+        return "error: --min-tool-selection needs --expected TOOL [TOOL ...]"
+    if expected is not None and "tool_selection" not in thresholds:
+        return "error: --expected is only read by --min-tool-selection"
+    return None
+
+
+def _gate_warn_unknown_expected(expected: list[str]) -> None:
+    # Same wording as the clinescope CLI: a typo would silently score as a missing
+    # tool, so warn with the nearest known name (a custom tool is still legal).
+    for name, suggestion in tool_vocab_check(expected):
+        hint = f" - did you mean '{suggestion}'?" if suggestion else ""
+        print(f"warning: unknown tool '{name}'{hint}", file=sys.stderr)
+
+
+def _gate_editor_hint(trace: Trace, thresholds: dict[str, float]) -> str | None:
+    """Point an editor run gated only on apply_patch flags at --min-editor-recovery.
+
+    Only counts are printed, never text from the trace.
+    """
+    if "editor_recovery" in thresholds:
+        return None
+    editor_calls = sum(1 for call in trace.tool_calls if call.name == "editor")
+    patch_calls = sum(1 for call in trace.tool_calls if call.name == "apply_patch")
+    if editor_calls == 0 or patch_calls > 0:
+        return None
+    noun = "call" if editor_calls == 1 else "calls"
+    return (
+        f"hint: this trace has {editor_calls} editor {noun} and 0 apply_patch "
+        "calls; gate it with --min-editor-recovery"
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
     """Parse argv, run the gate, print the report, return the exit code.
 
     Returns 0 (all gated scorers pass), 1 (a gate failure), or 2 (a usage error:
-    no threshold flag, an unloadable trace, or every gated scorer abstained).
+    no threshold flag, --min-tool-selection and --expected not given together, an
+    unloadable trace, or every gated scorer abstained).
     """
     args = _parse_args(argv)
 
@@ -348,6 +449,12 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return _EXIT_USAGE
+    pairing_error = _gate_expected_pairing_error(thresholds, args.expected)
+    if pairing_error is not None:
+        print(pairing_error, file=sys.stderr)
+        return _EXIT_USAGE
+    if args.expected is not None:
+        _gate_warn_unknown_expected(args.expected)
 
     # A trace that cannot be turned into something scorable is a USAGE error
     # (exit 2), never a gate verdict (0/1) -- otherwise CI would read exit 1
@@ -369,13 +476,16 @@ def main(argv: list[str] | None = None) -> int:
         )
         return _EXIT_USAGE
 
-    report = run_gate(trace, thresholds)
+    report = run_gate(trace, thresholds, expected_tools=args.expected or ())
     print(render_gate_report(report))
     if report.all_abstained:
         print(
             "error: every gated scorer abstained -- nothing was verified",
             file=sys.stderr,
         )
+        hint = _gate_editor_hint(trace, thresholds)
+        if hint is not None:
+            print(hint, file=sys.stderr)
     return report.exit_code
 
 

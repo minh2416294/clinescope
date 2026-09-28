@@ -59,7 +59,7 @@ stays a read.
 | Each corpus trace's capture provenance: where each value came from, why the Cline version is unknown, and what checking it proves | `examples/corpus/README.md`, under "Provenance" | The values themselves sit in `examples/corpus/corpus.json`. |
 | Which kind of eval each corpus case is, for which system under test, why no capability eval exists, and why the assignment is not a manifest field | `examples/corpus/README.md`, under "What kind of eval this is" | `docs/usage.md` names the corpus in one phrase in its related links, and `docs/internal/TESTING-AND-CI.md` points here. |
 | The gold set's size and how many items carry a human label | `gold/README.md` | `CLAUDE.md`, under "Layout", owns why those labels may never be machine-written. |
-| The gate's threshold flags | `src/clinescope/gate.py` | There is no flag for the trajectory scorer added most recently; `LIMITATIONS.md` says so. |
+| The gate's threshold flags | `src/clinescope/gate.py` | Every scorer has one. `--min-tool-selection` also needs `--expected`, and the module docstring owns why either alone is a usage error. |
 | The advice taxonomy's label set | `src/clinescope/advice.py` | Enumerated once, at the enum. |
 | The released package version | `pyproject.toml` | Deliberately mirrored in the package. See below. |
 | The pinned upstream Cline commit, and the tool-name vocabularies taken at it | `src/clinescope/tool_vocab.py` | Goes stale when Cline moves, with nobody here touching a file. |
