@@ -48,6 +48,7 @@ from clinescope.diff_coherence import (
     diff_coherence_select_apply_patch,
 )
 from clinescope.diff_minimality import DiffMinimalityScore
+from clinescope.editor_newlines import EditorNewlinesCheck
 from clinescope.editor_recovery import EditorRecoveryScore
 from clinescope.render_safety import quote_untrusted_text
 from clinescope.tool_input import ExpectedInput, ToolInputScore
@@ -74,6 +75,7 @@ def render_report(
     editor_recovery: EditorRecoveryScore | None = None,
     tool_input: ToolInputScore | None = None,
     test_cmd: CmdAfterEditCheck | None = None,
+    editor_newlines: EditorNewlinesCheck | None = None,
     expected_provided: bool = True,
     advice: bool = False,
     verbose: bool = False,
@@ -87,7 +89,8 @@ def render_report(
     # it only when the trace actually contains an editor call, so an apply_patch
     # trace renders byte-identically to before this scorer existed. tool_input is
     # passed only when --expected-input was given, and test_cmd only when --test-cmd
-    # was, for the same reason.
+    # was, for the same reason. editor_newlines is passed on the same rule as
+    # editor_recovery, and even then it renders only when it has a hit.
     if verbose:
         return _render_verbose(
             trace,
@@ -100,6 +103,7 @@ def render_report(
             editor_recovery=editor_recovery,
             tool_input=tool_input,
             test_cmd=test_cmd,
+            editor_newlines=editor_newlines,
         )
     summary = _render_summary(
         trace,
@@ -112,6 +116,7 @@ def render_report(
         editor_recovery=editor_recovery,
         tool_input=tool_input,
         test_cmd=test_cmd,
+        editor_newlines=editor_newlines,
         expected_provided=expected_provided,
     )
     if not advice:
@@ -183,6 +188,7 @@ def _render_summary(
     editor_recovery: EditorRecoveryScore | None = None,
     tool_input: ToolInputScore | None = None,
     test_cmd: CmdAfterEditCheck | None = None,
+    editor_newlines: EditorNewlinesCheck | None = None,
     expected_provided: bool,
 ) -> str:
     subject = _header_subject(session_id, session_label)
@@ -211,6 +217,11 @@ def _render_summary(
         lines.append(_render_summary_apply_recovery(apply_recovery))
     if editor_recovery is not None:
         lines.append(_render_summary_editor_recovery(editor_recovery))
+    if editor_newlines is not None and editor_newlines.hits:
+        lines.append(
+            f"{'editor_newlines':<{_SUMMARY_NAME_WIDTH}} "
+            f"{_editor_newlines_text(editor_newlines)}"
+        )
     if test_cmd is not None:
         lines.append(f"{'test_cmd':<{_SUMMARY_NAME_WIDTH}} {_test_cmd_text(test_cmd)}")
     footer = _summary_footer(
@@ -222,6 +233,7 @@ def _render_summary(
         editor_recovery,
         tool_input,
         test_cmd,
+        editor_newlines,
     )
     if footer is not None:
         lines.append(footer)
@@ -468,6 +480,7 @@ def _summary_footer(
     editor_recovery: EditorRecoveryScore | None = None,
     tool_input: ToolInputScore | None = None,
     test_cmd: CmdAfterEditCheck | None = None,
+    editor_newlines: EditorNewlinesCheck | None = None,
 ) -> str | None:
     # A positive takeaway on a clean run (U1): if nothing scored below its bar,
     # say so plainly rather than leaving the reader to eyeball four lines. A
@@ -485,6 +498,9 @@ def _summary_footer(
         test_cmd.status == "not_run"
         or (test_cmd.status == "ran" and test_cmd.success is False)
     )
+    # editor_newlines is not a scorer either, but a hit is an edit Cline accepted that
+    # flattened real line breaks, which broke the file in the one real case.
+    editor_newlines_ok = editor_newlines is None or not editor_newlines.hits
     coherence_ok = (
         diff_coherence is None
         or diff_coherence.score == 1.0
@@ -512,6 +528,7 @@ def _summary_footer(
         and recovery_ok
         and editor_recovery_ok
         and test_cmd_ok
+        and editor_newlines_ok
     ):
         return "clean run - nothing to fix"
     return None
@@ -570,6 +587,7 @@ def _render_verbose(
     editor_recovery: EditorRecoveryScore | None = None,
     tool_input: ToolInputScore | None = None,
     test_cmd: CmdAfterEditCheck | None = None,
+    editor_newlines: EditorNewlinesCheck | None = None,
 ) -> str:
     lines = ["=== clinescope report ==="]
     if session_label is not None:
@@ -624,6 +642,13 @@ def _render_verbose(
         lines.extend(_render_apply_recovery(apply_recovery))
     if editor_recovery is not None:
         lines.extend(_render_editor_recovery(editor_recovery))
+    if editor_newlines is not None and editor_newlines.hits:
+        lines += [
+            "",
+            "[editor_newlines]",
+            f"result:         {_editor_newlines_text(editor_newlines)}",
+            f"calls:          {', '.join(str(index) for index, _ in editor_newlines.hits)}",
+        ]
     if test_cmd is not None:
         lines += [
             "",
@@ -656,6 +681,20 @@ def _test_cmd_text(check: CmdAfterEditCheck) -> str:
     if check.status == "every_edit_failed":
         return "n/a   (every edit failed)"
     return "n/a   (this trace uses execute_command, which is not read)"
+
+
+def _editor_newlines_text(check: EditorNewlinesCheck) -> str:
+    # The path is trace content, so it is neutralized here, where it is read.
+    count = len(check.hits)
+    noun = "call" if count == 1 else "calls"
+    where = "; ".join(
+        f"call {index}: {'-' if path is None else quote_untrusted_text(path)}"
+        for index, path in check.hits
+    )
+    return (
+        f"{count} editor {noun} wrote literal \\n where the old text had line breaks"
+        f" ({where})"
+    )
 
 
 def _render_optional_index(index: int | None) -> str:

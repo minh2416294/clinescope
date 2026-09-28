@@ -116,6 +116,14 @@ exists. Cline reports that as `success: false`, which is exactly the verdict `ed
 reads; the capture at `examples/live-granite-editor-recovery.json` is one such call. So a shape scorer
 would largely restate a verdict this repository already surfaces.
 
+That was checked again on 2026-09-28 against upstream cline/cline commit
+`3ab7b564c11b090aed56dedd556b4c4ea0583b23`, across the 31 distinct `editor` calls in the author's own
+Cline sessions (four of those sessions are committed under `examples/`). Cline itself rejected all 10
+failed calls, so a check would only restate them: 9 left out `old_text` on a file that existed and 1
+had `old_text` that was not in the file. What a text check can add is only a call Cline accepted. One such
+call had shown harm, and it is reported as a context line rather than a score: see `editor_newlines`
+below.
+
 ### `test_cmd` shows whether a command ran after the last edit, not whether the fix works
 
 With `--test-cmd TEXT`, the report adds a `test_cmd` line. It takes the last edit Cline did not mark
@@ -144,6 +152,27 @@ shell command (`sed`, `Remove-Item`) is not seen as an edit.
 What to do instead: run the tests yourself on the final files. Read `test_cmd` as "the agent did, or did
 not, run this after its last edit", and nothing more.
 
+### `editor_newlines` flags one kind of edit Cline accepted, not every broken edit
+
+The report adds an `editor_newlines` line when an `editor` call that Cline did not mark failed had
+`old_text` with real line breaks and `new_text` with none but with the two characters `\` and `n`. The
+model meant many lines and wrote one. In `examples/live-granite-escaped-newlines.json` (granite4.1:8b,
+Cline CLI 3.0.65, 2026-09-27) that call replaced a whole file with one line holding 78 literal `\n`;
+`examples/corpus/README.md` records that Python could not parse the result. Cline recorded success, and
+before this line existed the report printed `clean run - nothing to fix`. A hit keeps that footer off.
+It is not a score, no gate flag reads it, `compare` and the corpus ignore it, and a trace with no hit
+renders exactly as before.
+
+It is one shape, backed by one real call. It skips a call with no `old_text`, so a new file or an
+`insert_line` call written this way is missed. It does not read later calls, so a hit stays even if the
+agent rewrote those lines afterwards. It never opens the file, so it cannot say the file is broken, only
+that the call had this shape. Two other shapes Cline accepts are not reported. `old_text` sent together
+with `insert_line` appeared in 5 calls of one local session: Cline inserts and never reads `old_text`,
+and the trace cannot show whether the insert was the edit the model wanted. And `old_text` on a path
+that does not exist makes Cline create a new file; no real call has done that yet.
+
+What to do instead: when the line fires, open the file it names and check that it still parses.
+
 ## What Clinescope does NOT claim
 
 - `tool_selection` scores tool NAMES, not tool ARGUMENTS or success.
@@ -151,6 +180,8 @@ not, run this after its last edit", and nothing more.
   RIGHT or the call SUCCEEDED.
 - `test_cmd` reports whether a command containing your text RAN after the last edit and what Cline
   recorded for it, not whether the tests PASSED on the final code or the fix WORKS.
+- `editor_newlines` reports ONE shape of `editor` call Cline accepted, not whether the file is BROKEN,
+  and not every broken edit.
 - `diff_coherence` scores apply_patch GRAMMAR, not whether the patch APPLIES or is CORRECT.
 - `diff_minimality` scores ONE bloat shape, not overall edit MINIMALITY.
 - `apply_recovery` scores a same-file retry TRAJECTORY, not whether the fix is RIGHT.
@@ -175,7 +206,9 @@ mode plus either an `openai-native` provider or a model id containing `codex` or
 gets `editor`, and the two tools are mutually exclusive (`definitions.ts` lines 935-939).
 
 `editor_recovery` covers the trajectory half of that gap. A `write_to_file` / `replace_in_file`
-diff-grammar scorer, and any shape scorer for `editor`, are on the roadmap and not shipped.
+diff-grammar scorer is on the roadmap and not shipped. A shape scorer for `editor` is not planned, for
+the reason given under "`diff_coherence` has no `editor` analogue" above; the one accepted shape with
+shown harm is the `editor_newlines` context line.
 `tool_selection` still scores all these tools (every family is in the pinned vocabulary).
 
 **`editor_recovery` is in the gate, and a clean editor run needs `tool_selection` to pass.** It renders

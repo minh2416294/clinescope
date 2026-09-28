@@ -25,6 +25,8 @@ When a run has an `apply_patch`, a `cline_verdict` line under `diff_coherence` s
 
 `--test-cmd TEXT` adds a `test_cmd` line: did a command containing TEXT run after the last edit, and what did Cline record for it (`success`, or Cline's own error text)? It runs nothing and does not prove the fix works. Cline keeps one flag for a whole command line, so `pytest; echo done` can read `success` after pytest failed. The last edit counts any file, so a helper script written after the tests also reads `not run`. A `not run`, or a run Cline marked failed, keeps the `clean run` line off. On main, not yet on PyPI.
 
+An `editor_newlines` line appears only when an `editor` call that Cline accepted replaced text that had real line breaks with one line holding literal `\n` instead. In one real run that call turned a whole file into one line with 78 literal `\n`, Python could not parse it, and every check still passed. The line keeps the `clean run` line off. It is not a score. It never opens the file, it does not check a new file written this way, and it does not look at later edits. On main, not yet on PyPI.
+
 <p align="center"><img src="docs/demo.svg" alt="clinescope scoring three real captured Cline runs: a clean run, a run whose failed patch was never retried, and a run where the model called no tools, each with advice to fix the agent" width="720"></p>
 
 <p align="center"><em>Three real captured runs; run <code>clinescope --demo</code> to score one yourself.</em></p>

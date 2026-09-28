@@ -8,6 +8,15 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Added
 
+- An `editor_newlines` line, in the report and in `--verbose`. It appears only
+  when an `editor` call Cline did not mark failed replaced `old_text` that had
+  real line breaks with `new_text` that has none but has literal `\n`. In
+  `examples/live-granite-escaped-newlines.json`, a real Cline CLI 3.0.65 capture
+  on granite4.1:8b, that call replaced a whole file with one line holding 78
+  literal `\n`, and the report printed `clean run - nothing to fix`. A hit now
+  keeps that footer off. It is not a score: no gate flag, no `compare` or corpus
+  column. It skips calls with no `old_text`, does not read later edits, and never
+  opens the file. A trace with no hit renders exactly as before.
 - `--test-cmd TEXT`, which adds a `test_cmd` line to the report and to `--verbose`.
   It says whether a `run_commands` entry whose command contains TEXT ran after the
   last edit Cline did not mark failed, and what Cline recorded for the last such

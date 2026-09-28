@@ -63,6 +63,18 @@ mean the agent tested first and then wrote that helper. The text is matched as w
 can read `success` after pytest failed. The line is not a score and does not prove the fix works. An
 empty `--test-cmd` exits `2`.
 
+## When an edit flattened line breaks
+
+No flag is needed. If an `editor` call that Cline accepted replaced text that had real line breaks with
+one line holding literal `\n`, the report adds a line such as:
+
+```text
+editor_newlines 1 editor call wrote literal \n where the old text had line breaks (call 3: 'C:\\cs-day65-capture\\inventory.py')
+```
+
+`call 3` is the position of that call in the trace. The line keeps `clean run - nothing to fix` off. Open
+the file it names and check that it still parses: the line reads the call, never the file.
+
 ## Score a VS Code extension session
 
 The Cline VS Code extension stores sessions in a different on-disk format from the CLI. `--vscode` reads

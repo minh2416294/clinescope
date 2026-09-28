@@ -189,6 +189,12 @@ failed, and what Cline recorded for it. That last edit is to any file, so a help
 after the tests makes a false `not run`. Never describe it as checking that the fix works: Cline
 keeps one flag per command line, and `LIMITATIONS.md` owns the rest of its caveats.
 
+**`editor_newlines` is a context line too, so the count still stays six.** It needs no flag and
+shows only on a hit: an `editor` call Cline did not mark failed whose `old_text` has real line
+breaks and whose `new_text` has none but has literal `\n`. A hit keeps the clean-run footer off. It
+is one shape backed by one real call (`examples/live-granite-escaped-newlines.json`), and it never
+opens the file, so never describe it as detecting broken files. `LIMITATIONS.md` owns its caveats.
+
 **Where a trace comes from.** The Cline CLI writes
 `~/.cline/data/sessions/<id>/<id>.messages.json`, and `cline history --json` lists each session
 with its `messagesPath`. The VS Code extension instead writes `api_conversation_history.json`
@@ -326,6 +332,7 @@ src/clinescope/        the package
   tool_selection.py    scorer
   tool_input.py        scorer (editor inputs named by --expected-input)
   cmd_after_edit.py    the --test-cmd context line (not a scorer)
+  editor_newlines.py   the editor_newlines context line (not a scorer)
   diff_coherence.py    scorer (owns the apply_patch grammar parser the other two reuse)
   diff_minimality.py   scorer
   apply_recovery.py    scorer
