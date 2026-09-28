@@ -122,10 +122,11 @@ gets `editor`, and the two tools are mutually exclusive (`definitions.ts` lines 
 diff-grammar scorer, and any shape scorer for `editor`, are on the roadmap and not shipped.
 `tool_selection` still scores all these tools (every family is in the pinned vocabulary).
 
-**`editor_recovery` is report-only in this release.** It renders in the `clinescope` report and feeds
-`--advice`, but `clinescope-gate`, `python -m clinescope.compare` and `clinescope-corpus` do not read it
-yet: the gate still exposes only `--min-diff-coherence`, `--min-diff-minimality` and
-`--min-apply-recovery`. So on an editor-only session the gate has no usable signal at all, because all
+**`editor_recovery` is not in the gate yet.** It renders in the `clinescope` report, feeds `--advice`,
+and has a column in the `python -m clinescope.compare` and `clinescope-corpus` tables, where `-` means
+the trace made no `editor` call. The corpus shows that column but does not check it against a label.
+`clinescope-gate` does not read it: the gate still exposes only `--min-diff-coherence`,
+`--min-diff-minimality` and `--min-apply-recovery`. So on an editor-only session the gate has no usable signal at all, because all
 three of those scorers grade `apply_patch` and the trace contains none.
 
 **The gate now says that honestly instead of failing the build.** It exits `2`, the "nothing was

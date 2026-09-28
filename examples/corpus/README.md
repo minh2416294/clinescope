@@ -46,7 +46,8 @@ it has not seen, nothing about users, and nothing about what the Cline agent can
   one. It waits on evidence, not on clinescope getting better: the scorer already catches an
   unrecovered `editor` failure in unit tests. What is missing is a real Cline session that fails an
   `editor` call without recovering. That row lands together with a small runner change, because
-  `_SCORER_COLUMNS` in `src/clinescope/corpus.py` does not compare an `editor_recovery` cell yet.
+  `_SCORER_COLUMNS` in `src/clinescope/corpus.py` does not check an `editor_recovery` cell against a
+  label yet (the summary table shows the column; the label check does not read it).
   With both in place the test is a strict expected failure that passes, so it goes red and its
   marker has to come off. It marks a coverage gap, described
   under [Known gap: `no_editor_recovery`](#known-gap-no_editor_recovery-is-not-yet-covered-by-a-real-trace)

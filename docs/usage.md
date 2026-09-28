@@ -78,6 +78,8 @@ Run the same task against different models (or Cline versions) and score them al
 python -m clinescope.compare run-a.json run-b.json run-c.json
 ```
 
+The table has one column per check. In the `editor_recovery` column, `n/a` means the run used `editor` and no edit failed, and `-` means the run made no `editor` call at all (the single-run report prints no line for it then).
+
 ## Gate a run in CI
 
 Exit non-zero when a score falls below a threshold, so a bad run fails your pipeline:

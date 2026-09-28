@@ -223,6 +223,39 @@ def test_render_corpus_report_shows_every_item_and_a_verdict() -> None:
     assert "no_apply_recovery" in text
 
 
+def test_corpus_table_has_editor_recovery_column_with_dash_rows() -> None:
+    # No committed corpus trace calls editor, so every row shows "-" there: no
+    # editor call at all, which is neither a score nor an n/a abstention.
+    report = run_corpus(CORPUS_MANIFEST)
+    lines = render_corpus_report(report).splitlines()
+
+    assert lines[1].split()[-1] == "editor_recovery"
+    rows = lines[3 : 3 + len(report.items)]
+    assert len(rows) == 6
+    for row in rows:
+        assert row.split()[-1] == "-", row
+
+
+def test_corpus_table_renders_an_unloadable_item_as_na(tmp_path: Path) -> None:
+    bad = tmp_path / "not-a-trace.json"
+    bad.write_text("{not valid json", encoding="utf-8")
+    entries = {
+        str(bad): {
+            "display": "broken",
+            "source": "real",
+            "kind": "clean",
+            "scorers": {},
+            "expected_failure_labels": [],
+            "evidence_tokens": [],
+        }
+    }
+
+    text = render_corpus_report(run_corpus(_write_corpus(tmp_path, entries)))
+
+    row = text.splitlines()[3]
+    assert row.split() == ["broken", "n/a", "n/a", "n/a", "n/a", "n/a"]
+
+
 # --- The runner is a REAL gate: a mislabeled item makes it exit non-zero ------
 
 

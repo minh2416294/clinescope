@@ -15,9 +15,10 @@ from pathlib import Path
 import pytest
 
 from clinescope.apply_recovery import score_apply_recovery
-from clinescope.compare import CompareRow, main, run_compare
+from clinescope.compare import CompareRow, main, render_compare_report, run_compare
 from clinescope.diff_coherence import score_diff_coherence
 from clinescope.diff_minimality import score_diff_minimality
+from clinescope.editor_recovery import score_editor_recovery
 from clinescope.labels import LabelError, TraceLabel
 from clinescope.report import render_report
 from clinescope.tool_selection import score_tool_selection
@@ -25,6 +26,7 @@ from clinescope.world_a import load_trace
 
 EXAMPLES = Path("examples")
 _SCORERS = ("tool_selection", "diff_coherence", "diff_minimality", "apply_recovery")
+_ALL_COLUMNS = (*_SCORERS, "editor_recovery")
 
 # Every committed example trace the loader can read -- the anti-drift guard is
 # parametrized across ALL of them so no trace shape escapes the check.
@@ -42,18 +44,21 @@ def _single_trace_summary_lines(
     trace = load_trace(trace_path)
     expected_provided = expected_tools is not None
     score = score_tool_selection(trace, set(expected_tools or ()))
+    # Same rule as clinescope.__main__: no editor call means no editor_recovery line.
+    has_editor_call = any(call.name == "editor" for call in trace.tool_calls)
     summary = render_report(
         trace,
         score,
         diff_coherence=score_diff_coherence(trace),
         diff_minimality=score_diff_minimality(trace),
         apply_recovery=score_apply_recovery(trace),
+        editor_recovery=score_editor_recovery(trace) if has_editor_call else None,
         expected_provided=expected_provided,
         verbose=False,
     )
     lines: dict[str, str] = {}
     for line in summary.splitlines():
-        for name in _SCORERS:
+        for name in _ALL_COLUMNS:
             if line.startswith(name):
                 lines[name] = line
     return lines
@@ -145,7 +150,7 @@ def test_compare_tool_selection_sub_perfect_recall_matches_single_trace() -> Non
 # --- Table content + behavior -------------------------------------------------
 
 
-def test_compare_renders_one_row_per_trace_with_all_four_scorers() -> None:
+def test_compare_renders_one_row_per_trace_with_all_five_scorers() -> None:
     traces = [
         EXAMPLES / "apply-patch-trace.json",
         EXAMPLES / "gate-regression-badpatch.json",
@@ -154,7 +159,7 @@ def test_compare_renders_one_row_per_trace_with_all_four_scorers() -> None:
 
     assert len(report.rows) == 2
     for row in report.rows:
-        assert set(row.cells) == set(_SCORERS)
+        assert set(row.cells) == set(_ALL_COLUMNS)
         assert row.loaded
 
 
@@ -202,6 +207,96 @@ def test_compare_abstaining_scorer_renders_na_not_blank_or_zero(tmp_path: Path) 
     for name in ("diff_minimality", "apply_recovery"):
         assert row.cells[name].cell == "n/a"
         assert row.cells[name].verdict == "n/a"
+
+
+# --- editor_recovery column ---------------------------------------------------
+# Three outcomes, kept apart: a number when an editor call failed, n/a when editor
+# ran and nothing failed, and "-" when there was no editor call at all (the
+# single-trace report prints no line there, which is not an abstention).
+
+
+def _clean_editor_trace(tmp_path: Path) -> Path:
+    trace = tmp_path / "clean-editor.json"
+    trace.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "sessionId": "clean-editor-1",
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "id": "call-1",
+                                "name": "editor",
+                                "input": {"path": "a.py", "new_text": "x = 1\n"},
+                            }
+                        ],
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": "call-1",
+                                "content": "ok",
+                                "is_error": False,
+                            }
+                        ],
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return trace
+
+
+def test_compare_editor_recovery_scores_a_recovered_editor_run() -> None:
+    row = run_compare([EXAMPLES / "live-granite-editor-recovery.json"]).rows[0]
+
+    cell = row.cells["editor_recovery"]
+    assert (cell.cell, cell.verdict) == ("100/100", "PASS")
+
+
+def test_compare_editor_recovery_is_na_on_a_clean_editor_run(tmp_path: Path) -> None:
+    row = run_compare([_clean_editor_trace(tmp_path)]).rows[0]
+
+    cell = row.cells["editor_recovery"]
+    assert (cell.cell, cell.verdict) == ("n/a", "n/a")
+
+
+def test_compare_editor_recovery_is_dash_with_no_editor_call() -> None:
+    report = run_compare([EXAMPLES / "apply-patch-trace.json"])
+
+    cell = report.rows[0].cells["editor_recovery"]
+    assert (cell.cell, cell.verdict) == ("-", "")
+    body = render_compare_report(report).splitlines()[3]
+    assert body.split()[-1] == "-"
+
+
+def test_compare_header_ends_with_editor_recovery() -> None:
+    report = run_compare([EXAMPLES / "apply-patch-trace.json"])
+
+    header = render_compare_report(report).splitlines()[1]
+    assert header.split() == ["trace", *_ALL_COLUMNS]
+
+
+@pytest.mark.parametrize("trace_path", _EXAMPLE_TRACES, ids=lambda p: p.stem)
+def test_compare_editor_recovery_matches_single_trace(trace_path: Path) -> None:
+    # ANTI-DRIFT for the fifth column: "-" exactly when the single-trace report
+    # prints no editor_recovery line, otherwise the same cell and verdict.
+    cell = run_compare([trace_path]).rows[0].cells["editor_recovery"]
+    single = _single_trace_summary_lines(trace_path, expected_tools=None)
+
+    if "editor_recovery" not in single:
+        assert (cell.cell, cell.verdict) == ("-", "")
+    else:
+        expected = _single_trace_cell_verdict(
+            "editor_recovery", single["editor_recovery"]
+        )
+        assert (cell.cell, cell.verdict) == expected
 
 
 def test_compare_tool_selection_without_label_is_na_not_fail() -> None:
