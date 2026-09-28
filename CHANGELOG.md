@@ -40,6 +40,11 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Changed
 
+- The README is rewritten for a Cline user who has never seen Clinescope. The five
+  checks are now a table of what each one tells you and what it does not, and "Why
+  Clinescope" leads with what a user gets. It no longer quotes the gated
+  `diff_minimality` agreement figures or the LLM judge result; `LIMITATIONS.md` and
+  `docs/judge-validation.md` still carry both.
 - `LIMITATIONS.md` no longer keeps its own count of the captured Cline sessions shipped
   here. The figure it carried covered `examples/corpus/` and `examples/harness-gap/` and
   missed the captures sitting elsewhere under `examples/`, so it understated both the
