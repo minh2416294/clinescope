@@ -8,15 +8,17 @@
 
 **Clinescope runs on the Cline CLI and the VS Code extension.** Run `clinescope --vscode` to auto-discover and score a VS Code extension session (see [Score a VS Code extension session](docs/usage.md#score-a-vs-code-extension-session)).
 
-Clinescope is a Cline eval harness that lives in your Cline development workflow, reads your logs, and helps you write better prompts by checking tool choices, spotting whole-block rewrites that keep no anchor line, and flagging failed patches the agent never retried. Clinescope reads a Cline log and scores five things:
+Clinescope reads the log of one Cline run and scores it on five checks.
 
-- **`tool_selection`**: did it call the tool names you passed to `--expected`?
-- **`diff_coherence`**: does its `apply_patch` text parse against Cline's `*** Begin Patch` grammar? It does not check that the patch applies.
-- **`diff_minimality`**: does any hunk delete three or more lines in a row and then add three or more, keeping no anchor line between them?
-- **`apply_recovery`**: after a patch Cline marked failed, did a later patch Cline confirmed touch the same file?
-- **`editor_recovery`**: after an `editor` call Cline marked failed, did a later `editor` call Cline confirmed touch the same path? Most current Cline sessions use `editor` rather than `apply_patch`, in which case the three `apply_patch` scorers above go quiet and this is the line that carries a number.
+| Check | What it tells you | What it does not tell you |
+|---|---|---|
+| `tool_selection` | Whether the agent used the tools you listed after `--expected`. | Whether it gave those tools the right inputs. |
+| `diff_coherence` | Whether the agent's first `apply_patch` patch is written in the format Cline expects. | Whether that patch would apply to your file. |
+| `diff_minimality` | Whether a patch deleted a block of lines and wrote a new one, keeping none of the old lines. | Whether that rewrite was a mistake. Sometimes it is the right move. |
+| `apply_recovery` | After a failed `apply_patch`, whether a later patch to the same file went through. | Whether the later patch fixed the problem. |
+| `editor_recovery` | The same, for Cline's `editor` tool. On main, not yet on PyPI. | The same. |
 
-The file it reads is not a scraped log. The Cline CLI's `messages.json` has been a published, versioned contract since 2026-04-22, and that contract states a downstream consumer should be able to reconstruct a full session trajectory from the file alone: [`messages-contract-v1.md`](https://github.com/cline/cline/blob/main/sdk/packages/core/docs/messages-contract-v1.md).
+Most Cline sessions today use `editor`. On those runs `diff_coherence` shows 0 with the reason, and the other two patch checks show `n/a`.
 
 <p align="center"><img src="docs/demo.svg" alt="clinescope scoring three real captured Cline runs: a clean run, a run whose failed patch was never retried, and a run where the model called no tools, each with advice to fix the agent" width="720"></p>
 
@@ -24,13 +26,15 @@ The file it reads is not a scraped log. The Cline CLI's `messages.json` has been
 
 ## Why Clinescope
 
-Clinescope scores **coding-agent execution traces**. `diff_coherence` parses the agent's `apply_patch` text against Cline's `*** Begin Patch` grammar; it does not check that the patch applies. `diff_minimality` flags one shape: a hunk that deletes a run of three or more consecutive lines and then adds a run of three or more, with no anchor line kept between them. `apply_recovery` reads Cline's own failed and applied verdicts and reports, for each file a failed patch touched, the fraction later re-touched by a patch Cline confirmed. `editor_recovery` asks the same question of Cline's `editor` tool, which is what almost every current session uses. The first two read only the patch text; the last two read Cline's verdicts. None of them judges whether the code is correct. Across the five eval frameworks I checked on 2026-09-13 (DeepEval, promptfoo, Langfuse, Braintrust and UK AISI's Inspect), none ships a built-in scorer for patch grammar, for edit minimality, or for apply-failure recovery, which is the narrow thing Clinescope adds. Two of them check tool-call arguments, which `tool_selection` does not, so on that axis they are ahead. What each one actually ships, with the source read and the date, is in [docs/internal/COMPARISONS.md](docs/internal/COMPARISONS.md). Those checks run against real captured Cline traces (see the [validation corpus](examples/corpus/README.md)).
+A Cline run can include a failed edit that the agent never went back to. You only find it by reading the whole log. Clinescope reads the log for you and points at the problem.
 
-Clinescope validates its own optional LLM judge against human labels and, finding it agrees only at chance level, deliberately keeps it out of the pass/fail gate. See [`docs/judge-validation.md`](docs/judge-validation.md). The same 50 labels were then turned on a scorer that *is* gated: `diff_minimality` agrees at Cohen's kappa 0.2599 and flagged 7 of the 24 patches a human called wasteful and 1 of the 26 a human did not, and its `--min-diff-minimality` flag has never failed a build on any real captured trace shipped here. A trace captured off-repo has since made it fail, and showed the same edit scoring 1.0 or 0.0 depending on the layout of the edited file. The other two gated scorers have no agreement number at all, so read their silence as unmeasured rather than as validated. Each scorer is deliberately narrow; what it does and does not measure is spelled out in [LIMITATIONS.md](LIMITATIONS.md).
+- **No setup.** It reads the log Cline already writes. The scores need no AI model, no API key, no network, and no other packages.
+- **It names what went wrong.** A failed patch that was never retried, a tool you expected that never got called, a block of lines deleted and rewritten.
+- **It tells you what to change.** `--advice` prints one instruction per problem that you can add to your prompt or your Cline rules.
+- **It can guard your CI.** `clinescope-gate` fails the build when a score drops below the bar you set.
+- **Same log, same score.** No model is involved, so a score only moves when the run changed.
 
-Clinescope was built largely with an AI coding agent. How it stayed correct anyway (frozen invariants, verification-first checks, an AI signal measured and then kept out of the gate) is written up in [docs/building-with-agents.md](docs/building-with-agents.md).
-
-Clinescope reads a format Cline owns, which puts Cline in a better position to build this than anyone outside the project, and nothing here prevents that. If it happens it hurts, and the specific way it hurts is worth knowing before you depend on this: the three diff scorers are welded to Cline's `apply_patch` grammar, so they do not port to another agent without being rewritten, and the case for a separate tool would narrow to whether you want the thing scoring an agent shipped by the same people who ship the agent. That is a real argument. It is not a large one. What outlives the risk is the part that is not format-specific: a corpus of real captured traces, a gold set of 50 authored patches labeled by one person, and the agreement numbers measured against that gold set, including the ones that came out badly. If that dependency is disqualifying for you, better to know now than after you have wired this into CI.
+I read five eval tools on 2026-09-13: DeepEval, promptfoo, Langfuse, Braintrust and Inspect. None ships a built-in check for patch format, for block rewrites, or for recovery after a failed patch ([sources](docs/internal/COMPARISONS.md)). Clinescope does not tell you whether the code is correct. Its limits are in [LIMITATIONS.md](LIMITATIONS.md).
 
 ## Get Started
 
