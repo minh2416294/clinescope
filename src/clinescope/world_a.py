@@ -49,9 +49,10 @@ class ToolUseItem:
 # (an apply_patch result -- a JSON string), and a single-element list of structured
 # result objects (a read_files / run_commands result -- [{"query","result","success"}]).
 # The loader PRESERVES whichever shape it finds; it does NOT normalize or reject
-# either. The only value-consumer is tool_verdict.tool_verdict_effective, shared by
-# apply_recovery and editor_recovery, which reads content for apply_patch and editor
-# calls (both always str on a real trace) and abstains (returns None) on any non-str
+# either. The only value-consumers are in tool_verdict: tool_verdict_effective, shared
+# by apply_recovery, editor_recovery and the report's cline_verdict line, and
+# tool_verdict_error_line, used by that same line. Both read content for apply_patch and
+# editor calls (always str on a real trace) and abstain (return None) on any non-str
 # via an isinstance(str) guard -- so a list content is a documented, tested ABSTAIN
 # boundary, never a crash. Widened from a bare ``str`` (which was a lie for real
 # traces carrying list content) to match reality. (R3)

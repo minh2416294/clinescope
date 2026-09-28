@@ -319,7 +319,7 @@ src/clinescope/        the package
   diff_minimality.py   scorer
   apply_recovery.py    scorer
   editor_recovery.py   scorer
-  tool_verdict.py      shared failure/success oracle for the two recovery scorers
+  tool_verdict.py      shared failure/success oracle: the two recovery scorers and report's cline_verdict line
   recovery_path.py     shared path-spelling key the two recovery scorers match files on
   tool_vocab.py        pinned Cline tool-name vocabulary for --expected
   report.py            rendering

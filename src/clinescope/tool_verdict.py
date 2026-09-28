@@ -4,6 +4,9 @@ Two scorers need the same question answered: did Cline consider this tool call a
 failure? :mod:`clinescope.apply_recovery` asks it of ``apply_patch`` calls and
 :mod:`clinescope.editor_recovery` asks it of ``editor`` calls. The answer is
 resolved identically for both, so it lives here once rather than being copied.
+:mod:`clinescope.report` asks it too, of the one patch ``diff_coherence`` grades,
+for the ``cline_verdict`` context line, and reads Cline's failure reason through
+:func:`tool_verdict_error_line`. No score depends on that line.
 
 The oracle exists because a genuine Cline tool result carries NO ``is_error``
 field: the loader therefore reports ``is_error=None``, and the real outcome is
