@@ -133,11 +133,10 @@ python -m clinescope.judge_run --report-only   # recomputes the judge agreement 
 clinescope --help                              # usage text; exit 0
 ```
 
-Check the installed version (there is no `clinescope --version` flag):
+Check the installed version:
 
 ```bash
-pip show clinescope                                          # or:
-python -c "import clinescope; print(clinescope.__version__)"
+clinescope --version                           # prints "clinescope" and the version; exit 0
 ```
 
 ## 2. Produce a Cline session

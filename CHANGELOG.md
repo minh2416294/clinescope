@@ -8,6 +8,11 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Added
 
+- `clinescope --version`, which prints `clinescope` and the installed version, for
+  example `clinescope 1.2.1`. It reads `clinescope.__version__`, which
+  `tests/test_version_consistency.py` pins to `pyproject.toml`. Before this the flag
+  was rejected with "unrecognized arguments" and the quickstart sent you to
+  `pip show`.
 - `editor_recovery`, a trajectory scorer for Cline's `editor` tool. Of every
   `editor` call Cline marked failed, it scores the fraction later recovered by a
   strictly-later `editor` call Cline confirmed non-failing on the same path. It
