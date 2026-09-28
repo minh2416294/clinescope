@@ -12,8 +12,9 @@ Two renderings, both pure (no I/O, no LLM):
 * **Default (``verbose=False``) -- a scannable SUMMARY:** a one-line header plus
   ONE line per scorer, each ``name  NN/100  VERDICT  [extra]``. Scores are shown
   as ``round(score * 100)`` out of 100 (``100/100``, ``75/100``); an abstaining
-  scorer (``score is None``) shows ``n/a``. This is what a developer glancing at a
-  run reads in ~2 seconds.
+  scorer (``score is None``) shows ``n/a``. On an editor run (:func:`is_editor_run`)
+  diff_coherence also shows ``n/a``, under a ``note:`` line naming both call counts.
+  This is what a developer glancing at a run reads in ~2 seconds.
 * **``verbose=True`` -- the full DEBUG DUMP:** aligned ``key: value`` lines with
   every gate, counter, and piece of evidence, each frozenset ``sorted()`` for
   stable output and each score formatted ``.4f`` for exactness. Unchanged from the
@@ -122,7 +123,10 @@ def _render_advice_block(
     if ts is not None:
         entries.append(("tool_selection", ts))
     if diff_coherence is not None:
-        dc = advice_for_diff_coherence(diff_coherence)
+        dc = advice_for_diff_coherence(
+            diff_coherence,
+            editor_run=is_editor_run(diff_coherence, editor_recovery),
+        )
         if dc is not None:
             entries.append(("diff_coherence", dc))
     if diff_minimality is not None:
@@ -163,19 +167,13 @@ def _render_summary(
     expected_provided: bool,
 ) -> str:
     subject = _header_subject(session_id, session_label)
-    lines = [
-        f"clinescope report - {subject} ({len(trace.tool_calls)} tool calls)",
-        _render_summary_tool_selection(score, expected_provided),
-    ]
+    lines = [f"clinescope report - {subject} ({len(trace.tool_calls)} tool calls)"]
+    note = _editor_run_note(diff_coherence, editor_recovery)
+    if note is not None:
+        lines.append(note)
+    lines.append(_render_summary_tool_selection(score, expected_provided))
     if diff_coherence is not None:
-        lines.append(
-            _render_summary_line(
-                "diff_coherence",
-                render_score_out_of_100(diff_coherence.score),
-                summary_verdict(diff_coherence.score),
-                _summary_reason_diff_coherence(diff_coherence),
-            )
-        )
+        lines.append(_render_summary_diff_coherence(diff_coherence, editor_recovery))
     if diff_minimality is not None:
         lines.append(
             _render_summary_line(
@@ -223,6 +221,75 @@ def tool_selection_cell_verdict(
         return "n/a", ""
     verdict = "PASS" if score.score == 1.0 else ""
     return render_score_out_of_100(score.score), verdict
+
+
+def is_editor_run(
+    diff_coherence: DiffCoherenceScore, editor_recovery: EditorRecoveryScore | None
+) -> bool:
+    """True when the trace made no ``apply_patch`` call and at least one ``editor`` call.
+
+    The ONE rule the report, :mod:`clinescope.compare` and :mod:`clinescope.corpus`
+    share, so they cannot disagree. On such a run diff_coherence has no patch to check.
+    Its scorer still returns the hard 0.0 and :mod:`clinescope.gate` still decides on
+    ``apply_patch_call_count``, but these three read that zero as ``n/a`` and give no
+    malformed-patch advice. A trace with neither tool is not an editor run, so it keeps
+    ``0/100 FAIL``: nothing was edited there at all.
+
+    ``editor_recovery`` is ``None`` when the caller did not score it, which the CLI
+    does only for a trace with no ``editor`` call.
+    """
+    return (
+        diff_coherence.apply_patch_call_count == 0
+        and editor_recovery is not None
+        and editor_recovery.editor_call_count > 0
+    )
+
+
+def diff_coherence_cell_verdict(
+    diff_coherence: DiffCoherenceScore, editor_recovery: EditorRecoveryScore | None
+) -> tuple[str, str]:
+    """The canonical (cell, verdict) pair for diff_coherence -- the ONE source.
+
+    ``("n/a", "n/a")`` on an editor run (:func:`is_editor_run`), otherwise the score
+    through :func:`render_score_out_of_100` and :func:`summary_verdict`. The summary
+    line, the ``compare`` table and the corpus all call this.
+    """
+    if is_editor_run(diff_coherence, editor_recovery):
+        return "n/a", "n/a"
+    return (
+        render_score_out_of_100(diff_coherence.score),
+        summary_verdict(diff_coherence.score),
+    )
+
+
+def _editor_run_note(
+    diff_coherence: DiffCoherenceScore | None,
+    editor_recovery: EditorRecoveryScore | None,
+) -> str | None:
+    # Printed under the header on an editor run only, so the n/a on the three
+    # apply_patch lines cannot be read as a pass. Both numbers are counts the
+    # scorers computed, so no trace text reaches this line.
+    if diff_coherence is None or editor_recovery is None:
+        return None
+    if not is_editor_run(diff_coherence, editor_recovery):
+        return None
+    count = editor_recovery.editor_call_count
+    noun = "call" if count == 1 else "calls"
+    return (
+        f"note: 0 apply_patch calls, {count} editor {noun} "
+        "- the 3 apply_patch checks did not run"
+    )
+
+
+def _render_summary_diff_coherence(
+    score: DiffCoherenceScore, editor_recovery: EditorRecoveryScore | None
+) -> str:
+    cell, verdict = diff_coherence_cell_verdict(score, editor_recovery)
+    if is_editor_run(score, editor_recovery):
+        extra = "(editor run - no apply_patch to check)"
+    else:
+        extra = _summary_reason_diff_coherence(score)
+    return _render_summary_line("diff_coherence", cell, verdict, extra)
 
 
 def _render_summary_tool_selection(
@@ -301,8 +368,8 @@ def _summary_reason_editor_recovery(score: EditorRecoveryScore) -> str:
 
 
 def _summary_reason_diff_coherence(score: DiffCoherenceScore) -> str:
-    # diff_coherence never abstains (no apply_patch is a hard 0.0, not n/a), so a
-    # reason is only useful to name WHY a hard-zero happened -- the first violation.
+    # Off an editor run the hard 0.0 is shown as 0/100, so a reason is only useful
+    # to name WHY a hard-zero happened -- the first violation.
     if score.score == 0.0 and score.violations:
         return f"({score.violations[0]})"
     return ""
@@ -339,9 +406,14 @@ def _summary_footer(
     # A positive takeaway on a clean run (U1): if nothing scored below its bar,
     # say so plainly rather than leaving the reader to eyeball four lines. A
     # scorer that abstained (n/a) is neutral -- it neither passes nor fails, so it
-    # does not block the clean verdict. tool_selection counts only when scored.
+    # does not block the clean verdict. tool_selection counts only when scored, and
+    # diff_coherence is neutral on an editor run, where the report shows it as n/a.
     tool_ok = (not expected_provided) or not score.missing
-    coherence_ok = diff_coherence is None or diff_coherence.score == 1.0
+    coherence_ok = (
+        diff_coherence is None
+        or diff_coherence.score == 1.0
+        or is_editor_run(diff_coherence, editor_recovery)
+    )
     minimality_ok = (
         diff_minimality is None
         or not diff_minimality.applicable
@@ -431,6 +503,13 @@ def _render_verbose(
         f"trace.version:  {trace.version}",
         f"turns:          {len(trace.turns)}",
         f"tool_calls:     {len(trace.tool_calls)}",
+    ]
+    # The dump keeps the scorer's own 0.0000 for diff_coherence; the note is what
+    # stops that number reading as a failed patch on an editor run.
+    note = _editor_run_note(diff_coherence, editor_recovery)
+    if note is not None:
+        lines.append(note)
+    lines += [
         "",
         "[tool_selection]",
         f"score:          {score.score:.4f}",

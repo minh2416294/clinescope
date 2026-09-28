@@ -220,15 +220,17 @@ apply_recovery      n/a  n/a   (no apply_patch - nothing to recover)
 
 Reading it: the agent claimed it fixed the bug, but the trace records zero tool calls, so no file was touched. `tool_selection 0/100` means it never called the tools; `diff_coherence FAIL` means there was no patch to check; the two `n/a` lines mean there was no patch to measure (not an error). That gap between "the agent said it succeeded" and "the agent did nothing" is what Clinescope exists to catch.
 
-**If your run used the `editor` tool instead of `apply_patch`.** Most current Cline CLI sessions do. Cline only routes a session to `apply_patch` when the provider is `openai-native` or the model id contains `codex` or `gpt`, and only in act mode; everything else gets `editor`. On those sessions the three `apply_patch` scorers go quiet and a fifth line appears:
+**If your run used the `editor` tool instead of `apply_patch`.** Most current Cline CLI sessions do. Cline only routes a session to `apply_patch` when the provider is `openai-native` or the model id contains `codex` or `gpt`, and only in act mode; everything else gets `editor`. On those sessions a `note:` line says the three `apply_patch` checks did not run, those three show `n/a`, and a fifth line appears:
 
 ```
 clinescope report - session '1787455395427_4abgw' (3 tool calls)
+note: 0 apply_patch calls, 2 editor calls - the 3 apply_patch checks did not run
 tool_selection  100/100  PASS
-diff_coherence    0/100  FAIL   (no apply_patch tool call in trace)
+diff_coherence      n/a  n/a   (editor run - no apply_patch to check)
 diff_minimality     n/a  n/a   (no apply_patch - nothing to check)
 apply_recovery      n/a  n/a   (no apply_patch - nothing to recover)
 editor_recovery 100/100  PASS   (1/1 failed edits recovered)
+clean run - nothing to fix
 ```
 
 Pass `--expected editor read_files` on those runs, not `apply_patch`:
@@ -237,7 +239,7 @@ Pass `--expected editor read_files` on those runs, not `apply_patch`:
 clinescope path/to/messages.json --expected editor read_files
 ```
 
-`editor_recovery` asks the `apply_recovery` question of the `editor` tool: of every `editor` call Cline marked failed, how many did a later confirmed `editor` call on the same path re-touch? The `diff_coherence 0/100` above still means "no `apply_patch` to grade here", not "your agent wrote a broken patch". There is no shape or grammar scorer for `editor`, and [LIMITATIONS.md](../LIMITATIONS.md) explains why. To gate CI on an editor run, see [Gate a run in CI](usage.md#gate-a-run-in-ci).
+`editor_recovery` asks the `apply_recovery` question of the `editor` tool: of every `editor` call Cline marked failed, how many did a later confirmed `editor` call on the same path re-touch? The `n/a` on `diff_coherence` means "no `apply_patch` to grade here", not "your agent wrote a broken patch". A run with neither `apply_patch` nor `editor`, like the one above it, still shows `diff_coherence 0/100 FAIL`, because there nothing was edited at all. There is no shape or grammar scorer for `editor`, and [LIMITATIONS.md](../LIMITATIONS.md) explains why. To gate CI on an editor run, see [Gate a run in CI](usage.md#gate-a-run-in-ci).
 
 ## 5. Improve the agent
 

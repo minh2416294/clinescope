@@ -67,7 +67,9 @@ carries the full finding.
   its ``score`` is typed ``float`` and a missing ``apply_patch`` is a deliberate
   hard ``0.0`` (``diff_coherence`` states why: the artifact it was asked to grade
   is absent, so failing loud beats a vacuous ``1.0``). That is the right answer
-  for a REPORT and the wrong one for a GATE, where ``0.0`` is indistinguishable
+  for a REPORT on a trace with neither tool (on an editor run the report shows it
+  as ``n/a``, see :func:`clinescope.report.is_editor_run`) and the wrong one for a
+  GATE, where ``0.0`` is indistinguishable
   from a patch that really did score badly, and exit ``1`` would claim a scorer
   regressed on a trace nothing graded. So the GATE reads
   ``apply_patch_call_count`` and treats a count of ``0`` as not applicable, which

@@ -17,9 +17,13 @@ verdict is produced by the SAME functions the single-trace summary uses -- so a
 compare row reproduces exactly what ``python -m clinescope <trace>`` prints for
 that trace:
 
-* the three diff scorers -> :func:`clinescope.report.render_score_out_of_100`
-  (round-half-up ``NN/100`` / ``n/a``) + :func:`clinescope.report.summary_verdict`
-  (``PASS`` at 1.0 / ``FAIL`` / ``n/a`` when abstaining).
+* ``diff_minimality`` and ``apply_recovery`` ->
+  :func:`clinescope.report.render_score_out_of_100` (round-half-up ``NN/100`` /
+  ``n/a``) + :func:`clinescope.report.summary_verdict` (``PASS`` at 1.0 / ``FAIL`` /
+  ``n/a`` when abstaining).
+* ``diff_coherence`` -> :func:`clinescope.report.diff_coherence_cell_verdict`: the
+  same two helpers, except ``n/a`` on an editor run
+  (:func:`clinescope.report.is_editor_run`), where there was no patch to check.
 * ``tool_selection`` -> :func:`clinescope.report.tool_selection_cell_verdict`,
   which encodes tool_selection's deliberate asymmetry (``n/a`` with no expected
   set; ``PASS`` only at 1.0; a BLANK verdict, never ``FAIL``, for sub-perfect
@@ -63,6 +67,7 @@ from clinescope.diff_minimality import score_diff_minimality
 from clinescope.editor_recovery import EditorRecoveryScore, score_editor_recovery
 from clinescope.labels import LabelError, TraceLabel, labels_load
 from clinescope.report import (
+    diff_coherence_cell_verdict,
     render_score_out_of_100,
     summary_verdict,
     tool_selection_cell_verdict,
@@ -231,18 +236,24 @@ def _score_cells(trace: Trace, label: TraceLabel | None) -> dict[str, ScorerCell
     ts_score = score_tool_selection(trace, set(expected_tools or ()))
     ts_cell, ts_verdict = tool_selection_cell_verdict(ts_score, expected_provided)
 
-    diff_scores = {
-        "diff_coherence": score_diff_coherence(trace).score,
+    editor_score = score_editor_recovery(trace)
+    dc_cell, dc_verdict = diff_coherence_cell_verdict(
+        score_diff_coherence(trace), editor_score
+    )
+    cells = {
+        "tool_selection": ScorerCell(cell=ts_cell, verdict=ts_verdict),
+        "diff_coherence": ScorerCell(cell=dc_cell, verdict=dc_verdict),
+    }
+    abstaining_scores = {
         "diff_minimality": score_diff_minimality(trace).score,
         "apply_recovery": score_apply_recovery(trace).score,
     }
-    cells = {"tool_selection": ScorerCell(cell=ts_cell, verdict=ts_verdict)}
-    for name, value in diff_scores.items():
+    for name, value in abstaining_scores.items():
         cells[name] = ScorerCell(
             cell=render_score_out_of_100(value),
             verdict=summary_verdict(value),
         )
-    cells["editor_recovery"] = editor_recovery_cell(score_editor_recovery(trace))
+    cells["editor_recovery"] = editor_recovery_cell(editor_score)
     return cells
 
 

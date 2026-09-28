@@ -253,6 +253,22 @@ def _clean_editor_trace(tmp_path: Path) -> Path:
     return trace
 
 
+def test_compare_diff_coherence_is_na_on_an_editor_run() -> None:
+    # 0 apply_patch calls and 2 editor calls: nothing for diff_coherence to check,
+    # so the cell reads n/a, the same as the single-trace report.
+    row = run_compare([EXAMPLES / "live-granite-editor-recovery.json"]).rows[0]
+
+    cell = row.cells["diff_coherence"]
+    assert (cell.cell, cell.verdict) == ("n/a", "n/a")
+
+
+def test_compare_diff_coherence_keeps_the_hard_zero_with_neither_tool() -> None:
+    row = run_compare([EXAMPLES / "corpus" / "qwen-missing-tools.json"]).rows[0]
+
+    cell = row.cells["diff_coherence"]
+    assert (cell.cell, cell.verdict) == ("0/100", "FAIL")
+
+
 def test_compare_editor_recovery_scores_a_recovered_editor_run() -> None:
     row = run_compare([EXAMPLES / "live-granite-editor-recovery.json"]).rows[0]
 

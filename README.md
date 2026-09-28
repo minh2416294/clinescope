@@ -18,7 +18,7 @@ Clinescope reads the log of one Cline run and scores it on five checks.
 | `apply_recovery` | After a failed `apply_patch`, whether a later patch to the same file went through. | Whether the later patch fixed the problem. |
 | `editor_recovery` | The same, for Cline's `editor` tool. On main, not yet on PyPI. | The same. |
 
-Most Cline sessions today use `editor`. On those runs `diff_coherence` shows 0 with the reason, and the other two patch checks show `n/a`.
+Most Cline sessions today use `editor`. On those runs a `note:` line says the three patch checks did not run, and all three show `n/a`.
 
 <p align="center"><img src="docs/demo.svg" alt="clinescope scoring three real captured Cline runs: a clean run, a run whose failed patch was never retried, and a run where the model called no tools, each with advice to fix the agent" width="720"></p>
 

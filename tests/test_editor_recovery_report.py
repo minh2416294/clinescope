@@ -12,6 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from clinescope.__main__ import main
+from clinescope.diff_coherence import score_diff_coherence
 from clinescope.editor_recovery import score_editor_recovery
 from clinescope.report import render_report
 from clinescope.tool_selection import score_tool_selection
@@ -88,8 +89,12 @@ def test_cli_renders_the_editor_line_on_the_real_capture(capsys) -> None:  # typ
     assert exit_code == 0
     # The exact rendered line, so a formatting regression or a wrong count fails.
     assert "editor_recovery 100/100  PASS   (1/1 failed edits recovered)" in out
-    # And the motivating defect, still visible on the same report.
-    assert "diff_coherence    0/100  FAIL" in out
+    # An editor run: diff_coherence has no apply_patch to check, so it reads n/a,
+    # and the note line keeps the missing apply_patch visible.
+    assert (
+        "diff_coherence      n/a  n/a   (editor run - no apply_patch to check)" in out
+    )
+    assert _EDITOR_RUN_NOTE in out.splitlines()
 
 
 def test_summary_line_reports_an_unrecovered_failure() -> None:
@@ -178,3 +183,114 @@ def test_advice_stays_quiet_when_recovery_succeeded() -> None:
 
     assert "editor_recovery 100/100  PASS" in out
     assert "no_editor_recovery" not in out
+
+
+# --- an editor run: no apply_patch for diff_coherence to check ------------------
+# An editor run is 0 apply_patch calls and at least 1 editor call. The scorer still
+# returns 0.0 and the gate still decides on apply_patch_call_count; the report, the
+# compare cell and the advice read that zero as n/a. A run with neither tool keeps
+# its hard zero, because there nothing edited at all.
+
+_NEITHER_TOOL_TRACE = _EXAMPLES / "corpus" / "qwen-missing-tools.json"
+
+# The report approved for this trace on 2026-09-28, pinned as a literal.
+_EDITOR_RUN_REPORT = (
+    "clinescope report - session '1787455395427_4abgw' (3 tool calls)\n"
+    "note: 0 apply_patch calls, 2 editor calls - the 3 apply_patch checks did not run\n"
+    "tool_selection      n/a   (pass --expected <tools> to score tool selection)\n"
+    "diff_coherence      n/a  n/a   (editor run - no apply_patch to check)\n"
+    "diff_minimality     n/a  n/a   (no apply_patch - nothing to check)\n"
+    "apply_recovery      n/a  n/a   (no apply_patch - nothing to recover)\n"
+    "editor_recovery 100/100  PASS   (1/1 failed edits recovered)\n"
+    "clean run - nothing to fix\n"
+)
+_EDITOR_RUN_NOTE = _EDITOR_RUN_REPORT.splitlines()[1]
+
+
+def _apply_patch_call(call_id: str) -> ToolCall:
+    return ToolCall(
+        id=call_id,
+        name="apply_patch",
+        input={"input": "*** Begin Patch\n*** End Patch\n"},
+        result_content="result",
+        is_error=False,
+    )
+
+
+def test_cli_editor_run_report_is_the_approved_report(capsys) -> None:  # type: ignore[no-untyped-def]
+    exit_code = main([str(_REAL_EDITOR_TRACE)])
+
+    assert exit_code == 0
+    assert capsys.readouterr().out == _EDITOR_RUN_REPORT
+
+
+def test_cli_editor_run_gives_no_malformed_patch_advice(capsys) -> None:  # type: ignore[no-untyped-def]
+    # Nothing failed on this run, so --advice adds no block and the output is the
+    # same report, byte for byte.
+    exit_code = main([str(_REAL_EDITOR_TRACE), "--advice"])
+
+    assert exit_code == 0
+    assert capsys.readouterr().out == _EDITOR_RUN_REPORT
+
+
+def test_cli_run_with_neither_tool_keeps_the_hard_zero(capsys) -> None:  # type: ignore[no-untyped-def]
+    exit_code = main([str(_NEITHER_TOOL_TRACE), "--advice"])
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "diff_coherence    0/100  FAIL   (no apply_patch tool call in trace)" in out
+    assert "[diff_coherence] malformed_patch" in out
+    assert "note:" not in out
+
+
+def test_note_line_names_one_editor_call_in_the_singular() -> None:
+    trace = Trace(
+        version=1,
+        turns=(),
+        tool_calls=(_editor_call("c1", is_error=False),),
+        dropped_items=(),
+    )
+    out = render_report(
+        trace,
+        score_tool_selection(trace, set()),
+        session_id="s1",
+        diff_coherence=score_diff_coherence(trace),
+        editor_recovery=score_editor_recovery(trace),
+        expected_provided=False,
+    )
+
+    assert out.splitlines()[1] == (
+        "note: 0 apply_patch calls, 1 editor call - the 3 apply_patch checks did not run"
+    )
+
+
+def test_trace_with_both_tools_is_not_an_editor_run() -> None:
+    trace = Trace(
+        version=1,
+        turns=(),
+        tool_calls=(_apply_patch_call("c1"), _editor_call("c2", is_error=False)),
+        dropped_items=(),
+    )
+    out = render_report(
+        trace,
+        score_tool_selection(trace, set()),
+        session_id="s1",
+        diff_coherence=score_diff_coherence(trace),
+        editor_recovery=score_editor_recovery(trace),
+        expected_provided=False,
+    )
+
+    assert "note:" not in out
+    assert "editor run" not in out
+
+
+def test_verbose_editor_run_keeps_the_raw_zero_and_adds_the_note(capsys) -> None:  # type: ignore[no-untyped-def]
+    # The verbose dump shows the scorer's own numbers, so the 0.0000 stays. The note
+    # line is added so the dump does not read as a failed patch.
+    exit_code = main([str(_REAL_EDITOR_TRACE), "--verbose"])
+    lines = capsys.readouterr().out.splitlines()
+
+    assert exit_code == 0
+    assert _EDITOR_RUN_NOTE in lines
+    block = lines.index("[diff_coherence]")
+    assert lines[block + 1] == "score:          0.0000"

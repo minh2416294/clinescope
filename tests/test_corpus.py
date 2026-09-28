@@ -269,6 +269,31 @@ def _real_apply_fail_key() -> str:
     return "examples/corpus/live-gpt-oss-apply-fail.json"
 
 
+def test_editor_run_item_reads_na_and_emits_no_advice(tmp_path: Path) -> None:
+    # A real editor run labelled clean, with diff_coherence expected as n/a. Before
+    # the editor-run rule this item failed twice: the cell read 0/100, and the
+    # malformed_patch advice made the clean item cry wolf.
+    real_trace = Path("examples/live-granite-editor-recovery.json").resolve()
+    entries = {
+        str(real_trace): {
+            "display": "granite editor run",
+            "model": "granite4.1:8b",
+            "task": "edit through editor, one failed edit recovered",
+            "source": "real",
+            "kind": "clean",
+            "scorers": {"diff_coherence": {"expected_cell": "n/a"}},
+            "expected_failure_labels": [],
+            "evidence_tokens": [],
+        }
+    }
+
+    report = run_corpus(_write_corpus(tmp_path, entries))
+
+    assert report.exit_code == 0, _mismatch_detail(report)
+    cell = report.items[0].compare_cells["diff_coherence"]
+    assert (cell.cell, cell.verdict) == ("n/a", "n/a")
+
+
 def test_mislabeled_score_makes_runner_exit_1(tmp_path: Path) -> None:
     # Take the real apply-fail trace but claim apply_recovery should be 100/100.
     # The runner must catch the mismatch and exit 1 -- proving it is a gate, not
