@@ -111,10 +111,12 @@ would largely restate a verdict this repository already surfaces.
 
 ## The diff scorers grade `apply_patch` only, and most sessions no longer use it
 
-The three diff scorers grade Cline's `apply_patch` grammar. On a trace that edits with `editor`,
-`write_to_file` or `replace_in_file` instead, `diff_coherence` reports a hard `0/100` and
-`diff_minimality` / `apply_recovery` abstain (`n/a`). That is honest, not a bug, but it is now the common
-case rather than the exception. Verified at cline/cline commit
+The three diff scorers grade Cline's `apply_patch` grammar. On a trace that edits with `editor`
+instead, the report prints a `note:` line naming both call counts and shows all three as `n/a`. The
+`diff_coherence` scorer itself still returns a hard `0.0`, and on a trace that edits with `write_to_file`
+or `replace_in_file`, which has no `editor` call, the report still shows that zero as `0/100`.
+`diff_minimality` / `apply_recovery` abstain (`n/a`) on all of these. That is honest, not a bug, but it
+is now the common case rather than the exception. Verified at cline/cline commit
 `4f836ae7d0ed29ece7ef4a2a478deb470fdd056e`: all five tool presets set `enableApplyPatch: false`
 (`sdk/packages/core/src/extensions/tools/presets.ts` lines 30, 50, 68, 85, 103), and only two routing
 rules flip a session back to `apply_patch` (`model-tool-routing.ts` lines 60-75), both requiring `act`
@@ -144,9 +146,12 @@ apply_patch family. A malformed patch still fails: the check is on whether a pat
 whether the score was zero. When such a trace has `editor` calls, the gate also prints a hint that
 names `--min-editor-recovery`.
 
-The report is unchanged and still shows `diff_coherence 0/100` on such a trace, with the reason beside
-it. That is the honest reading for a report, where a missing artifact should be loud rather than
-silent, and the gate is the place where the distinction had to be made. **Gating an editor-only trace
+The report makes the same distinction on an editor run, meaning 0 `apply_patch` calls and at least one
+`editor` call. There `diff_coherence` shows `n/a` with the reason `(editor run - no apply_patch to
+check)`, a `note:` line under the header keeps the missing `apply_patch` visible, and `--advice` gives
+no `malformed_patch` advice. `compare` and the corpus follow the same rule. A trace with neither tool
+still shows `diff_coherence 0/100 FAIL` with its reason, because nothing was edited there at all and a
+missing artifact should be loud. **Gating an editor-only trace
 on the apply_patch flags alone still verifies nothing**; gate it on `--min-editor-recovery` and
 `--min-tool-selection` instead.
 

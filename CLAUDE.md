@@ -50,9 +50,12 @@ between the check and the thing you might assume it checks is where every false 
 presets set `enableApplyPatch: false`, and only two routing rules flip a session back to it (an
 `openai-native` provider, or a model id containing `codex` or `gpt`), both of which also
 require `act` mode. Everything else emits `editor`, where `diff_minimality` and `apply_recovery`
-go silent, `diff_coherence` still hard-zeros with its reason, and `editor_recovery` is the one
-that produces a number. Verified on `examples/live-granite-editor-recovery.json`: it prints
-`diff_coherence 0/100 FAIL (no apply_patch tool call in trace)`, not an abstention.
+go silent, the `diff_coherence` scorer still hard-zeros but the report shows that zero as `n/a`,
+and `editor_recovery` is the one that produces a number. Verified on
+`examples/live-granite-editor-recovery.json`: it prints
+`note: 0 apply_patch calls, 2 editor calls - the 3 apply_patch checks did not run` under the
+header and `diff_coherence n/a n/a (editor run - no apply_patch to check)`. That `n/a` is a
+display rule, not an abstention: `score_diff_coherence` still returns `0.0`, never `None`.
 
 **An empty or no-tool-call trace does not score 0 across the board, and the three non-zero
 outcomes are not the same thing.** `tool_selection` and `diff_coherence` hard-zero.
@@ -61,8 +64,11 @@ outcomes are not the same thing.** `tool_selection` and `diff_coherence` hard-ze
 outcome and not an `n/a`. Reporting an abstention as a zero is a specific, recurring error in
 this repo's history. Before writing any sentence about what a trace scores, run the tool on it.
 
-**The report and the gate read that hard zero differently, on purpose.** The report keeps
-showing `diff_coherence 0/100` with its reason, because a missing artifact should be loud.
+**The report and the gate read that hard zero differently, on purpose.** The report shows
+`diff_coherence 0/100` with its reason on a trace with neither `apply_patch` nor `editor`, because
+a missing artifact should be loud. On an editor run (0 `apply_patch` calls and at least one
+`editor` call, decided by `report.is_editor_run`) it shows `n/a` and the `note:` line instead,
+gives no `malformed_patch` advice, and `compare` and the corpus follow the same rule.
 `clinescope-gate` treats a trace with no `apply_patch` as not applicable to the whole
 apply_patch family and exits `2` ("nothing was verified") instead of `1` ("a scorer
 regressed"). It decides that on `apply_patch_call_count`, not on the score, so a malformed

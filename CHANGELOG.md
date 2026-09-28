@@ -62,6 +62,18 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Changed
 
+- On an editor run (0 `apply_patch` calls and at least one `editor` call) the report
+  shows `diff_coherence` as `n/a`, reason `(editor run - no apply_patch to check)`,
+  under a new line such as
+  `note: 0 apply_patch calls, 2 editor calls - the 3 apply_patch checks did not run`.
+  Before this it showed `0/100 FAIL`, kept the "clean run - nothing to fix" footer
+  off, and `--advice` told you to fix `apply_patch` grammar the agent never wrote.
+  Now there is no `malformed_patch` advice there, the footer can fire, and
+  `--verbose` gets the same note line while keeping the scorer's own `0.0000`. The
+  `compare` and corpus tables follow the same rule, through one shared
+  `report.is_editor_run`. The scorer still returns `0.0` and the gate is unchanged.
+  A trace with neither tool still shows `0/100 FAIL` and its advice. On the
+  committed traces this changes exactly two rows, the two editor traces.
 - The README is rewritten for a Cline user who has never seen Clinescope. The five
   checks are now a table of what each one tells you and what it does not, and "Why
   Clinescope" leads with what a user gets. It no longer quotes the gated

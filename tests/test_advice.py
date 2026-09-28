@@ -150,6 +150,34 @@ def test_diff_coherence_advice_falls_back_when_no_violation_recorded() -> None:
     assert advice.lines[0] == "The patch is malformed: malformed apply_patch."
 
 
+def _no_apply_patch_coherence() -> DiffCoherenceScore:
+    return DiffCoherenceScore(
+        score=0.0,
+        passed_gates=frozenset(),
+        failed_gates=frozenset(),
+        violations=("no apply_patch tool call in trace",),
+        apply_patch_call_count=0,
+        cline_apply_is_error=None,
+    )
+
+
+def test_diff_coherence_editor_run_yields_no_advice() -> None:
+    # The agent edited through editor, so there was no patch to be malformed.
+    assert (
+        advice_for_diff_coherence(_no_apply_patch_coherence(), editor_run=True) is None
+    )
+
+
+def test_diff_coherence_run_with_neither_tool_still_advises() -> None:
+    advice = advice_for_diff_coherence(_no_apply_patch_coherence())
+
+    assert advice is not None
+    assert advice.label is FailureLabel.MALFORMED_PATCH
+    assert (
+        advice.lines[0] == "The patch is malformed: no apply_patch tool call in trace."
+    )
+
+
 # --- diff_minimality ---------------------------------------------------------
 
 

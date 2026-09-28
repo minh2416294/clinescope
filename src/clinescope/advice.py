@@ -64,13 +64,18 @@ def advice_for_tool_selection(score: ToolSelectionScore) -> ScorerAdvice | None:
     )
 
 
-def advice_for_diff_coherence(score: DiffCoherenceScore) -> ScorerAdvice | None:
+def advice_for_diff_coherence(
+    score: DiffCoherenceScore, *, editor_run: bool = False
+) -> ScorerAdvice | None:
     """Advise when the apply_patch grammar is malformed; ``None`` at a perfect score.
 
-    diff_coherence never abstains (no apply_patch is a hard 0.0), so any score below
-    1.0 is a real malformed-patch signal worth coaching.
+    diff_coherence never abstains (no apply_patch is a hard 0.0), so a score below
+    1.0 is a malformed-patch signal worth coaching, with one exception. On an editor
+    run (``editor_run``, decided by :func:`clinescope.report.is_editor_run`) the agent
+    edited through ``editor``, so there was no patch to be malformed and no advice.
+    A run with neither tool still gets the advice.
     """
-    if score.score == 1.0:
+    if editor_run or score.score == 1.0:
         return None
     reason = score.violations[0] if score.violations else "malformed apply_patch"
     return ScorerAdvice(

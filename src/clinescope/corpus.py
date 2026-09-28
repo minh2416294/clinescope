@@ -67,6 +67,8 @@ from clinescope.labels import (
     labels_load,
 )
 from clinescope.report import (
+    diff_coherence_cell_verdict,
+    is_editor_run,
     render_score_out_of_100,
     summary_verdict,
     tool_selection_cell_verdict,
@@ -238,10 +240,14 @@ def _score_trace(trace_path: Path, label: TraceLabel) -> _ScoredTrace:
     dc = score_diff_coherence(trace)
     dm = score_diff_minimality(trace)
     ar = score_apply_recovery(trace)
+    er = score_editor_recovery(trace)
+    # The same editor-run rule the single-trace report applies, so a corpus cell and
+    # its advice match what `clinescope <trace>` prints for that trace.
+    dc_cell, dc_verdict = diff_coherence_cell_verdict(dc, er)
 
     cells = {
         "tool_selection": render_score_out_of_100(ts.score),
-        "diff_coherence": render_score_out_of_100(dc.score),
+        "diff_coherence": dc_cell,
         "diff_minimality": render_score_out_of_100(dm.score),
         "apply_recovery": render_score_out_of_100(ar.score),
     }
@@ -260,7 +266,10 @@ def _score_trace(trace_path: Path, label: TraceLabel) -> _ScoredTrace:
     advice: dict[str, ScorerAdvice] = {}
     for name, entry in (
         ("tool_selection", advice_for_tool_selection(ts)),
-        ("diff_coherence", advice_for_diff_coherence(dc)),
+        (
+            "diff_coherence",
+            advice_for_diff_coherence(dc, editor_run=is_editor_run(dc, er)),
+        ),
         ("diff_minimality", advice_for_diff_minimality(dm)),
         ("apply_recovery", advice_for_apply_recovery(ar)),
     ):
@@ -271,9 +280,11 @@ def _score_trace(trace_path: Path, label: TraceLabel) -> _ScoredTrace:
     # is byte-identical to a compare table over the same traces (no round-trip
     # through the rendered string, so no [0.995, 1.0) verdict drift).
     ts_cell, ts_verdict = tool_selection_cell_verdict(ts, expected_provided)
-    compare_cells = {"tool_selection": ScorerCell(cell=ts_cell, verdict=ts_verdict)}
+    compare_cells = {
+        "tool_selection": ScorerCell(cell=ts_cell, verdict=ts_verdict),
+        "diff_coherence": ScorerCell(cell=dc_cell, verdict=dc_verdict),
+    }
     for name, value in (
-        ("diff_coherence", dc.score),
         ("diff_minimality", dm.score),
         ("apply_recovery", ar.score),
     ):
@@ -282,9 +293,7 @@ def _score_trace(trace_path: Path, label: TraceLabel) -> _ScoredTrace:
             verdict=summary_verdict(value),
         )
     # Table only: editor_recovery is not in the label vocabulary (_SCORER_COLUMNS).
-    compare_cells["editor_recovery"] = editor_recovery_cell(
-        score_editor_recovery(trace)
-    )
+    compare_cells["editor_recovery"] = editor_recovery_cell(er)
     return _ScoredTrace(
         cells=cells,
         score_is_none=score_is_none,

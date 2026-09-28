@@ -98,7 +98,8 @@ traces is not a weak scorer, it is a scorer aimed at the wrong thing.
 **This loop has run exactly once, and not on user data.** On nearly every current Cline session
 the three `apply_patch` scorers produce no usable number, because almost no session emits
 `apply_patch` any more. They do not all do it the same way: `diff_minimality` and `apply_recovery`
-abstain and report `n/a`, while `diff_coherence` hard-zeros with its reason. That was noticed on
+abstain and report `n/a`, while `diff_coherence` hard-zeros, which the report now shows as `n/a`
+under a note line naming both call counts. That was noticed on
 the maintainer's own traces, and `editor_recovery` was built in response.
 
 One instance, from one person's own traces, is not a flywheel and is not described as one here.
