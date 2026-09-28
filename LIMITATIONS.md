@@ -26,10 +26,15 @@ grammar. It does NOT prove the patch applies. Cline's real executor also fuzzy-m
 context against the on-disk file, which a standalone trace cannot reproduce (there is no repo checkout to
 match against), so a patch can score 100/100 here and still fail Cline's executor because its context
 does not locate in the target file. The report labels this `[diff_coherence]`, never `apply_success`.
-Cline's own applied/failed verdict is read as context only; it never enters the score.
+Cline's own applied/failed verdict on the same patch is shown as context on the `cline_verdict` line
+under the score; it never enters the score, the clean-run footer or the gate.
 
-What to do instead: grammar validity does not prove apply success. To confirm the edit lands, apply the
-patch against the actual file.
+`cline_verdict` repeats what Cline recorded and adds no check of its own. It covers only the first
+`apply_patch`, the one `diff_coherence` grades. `applied` means Cline's executor reported success, not
+that the change is right; `no verdict` means the trace carried none, and is never read as `applied`.
+
+What to do instead: grammar validity does not prove apply success. Read `cline_verdict` for Cline's own
+verdict on that patch, and to confirm what the file ended up as, inspect the file itself.
 
 ### `diff_minimality` detects one bloat shape, not all over-editing
 

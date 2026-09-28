@@ -43,6 +43,8 @@ from clinescope.world_a import ToolCall
 # Source: cline definitions.ts, where both createApplyPatchTool and
 # createEditorTool return {query, result, [error], success}.
 _SUCCESS_KEY = "success"
+# Present only on a failed call, beside "success": false: Cline's reason in plain words.
+_ERROR_KEY = "error"
 
 
 def tool_verdict_effective(call: ToolCall) -> bool | None:
@@ -61,6 +63,36 @@ def tool_verdict_effective(call: ToolCall) -> bool | None:
     if isinstance(call.is_error, bool):
         return call.is_error
 
+    parsed = _tool_verdict_content_dict(call)
+    if parsed is None:
+        return None
+    success = parsed.get(_SUCCESS_KEY)
+    if not isinstance(success, bool):
+        return None
+    return not success
+
+
+def tool_verdict_error_line(call: ToolCall) -> str | None:
+    """The first non-blank line of Cline's own failure reason for one call.
+
+    Read from the ``"error"`` key that Cline adds beside ``"success": false``. The
+    text is RAW trace content: a caller that renders it must neutralize it first.
+
+    Returns:
+        The line, or ``None`` when the content is not a JSON-object string or carries
+        no non-blank ``str`` under ``"error"``. Same fail-closed reads as
+        :func:`tool_verdict_effective`, so a list-shaped result is always ``None``.
+    """
+    parsed = _tool_verdict_content_dict(call)
+    if parsed is None:
+        return None
+    error = parsed.get(_ERROR_KEY)
+    if not isinstance(error, str) or not error.strip():
+        return None
+    return error.strip().splitlines()[0]
+
+
+def _tool_verdict_content_dict(call: ToolCall) -> dict[str, object] | None:
     content = call.result_content
     if not isinstance(content, str):
         return None
@@ -70,7 +102,4 @@ def tool_verdict_effective(call: ToolCall) -> bool | None:
         return None
     if not isinstance(parsed, dict):
         return None
-    success = parsed.get(_SUCCESS_KEY)
-    if not isinstance(success, bool):
-        return None
-    return not success
+    return parsed

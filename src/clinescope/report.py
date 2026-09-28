@@ -14,11 +14,14 @@ Two renderings, both pure (no I/O, no LLM):
   as ``round(score * 100)`` out of 100 (``100/100``, ``75/100``); an abstaining
   scorer (``score is None``) shows ``n/a``. On an editor run (:func:`is_editor_run`)
   diff_coherence also shows ``n/a``, under a ``note:`` line naming both call counts.
+  When diff_coherence graded a patch, a ``cline_verdict`` context line follows it
+  with Cline's own verdict on that patch; it is not a scorer line and has no score.
   This is what a developer glancing at a run reads in ~2 seconds.
 * **``verbose=True`` -- the full DEBUG DUMP:** aligned ``key: value`` lines with
   every gate, counter, and piece of evidence, each frozenset ``sorted()`` for
-  stable output and each score formatted ``.4f`` for exactness. Unchanged from the
-  historical output byte-for-byte.
+  stable output and each score formatted ``.4f`` for exactness. The only addition
+  to the historical output is the same ``cline_verdict:`` line in
+  ``[diff_coherence]``.
 
 The ``.score`` float stays exact on the dataclass; only the displayed value is
 formatted. ``sessionId`` is not modelled on ``Trace`` (the loader discards it), so
@@ -39,11 +42,15 @@ from clinescope.advice import (
     advice_for_tool_selection,
 )
 from clinescope.apply_recovery import ApplyRecoveryScore
-from clinescope.diff_coherence import DiffCoherenceScore
+from clinescope.diff_coherence import (
+    DiffCoherenceScore,
+    diff_coherence_select_apply_patch,
+)
 from clinescope.diff_minimality import DiffMinimalityScore
 from clinescope.editor_recovery import EditorRecoveryScore
 from clinescope.render_safety import quote_untrusted_text
 from clinescope.tool_selection import ToolSelectionScore
+from clinescope.tool_verdict import tool_verdict_effective, tool_verdict_error_line
 from clinescope.world_a import Trace
 
 # The summary name column is left-justified to the longest scorer name
@@ -174,6 +181,9 @@ def _render_summary(
     lines.append(_render_summary_tool_selection(score, expected_provided))
     if diff_coherence is not None:
         lines.append(_render_summary_diff_coherence(diff_coherence, editor_recovery))
+    cline_verdict = _cline_verdict_text(trace, diff_coherence)
+    if cline_verdict is not None:
+        lines.append(f"{'cline_verdict':<{_SUMMARY_NAME_WIDTH}} {cline_verdict}")
     if diff_minimality is not None:
         lines.append(
             _render_summary_line(
@@ -279,6 +289,29 @@ def _editor_run_note(
         f"note: 0 apply_patch calls, {count} editor {noun} "
         "- the 3 apply_patch checks did not run"
     )
+
+
+def _cline_verdict_text(
+    trace: Trace, diff_coherence: DiffCoherenceScore | None
+) -> str | None:
+    # Cline's own verdict on the patch diff_coherence graded (its FIRST apply_patch),
+    # shown beside the grammar score because the two can disagree: a patch Cline
+    # rejected can still score 100/100. Context only: it never feeds a score, the
+    # clean-run footer or the gate. No apply_patch means no graded patch, so no line.
+    if diff_coherence is None:
+        return None
+    call, _ = diff_coherence_select_apply_patch(trace)
+    if call is None:
+        return None
+    verdict = tool_verdict_effective(call)
+    if verdict is None:
+        return "no verdict"
+    if not verdict:
+        return "applied"
+    reason = tool_verdict_error_line(call)
+    if reason is None:
+        return "rejected"
+    return f"rejected   ({quote_untrusted_text(reason)})"
 
 
 def _render_summary_diff_coherence(
@@ -464,7 +497,7 @@ def summary_verdict(score: float | None) -> str:
     return "PASS" if score == 1.0 else "FAIL"
 
 
-# --- Verbose rendering (the full debug dump; unchanged byte-for-byte) ---------
+# --- Verbose rendering (the full debug dump; see the module docstring) --------
 
 
 def _header_subject(session_id: str | None, session_label: str | None) -> str:
@@ -524,7 +557,11 @@ def _render_verbose(
         f"unexpected:     {_render_trace_names(score.unexpected)}",
     ]
     if diff_coherence is not None:
-        lines.extend(_render_diff_coherence(diff_coherence))
+        lines.extend(
+            _render_diff_coherence(
+                diff_coherence, _cline_verdict_text(trace, diff_coherence)
+            )
+        )
     if diff_minimality is not None:
         lines.extend(_render_diff_minimality(diff_minimality))
     if apply_recovery is not None:
@@ -534,8 +571,10 @@ def _render_verbose(
     return "\n".join(lines)
 
 
-def _render_diff_coherence(score: DiffCoherenceScore) -> list[str]:
-    return [
+def _render_diff_coherence(
+    score: DiffCoherenceScore, cline_verdict: str | None
+) -> list[str]:
+    lines = [
         "",
         "[diff_coherence]",
         f"score:          {score.score:.4f}",
@@ -545,6 +584,9 @@ def _render_diff_coherence(score: DiffCoherenceScore) -> list[str]:
         f"apply_patch_calls: {score.apply_patch_call_count}",
         f"cline_is_error: {score.cline_apply_is_error}",
     ]
+    if cline_verdict is not None:
+        lines.append(f"cline_verdict:  {cline_verdict}")
+    return lines
 
 
 def _render_diff_minimality(score: DiffMinimalityScore) -> list[str]:

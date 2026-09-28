@@ -24,8 +24,9 @@ still shows a complete, representative scored report; the animation only adds th
 cycle. Every line is drawn exactly once per scene (no overlapping layers).
 
 All report text is genuine `clinescope` stdout captured this session, not a mockup.
-The only width edit is shortening the advice file path to a basename (honest: it is
-a generic capture path with no real user data).
+Two width edits only: the advice file path is shortened to a basename (honest: it is
+a generic capture path with no real user data), and scene 2's cline_verdict line is
+wrapped onto a second, indented line because it is wider than the canvas.
 
 Run: python scripts/render_demo_svg.py   (from the repo root)
 """
@@ -79,6 +80,7 @@ _SCENE_CLEAN = Scene(
         ("clinescope report - session 1783709423832_y5y2f (2 tool calls)", DIM),
         ("tool_selection  100/100  PASS", GREEN),
         ("diff_coherence  100/100  PASS", GREEN),
+        ("cline_verdict   applied", GREEN),
         ("diff_minimality 100/100  PASS", GREEN),
         (
             "apply_recovery      n/a  n/a   (no failed patches - nothing to recover)",
@@ -95,6 +97,14 @@ _SCENE_APPLY_FAIL = Scene(
         ("clinescope report - session 1783723826783_g3hi7 (2 tool calls)", DIM),
         ("tool_selection  100/100  PASS", GREEN),
         ("diff_coherence  100/100  PASS", GREEN),
+        (
+            "cline_verdict   rejected   ('apply_patch failed: Patch could not be applied",
+            RED,
+        ),
+        (
+            "                             because 1 hunk did not match the current file content.')",
+            RED,
+        ),
         ("diff_minimality 100/100  PASS", GREEN),
         ("apply_recovery    0/100  FAIL   (0/1 failed patches recovered)", RED),
         ("", FG),

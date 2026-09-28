@@ -20,6 +20,8 @@ Clinescope reads the log of one Cline run and scores it on five checks.
 
 Most Cline sessions today use `editor`. On those runs a `note:` line says the three patch checks did not run, and all three show `n/a`.
 
+When a run has an `apply_patch`, a `cline_verdict` line under `diff_coherence` shows what Cline did with that same patch: `applied`, `rejected` (with Cline's own reason), or `no verdict`. A patch can pass `diff_coherence` and still be rejected, because the check reads the patch text while Cline tries it on your file. The line is not a score. On main, not yet on PyPI.
+
 <p align="center"><img src="docs/demo.svg" alt="clinescope scoring three real captured Cline runs: a clean run, a run whose failed patch was never retried, and a run where the model called no tools, each with advice to fix the agent" width="720"></p>
 
 <p align="center"><em>Three real captured runs; run <code>clinescope --demo</code> to score one yourself.</em></p>

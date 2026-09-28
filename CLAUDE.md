@@ -40,7 +40,7 @@ between the check and the thing you might assume it checks is where every false 
 | Scorer | What it computes | The caveat |
 |---|---|---|
 | `tool_selection` | Name-only recall of a caller-supplied expected set. | Name-only. It does **not** check tool arguments. |
-| `diff_coherence` | Grammar coherence of the first `apply_patch` against Cline's `*** Begin Patch` grammar. | Grammar read from the patch **text alone**. It is **not** apply-against-a-real-file success. |
+| `diff_coherence` | Grammar coherence of the first `apply_patch` against Cline's `*** Begin Patch` grammar. | Grammar read from the patch **text alone**. It is **not** apply-against-a-real-file success. Cline's own verdict on that same patch prints beneath it as `cline_verdict` (`applied`, `rejected` with Cline's reason, or `no verdict`): context, never an input to any score, the footer or the gate. |
 | `diff_minimality` | Flags blind whole-block rewrites: 3 or more deleted lines immediately retyped with no anchor. | Reference-free, and detects **one** bloat shape. Its score also depends on file layout. |
 | `apply_recovery` | Of every `apply_patch` Cline marked failed, the fraction recovered by a strictly-later confirmed one. | Trajectory recovery, **not** fix-correctness. |
 | `editor_recovery` | The same, ported to Cline's `editor` tool: of every failed `editor` call, the fraction re-touched by a strictly-later confirmed `editor` call on the same path. | Trajectory pattern only. Blind to cross-tool recovery. Path matching folds only `\` versus `/` and the drive prefix (`recovery_path.py`), so a case or relative-path difference in one file's spelling is still a false miss. A low score means "did not recover via a same-path confirmed editor call", not "did not recover". |
