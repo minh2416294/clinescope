@@ -23,6 +23,8 @@ Most Cline sessions today use `editor`. On those runs a `note:` line says the th
 
 When a run has an `apply_patch`, a `cline_verdict` line under `diff_coherence` shows what Cline did with that same patch: `applied`, `rejected` (with Cline's own reason), or `no verdict`. A patch can pass `diff_coherence` and still be rejected, because the check reads the patch text while Cline tries it on your file. The line is not a score. On main, not yet on PyPI.
 
+`--test-cmd TEXT` adds a `test_cmd` line: did a command containing TEXT run after the last edit, and what did Cline record for it (`success`, or Cline's own error text)? It runs nothing and does not prove the fix works. Cline keeps one flag for a whole command line, so `pytest; echo done` can read `success` after pytest failed. The last edit counts any file, so a helper script written after the tests also reads `not run`. A `not run`, or a run Cline marked failed, keeps the `clean run` line off. On main, not yet on PyPI.
+
 <p align="center"><img src="docs/demo.svg" alt="clinescope scoring three real captured Cline runs: a clean run, a run whose failed patch was never retried, and a run where the model called no tools, each with advice to fix the agent" width="720"></p>
 
 <p align="center"><em>Three real captured runs; run <code>clinescope --demo</code> to score one yourself.</em></p>

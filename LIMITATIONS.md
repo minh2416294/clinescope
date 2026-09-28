@@ -116,11 +116,41 @@ exists. Cline reports that as `success: false`, which is exactly the verdict `ed
 reads; the capture at `examples/live-granite-editor-recovery.json` is one such call. So a shape scorer
 would largely restate a verdict this repository already surfaces.
 
+### `test_cmd` shows whether a command ran after the last edit, not whether the fix works
+
+With `--test-cmd TEXT`, the report adds a `test_cmd` line. It takes the last edit Cline did not mark
+failed (an `apply_patch`, `editor`, `write_to_file` or `replace_in_file` call; an edit with no verdict
+still counts), then looks at every later `run_commands` entry whose command contains TEXT. TEXT is plain,
+case-sensitive text, so `--test-cmd pytest` also matches `echo pytest`. When several entries match, the
+last one is shown with what Cline recorded for it: `success`, Cline's own error text, `failed`, or
+`no Cline verdict`. It is not a score, it never runs anything, and no gate flag reads it. A `not run`, or
+a run Cline marked failed, keeps the clean-run footer off.
+
+The last edit is the last edit to ANY file, because a command is not tied to the files it tests. So a
+`not run` can be false. In `examples/live-test-cmd-helper-edit.json` the agent ran `python inventory.py`
+after its last change to `inventory.py`, then wrote a helper script, `_check_docstrings.py`. That helper
+is the last edit, so `--test-cmd "python inventory.py"` reads `not run` and the clean-run footer goes
+away. The report cannot tell this apart from a test run that really came before a change.
+
+It does NOT say the fix works. Cline keeps one flag per command line, not one per statement in it, and a
+shell reports the exit code of the last statement, so `pytest; echo done` can read `success` after pytest
+failed. The flag can also be wrong the other way: in `examples/live-test-cmd-helper-edit.json`,
+`python -m pydoc inventory | Select-Object -First 40` printed its output and Cline still recorded
+`Command exited with code 1`. A test run that passed may not cover the changed code at all. Only
+`run_commands` is read: a trace that uses the VS Code extension's `execute_command` shows `n/a`, and no
+captured trace in this repository has that case, so only a synthetic test reaches it. An edit made by a
+shell command (`sed`, `Remove-Item`) is not seen as an edit.
+
+What to do instead: run the tests yourself on the final files. Read `test_cmd` as "the agent did, or did
+not, run this after its last edit", and nothing more.
+
 ## What Clinescope does NOT claim
 
 - `tool_selection` scores tool NAMES, not tool ARGUMENTS or success.
 - `tool_input` scores whether some `editor` call carried an input you named, not whether that input was
   RIGHT or the call SUCCEEDED.
+- `test_cmd` reports whether a command containing your text RAN after the last edit and what Cline
+  recorded for it, not whether the tests PASSED on the final code or the fix WORKS.
 - `diff_coherence` scores apply_patch GRAMMAR, not whether the patch APPLIES or is CORRECT.
 - `diff_minimality` scores ONE bloat shape, not overall edit MINIMALITY.
 - `apply_recovery` scores a same-file retry TRAJECTORY, not whether the fix is RIGHT.

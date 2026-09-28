@@ -168,6 +168,7 @@ pip install clinescope
 clinescope --demo                                        # score a bundled real trace, zero args
 clinescope <trace.json> --expected read_files apply_patch --advice
 clinescope <trace.json> --expected-input editor path=src/app.py   # did some editor call carry this input
+clinescope <trace.json> --test-cmd pytest                # did a command with this text run after the last edit
 clinescope --vscode                                      # find and score a VS Code extension session
 clinescope-gate <trace.json> --min-diff-coherence 0.75   # CI gate: exit 0 pass, 1 fail, 2 usage error
 clinescope-gate <trace.json> --min-editor-recovery 1.0 --min-tool-selection 1.0 --expected editor   # an editor run
@@ -181,6 +182,12 @@ Three console scripts exist: `clinescope`, `clinescope-gate`, `clinescope-corpus
 `python -m clinescope.<module>` only: `compare`, `judge_run`, `judge_multidraw` and `label_gold`.
 `judge_multidraw` reads a cache that is not committed, so on a fresh clone `--report-only` exits
 `2`; `gold/README.md` owns what it measures.
+
+**`--test-cmd` is a context line, not a scorer, so the count above stays six.** It reports
+whether a `run_commands` entry containing the text ran after the last edit Cline did not mark
+failed, and what Cline recorded for it. That last edit is to any file, so a helper script written
+after the tests makes a false `not run`. Never describe it as checking that the fix works: Cline
+keeps one flag per command line, and `LIMITATIONS.md` owns the rest of its caveats.
 
 **Where a trace comes from.** The Cline CLI writes
 `~/.cline/data/sessions/<id>/<id>.messages.json`, and `cline history --json` lists each session
@@ -318,6 +325,7 @@ src/clinescope/        the package
   _datafiles.py        locates bundled examples/ + gold/ from an installed wheel
   tool_selection.py    scorer
   tool_input.py        scorer (editor inputs named by --expected-input)
+  cmd_after_edit.py    the --test-cmd context line (not a scorer)
   diff_coherence.py    scorer (owns the apply_patch grammar parser the other two reuse)
   diff_minimality.py   scorer
   apply_recovery.py    scorer

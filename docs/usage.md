@@ -47,6 +47,22 @@ matches the full path Cline recorded. Other keys match as exact text. The `tool_
 share of your inputs that some `editor` call carried and lists the missing ones. It does not check
 whether that call worked. A tool other than `editor`, or a pair with no `=`, exits `2`.
 
+## Check that a command ran after the last edit
+
+To see whether the agent ran your tests after its last change, give part of the command:
+
+```bash
+clinescope path/to/messages.json --test-cmd pytest
+```
+
+The `test_cmd` line reads `ran`, with what Cline recorded (`Cline: success` or Cline's own error text),
+or `not run` when no command containing your text came after the last edit. It shows `n/a` when the run
+made no edit, when every edit failed, or when it used the extension's `execute_command`. The last edit is
+the last edit to any file, including a helper script the agent wrote for itself, so a `not run` can
+mean the agent tested first and then wrote that helper. The text is matched as written, case included. Cline keeps one flag for a whole command line, so `pytest; echo done`
+can read `success` after pytest failed. The line is not a score and does not prove the fix works. An
+empty `--test-cmd` exits `2`.
+
 ## Score a VS Code extension session
 
 The Cline VS Code extension stores sessions in a different on-disk format from the CLI. `--vscode` reads

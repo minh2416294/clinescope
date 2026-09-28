@@ -20,8 +20,9 @@ lifted here with one cheap read and passed through to the emitter.
 A trace that cannot be loaded (missing path, unsupported version, malformed or
 non-object JSON) prints a single ``error: ...`` line to stderr and exits 1 --
 never a raw Python traceback. A usage problem exits 2: an ``--expected-input``
-naming a tool other than ``editor`` or lacking ``KEY=VALUE``, or a ``--vscode``
-problem (no session selected in a non-TTY, or no extension storage found).
+naming a tool other than ``editor`` or lacking ``KEY=VALUE``, an empty
+``--test-cmd``, or a ``--vscode`` problem (no session selected in a non-TTY, or no
+extension storage found).
 """
 
 from __future__ import annotations
@@ -37,6 +38,7 @@ from clinescope import __version__
 from clinescope._datafiles import DataFilesNotFound, datafiles_root
 from clinescope.apply_recovery import ApplyRecoveryScore, score_apply_recovery
 from clinescope.cline_extension import load_extension_trace
+from clinescope.cmd_after_edit import CmdAfterEditCheck, cmd_after_edit_check
 from clinescope.diff_coherence import DiffCoherenceScore, score_diff_coherence
 from clinescope.diff_minimality import DiffMinimalityScore, score_diff_minimality
 from clinescope.editor_recovery import EditorRecoveryScore, score_editor_recovery
@@ -60,8 +62,8 @@ from clinescope.tool_vocab import CLINE_KNOWN_TOOLS, tool_vocab_check
 from clinescope.world_a import Trace, load_trace
 
 # Exit codes: 0 = report emitted; 1 = a trace could not be loaded; 2 = a usage
-# problem (a malformed --expected-input, no session selected in a non-TTY, or no
-# extension storage found).
+# problem (a malformed --expected-input, an empty --test-cmd, no session selected
+# in a non-TTY, or no extension storage found).
 _EXIT_OK = 0
 _EXIT_LOAD_ERROR = 1
 _EXIT_USAGE = 2
@@ -133,6 +135,16 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "An input you expect some call to carry, e.g. --expected-input editor "
             "path=src/app.py. Repeatable. editor only; a path matches on its ending. "
             "Omit to skip tool-input scoring."
+        ),
+    )
+    parser.add_argument(
+        "--test-cmd",
+        default=None,
+        metavar="TEXT",
+        help=(
+            "Text your test command contains, e.g. --test-cmd pytest. Reports whether "
+            "a run_commands entry containing it ran after the last edit, and what "
+            "Cline recorded for it. Not a score, and not proof the fix works."
         ),
     )
     parser.add_argument(
@@ -277,6 +289,11 @@ def main(
     except ValueError as err:
         print(f"error: {err}", file=sys.stderr)
         return _EXIT_USAGE
+    if args.test_cmd is not None and not args.test_cmd.strip():
+        # Every command contains the empty string, so an empty text would report
+        # "ran" for any command at all.
+        print("error: --test-cmd needs a non-empty command text", file=sys.stderr)
+        return _EXIT_USAGE
 
     if args.vscode:
         return _run_extension_flow(
@@ -285,9 +302,14 @@ def main(
             expected_provided,
             input_fn,
             expected_inputs=expected_inputs,
+            test_cmd=args.test_cmd,
         )
     return _run_world_a_flow(
-        args, expected, expected_provided, expected_inputs=expected_inputs
+        args,
+        expected,
+        expected_provided,
+        expected_inputs=expected_inputs,
+        test_cmd=args.test_cmd,
     )
 
 
@@ -346,6 +368,7 @@ def _run_world_a_flow(
     expected_provided: bool,
     *,
     expected_inputs: frozenset[ExpectedInput] | None = None,
+    test_cmd: str | None = None,
 ) -> int:
     if args.trace is None:
         print("error: a trace path is required (or use --vscode)", file=sys.stderr)
@@ -372,6 +395,7 @@ def _run_world_a_flow(
             args,
             session_id=session_id,
             expected_inputs=expected_inputs,
+            test_cmd=test_cmd,
         )
     )
     _maybe_print_feedback_footer()
@@ -388,6 +412,7 @@ def _run_extension_flow(
     input_fn: Callable[[str], str],
     *,
     expected_inputs: frozenset[ExpectedInput] | None = None,
+    test_cmd: str | None = None,
 ) -> int:
     try:
         session = _select_extension_session(args, input_fn)
@@ -423,6 +448,7 @@ def _run_extension_flow(
             args,
             session_label=_extension_label(session),
             expected_inputs=expected_inputs,
+            test_cmd=test_cmd,
         )
     )
     _maybe_print_feedback_footer()
@@ -566,6 +592,7 @@ def _score_and_render(
     session_id: str | None = None,
     session_label: str | None = None,
     expected_inputs: frozenset[ExpectedInput] | None = None,
+    test_cmd: str | None = None,
 ) -> str:
     score = score_tool_selection(trace, set(expected))
     # Scored ONLY when --expected-input was given, so a run without the flag keeps
@@ -587,6 +614,10 @@ def _score_and_render(
         if any(call.name == "editor" for call in trace.tool_calls)
         else None
     )
+    # Checked ONLY when --test-cmd was given; the same omit-in-the-caller split.
+    test_cmd_check: CmdAfterEditCheck | None = (
+        cmd_after_edit_check(trace, test_cmd) if test_cmd is not None else None
+    )
     return render_report(
         trace,
         score,
@@ -597,6 +628,7 @@ def _score_and_render(
         apply_recovery=recovery_score,
         editor_recovery=editor_score,
         tool_input=input_score,
+        test_cmd=test_cmd_check,
         expected_provided=expected_provided,
         advice=args.advice,
         verbose=args.verbose,

@@ -42,6 +42,7 @@ from clinescope.advice import (
     advice_for_tool_selection,
 )
 from clinescope.apply_recovery import ApplyRecoveryScore
+from clinescope.cmd_after_edit import CmdAfterEditCheck
 from clinescope.diff_coherence import (
     DiffCoherenceScore,
     diff_coherence_select_apply_patch,
@@ -72,6 +73,7 @@ def render_report(
     apply_recovery: ApplyRecoveryScore | None = None,
     editor_recovery: EditorRecoveryScore | None = None,
     tool_input: ToolInputScore | None = None,
+    test_cmd: CmdAfterEditCheck | None = None,
     expected_provided: bool = True,
     advice: bool = False,
     verbose: bool = False,
@@ -84,7 +86,8 @@ def render_report(
     # editor_recovery is the editor-family sibling of apply_recovery. Callers pass
     # it only when the trace actually contains an editor call, so an apply_patch
     # trace renders byte-identically to before this scorer existed. tool_input is
-    # passed only when --expected-input was given, for the same reason.
+    # passed only when --expected-input was given, and test_cmd only when --test-cmd
+    # was, for the same reason.
     if verbose:
         return _render_verbose(
             trace,
@@ -96,6 +99,7 @@ def render_report(
             apply_recovery=apply_recovery,
             editor_recovery=editor_recovery,
             tool_input=tool_input,
+            test_cmd=test_cmd,
         )
     summary = _render_summary(
         trace,
@@ -107,6 +111,7 @@ def render_report(
         apply_recovery=apply_recovery,
         editor_recovery=editor_recovery,
         tool_input=tool_input,
+        test_cmd=test_cmd,
         expected_provided=expected_provided,
     )
     if not advice:
@@ -177,6 +182,7 @@ def _render_summary(
     apply_recovery: ApplyRecoveryScore | None,
     editor_recovery: EditorRecoveryScore | None = None,
     tool_input: ToolInputScore | None = None,
+    test_cmd: CmdAfterEditCheck | None = None,
     expected_provided: bool,
 ) -> str:
     subject = _header_subject(session_id, session_label)
@@ -205,6 +211,8 @@ def _render_summary(
         lines.append(_render_summary_apply_recovery(apply_recovery))
     if editor_recovery is not None:
         lines.append(_render_summary_editor_recovery(editor_recovery))
+    if test_cmd is not None:
+        lines.append(f"{'test_cmd':<{_SUMMARY_NAME_WIDTH}} {_test_cmd_text(test_cmd)}")
     footer = _summary_footer(
         score,
         expected_provided,
@@ -213,6 +221,7 @@ def _render_summary(
         apply_recovery,
         editor_recovery,
         tool_input,
+        test_cmd,
     )
     if footer is not None:
         lines.append(footer)
@@ -458,6 +467,7 @@ def _summary_footer(
     apply_recovery: ApplyRecoveryScore | None,
     editor_recovery: EditorRecoveryScore | None = None,
     tool_input: ToolInputScore | None = None,
+    test_cmd: CmdAfterEditCheck | None = None,
 ) -> str | None:
     # A positive takeaway on a clean run (U1): if nothing scored below its bar,
     # say so plainly rather than leaving the reader to eyeball four lines. A
@@ -467,6 +477,13 @@ def _summary_footer(
     # tool_input, like tool_selection, blocks it with any missing input.
     tool_ok = ((not expected_provided) or not score.missing) and (
         tool_input is None or not tool_input.missing
+    )
+    # test_cmd is not a scorer, but a command that did not run after the last edit,
+    # or ran and Cline marked it failed, is something to fix (decided 2026-09-28).
+    # n/a and a missing Cline verdict stay neutral.
+    test_cmd_ok = test_cmd is None or not (
+        test_cmd.status == "not_run"
+        or (test_cmd.status == "ran" and test_cmd.success is False)
     )
     coherence_ok = (
         diff_coherence is None
@@ -494,6 +511,7 @@ def _summary_footer(
         and minimality_ok
         and recovery_ok
         and editor_recovery_ok
+        and test_cmd_ok
     ):
         return "clean run - nothing to fix"
     return None
@@ -551,6 +569,7 @@ def _render_verbose(
     apply_recovery: ApplyRecoveryScore | None,
     editor_recovery: EditorRecoveryScore | None = None,
     tool_input: ToolInputScore | None = None,
+    test_cmd: CmdAfterEditCheck | None = None,
 ) -> str:
     lines = ["=== clinescope report ==="]
     if session_label is not None:
@@ -605,7 +624,42 @@ def _render_verbose(
         lines.extend(_render_apply_recovery(apply_recovery))
     if editor_recovery is not None:
         lines.extend(_render_editor_recovery(editor_recovery))
+    if test_cmd is not None:
+        lines += [
+            "",
+            "[test_cmd]",
+            f"result:         {_test_cmd_text(test_cmd)}",
+            f"last_edit_call: {_render_optional_index(test_cmd.last_edit_index)}",
+            f"command_call:   {_render_optional_index(test_cmd.command_index)}",
+        ]
     return "\n".join(lines)
+
+
+def _test_cmd_text(check: CmdAfterEditCheck) -> str:
+    # What Cline recorded, never a verdict of Clinescope's own: "ran" plus Cline's
+    # flag, or why nothing could be read. Cline's error text is trace content, so it is
+    # neutralized here, where it is read.
+    if check.status == "ran":
+        if check.success is True:
+            detail = "Cline: success"
+        elif check.success is False and check.error is not None:
+            detail = f"Cline: {quote_untrusted_text(check.error)}"
+        elif check.success is False:
+            detail = "Cline: failed"
+        else:
+            detail = "no Cline verdict"
+        return f"ran   (after the last edit; {detail})"
+    if check.status == "not_run":
+        return "not run   (no matching command after the last edit)"
+    if check.status == "no_edit":
+        return "n/a   (no edit in trace)"
+    if check.status == "every_edit_failed":
+        return "n/a   (every edit failed)"
+    return "n/a   (this trace uses execute_command, which is not read)"
+
+
+def _render_optional_index(index: int | None) -> str:
+    return "-" if index is None else str(index)
 
 
 def _render_diff_coherence(
