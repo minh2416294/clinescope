@@ -102,7 +102,8 @@ and both scorers keep returning plausible numbers computed against the wrong not
 with nothing failing.
 
 Owners: `src/clinescope/world_a.py` for the join, `src/clinescope/apply_recovery.py` and
-`src/clinescope/editor_recovery.py` for the comparisons that depend on it.
+`src/clinescope/editor_recovery.py` for the comparisons that depend on it. The `--test-cmd`
+line in `src/clinescope/cmd_after_edit.py` reads "after the last edit" the same way.
 
 **No-agent zone.**
 

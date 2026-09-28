@@ -44,7 +44,9 @@ score. An omitted report line is not a scorer state at all: `src/clinescope/edit
 always returns a fully formed result, and the decision to leave its line out is taken in
 `src/clinescope/__main__.py`, which scores it only when the trace contains a call to the tool
 it grades. `src/clinescope/tool_input.py` is split the same way: `__main__.py` scores it only
-when `--expected-input` is given. Somebody looking for the omission inside the scorer will not find it. The same
+when `--expected-input` is given, and the `--test-cmd` line from `src/clinescope/cmd_after_edit.py`
+(a context check, not a scorer) is computed only when that flag is given. Somebody looking for the
+omission inside the scorer will not find it. The same
 split applies to the `n/a` that `diff_coherence` shows on an editor run: the scorer still
 returns its hard zero, and `src/clinescope/report.py` decides to display `n/a`, in
 `is_editor_run`, which `compare.py` and `corpus.py` call rather than repeating the rule.

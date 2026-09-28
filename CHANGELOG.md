@@ -8,6 +8,20 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Added
 
+- `--test-cmd TEXT`, which adds a `test_cmd` line to the report and to `--verbose`.
+  It says whether a `run_commands` entry whose command contains TEXT ran after the
+  last edit Cline did not mark failed, and what Cline recorded for the last such
+  entry: `success`, Cline's own error text, `failed`, or `no Cline verdict`. It
+  shows `n/a` for a run with no edit, a run whose every edit failed, and a trace
+  that uses `execute_command`, which it does not read. It is not a score and runs
+  nothing. `not run`, or a run Cline marked failed, keeps the clean-run footer off.
+  The last edit is the last edit to any file, so a helper script the agent writes
+  after running its tests turns that run into `not run`, as in
+  `examples/live-test-cmd-helper-edit.json`. Cline keeps one flag per command
+  line, so a chained line can read `success` after its first command failed. An empty text exits 2. Without the flag the
+  report is unchanged. No gate flag and no `compare` or corpus column. Two real
+  Cline CLI captures back the tests: `examples/live-test-cmd-ran.json` and
+  `examples/live-test-cmd-helper-edit.json`.
 - `tool_input`, a sixth scorer, and `--expected-input TOOL KEY=VALUE` to drive it.
   It scores the fraction of the inputs you name that at least one `editor` call
   carried. A `path` matches on its ending after the recovery scorers' folding, so
