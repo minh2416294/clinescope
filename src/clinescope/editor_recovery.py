@@ -19,12 +19,12 @@ CONFIRMED non-failing re-touched the same path" -- NOT that the retry actually f
 anything. It does NOT verify the retry addressed the same region of the file, does
 NOT verify semantic correctness, and is BLIND to cross-tool recovery: an agent that
 abandons ``editor`` and fixes the file with ``run_commands`` scores that failure as
-UNrecovered, a disclosed false negative. Path matching is LITERAL (rstrip only, no
-case-fold, no separator normalisation), so the same file spelled two ways is a false
-miss -- and on Windows that is a live risk, because the same file reached through Git
-Bash arrives as ``/c/Users/...`` and through PowerShell as ``C:\\Users\\...``. A LOW
-score means "did not recover via a same-path confirmed editor call", NOT "did not
-recover".
+UNrecovered, a disclosed false negative. Paths are compared by
+:func:`clinescope.recovery_path.recovery_path_key`, which folds only the separator and
+the drive prefix, so ``/c/Users/...`` (Git Bash) and ``C:\\Users\\...`` (PowerShell)
+match, but a case difference or a relative spelling of the same file is still a false
+miss. A LOW score means "did not recover via a same-path confirmed editor call", NOT
+"did not recover".
 
 **Two differences from the ``apply_patch`` sibling, and nothing else:**
 
@@ -61,6 +61,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from clinescope.recovery_path import recovery_path_key
 from clinescope.tool_verdict import tool_verdict_effective
 from clinescope.world_a import ToolCall, Trace
 
@@ -131,6 +132,7 @@ class _EditorView:
     is_error: bool | None
     raw_is_error: bool | None
     path: str
+    key: str
 
 
 def score_editor_recovery(trace: Trace) -> EditorRecoveryScore:
@@ -168,12 +170,14 @@ def _editor_views(trace: Trace) -> list[_EditorView]:
     for index, call in enumerate(trace.tool_calls):
         if call.name != "editor":
             continue
+        path = _editor_target_path(call)
         views.append(
             _EditorView(
                 index=index,
                 is_error=tool_verdict_effective(call),
                 raw_is_error=call.is_error,
-                path=_editor_target_path(call),
+                path=path,
+                key=recovery_path_key(path),
             )
         )
     return views
@@ -182,8 +186,8 @@ def _editor_views(trace: Trace) -> list[_EditorView]:
 def _editor_target_path(call: ToolCall) -> str:
     """The edited file path, or the ``<no path>`` sentinel.
 
-    Read literally off ``input["path"]`` with a trailing-whitespace strip and no
-    other normalisation, matching the sibling's literal-path rule. A non-``str`` or
+    Read off ``input["path"]`` with a trailing-whitespace strip, the same as the
+    sibling. This is the display spelling; matching uses its ``recovery_path_key``. A non-``str`` or
     empty value is a mis-shaped call, not a path.
     """
     raw = call.input.get("path")
@@ -255,16 +259,18 @@ def _editor_pair_is_recovered(
     """
     if path == _PATHLESS:
         return False
+    key = recovery_path_key(path)
     return any(
-        view.index > fail_index and view.is_error is False and view.path == path
+        view.index > fail_index and view.is_error is False and view.key == key
         for view in views
     )
 
 
 def _editor_first_fixer(fail_index: int, path: str, views: list[_EditorView]) -> int:
     """Index of the FIRST later confirmed call that re-touched path (for evidence)."""
+    key = recovery_path_key(path)
     for view in views:
-        if view.index > fail_index and view.is_error is False and view.path == path:
+        if view.index > fail_index and view.is_error is False and view.key == key:
             return view.index
     return -1
 
@@ -278,7 +284,9 @@ def _editor_refail_count(
         for fail_index, path in failures
         if path != _PATHLESS
         and any(
-            view.index > fail_index and view.is_error is True and view.path == path
+            view.index > fail_index
+            and view.is_error is True
+            and view.key == recovery_path_key(path)
             for view in views
         )
     )
@@ -297,7 +305,9 @@ def _editor_unverified_count(
         for fail_index, path in failures
         if path != _PATHLESS
         and any(
-            view.index > fail_index and view.is_error is None and view.path == path
+            view.index > fail_index
+            and view.is_error is None
+            and view.key == recovery_path_key(path)
             for view in views
         )
     )

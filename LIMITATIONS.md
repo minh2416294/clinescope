@@ -56,8 +56,10 @@ Of every `apply_patch` Cline marked failed, it scores the fraction later recover
 that: it does NOT verify the retry fixed the original defect, does NOT verify semantic correctness, and
 matches at FILE granularity (a later unrelated edit to the same file counts). It is BLIND to cross-tool
 recovery: an agent that abandons `apply_patch` and correctly fixes the file via `write_to_file` /
-`replace_in_file` scores that failure as unrecovered (a disclosed false negative). Path matching is
-literal, so the same file spelled differently is a false miss. It abstains (`n/a`) when nothing failed.
+`replace_in_file` scores that failure as unrecovered (a disclosed false negative). Path matching folds
+only `\` versus `/` and the drive prefix, so `/c/Users/...` and `C:\Users\...` count as one file, but a
+case difference or a relative spelling of the same file is still a false miss. The rule, and its one
+known false match, are in `src/clinescope/recovery_path.py`. It abstains (`n/a`) when nothing failed.
 
 What to do instead: read a LOW score as "did not recover via a same-file confirmed apply_patch", not "did
 not recover at all"; confirm real fixes by inspecting the trajectory.
@@ -68,10 +70,11 @@ Of every `editor` call Cline marked failed, it scores the fraction later recover
 `editor` call Cline confirmed non-failing on the same path. Every caveat on `apply_recovery` above applies
 unchanged: it does NOT verify the retry fixed anything, does NOT verify semantic correctness, and matches
 at FILE granularity. It is BLIND to cross-tool recovery, so an agent that abandons `editor` and fixes the
-file with `run_commands` scores that failure as unrecovered. Path matching is LITERAL, and on Windows that
-is a live risk rather than a theoretical one: the same file reached through Git Bash arrives as
-`/c/Users/...` and through PowerShell as `C:\Users\...`, and those will not match each other. It abstains
-(`n/a`) when nothing failed.
+file with `run_commands` scores that failure as unrecovered. Path matching uses the same rule as its
+sibling: the same file reached through Git Bash as `/c/Users/...` and through PowerShell as
+`C:\Users\...` now matches, and a case or relative-path difference still does not. On a Linux trace that
+names a real top-level folder `c`, `/c/data/x.py` and `C:\data\x.py` would falsely match; both spellings
+have to appear in one trace for that to happen. It abstains (`n/a`) when nothing failed.
 
 Unlike its sibling it has no `partially_recovered_failures` counter, because one `editor` call touches
 exactly one path and so can never be half-recovered.

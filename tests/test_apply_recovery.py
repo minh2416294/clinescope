@@ -766,3 +766,44 @@ def test_recovery_example_scores_1_directly() -> None:
     assert result.applicable is True
     assert result.total_failed_pairs == 1
     assert result.confirmed_recovered_pairs == 1
+
+
+# --- one file, two spellings (recovery_path_key) ------------------------------
+# Same rule as editor_recovery: a confirmed retry of one file under its Git Bash
+# spelling or its Windows spelling is the same file.
+
+
+def test_git_bash_and_windows_spellings_of_one_file_recover() -> None:
+    trace = _recovery_trace(
+        _apply_call("c1", _update_patch("/c/Users/m/app.py"), is_error=True),
+        _apply_call("c2", _update_patch("C:\\Users\\m\\app.py"), is_error=False),
+    )
+    result = score_apply_recovery(trace)
+
+    assert result.score == 1.0
+    assert result.confirmed_recovered_pairs == 1
+    assert result.violations == ()
+    assert result.recovery_pairs == ((0, 1, "/c/Users/m/app.py"),)
+
+
+def test_a_case_difference_after_the_drive_is_still_a_miss() -> None:
+    trace = _recovery_trace(
+        _apply_call("c1", _update_patch("C:\\Users\\M\\app.py"), is_error=True),
+        _apply_call("c2", _update_patch("C:\\Users\\m\\app.py"), is_error=False),
+    )
+    result = score_apply_recovery(trace)
+
+    assert result.score == 0.0
+
+
+def test_refail_and_unverified_reattempt_match_across_spellings() -> None:
+    trace = _recovery_trace(
+        _apply_call("c1", _update_patch("/c/Users/m/app.py"), is_error=True),
+        _apply_call("c2", _update_patch("C:\\Users\\m\\app.py"), is_error=True),
+        _apply_call("c3", _update_patch("c:/Users/m/app.py"), is_error=None),
+    )
+    result = score_apply_recovery(trace)
+
+    assert result.score == 0.0
+    assert result.same_file_refail_count == 1
+    assert result.unverified_reattempt_pairs == 2

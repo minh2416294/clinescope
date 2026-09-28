@@ -43,7 +43,7 @@ between the check and the thing you might assume it checks is where every false 
 | `diff_coherence` | Grammar coherence of the first `apply_patch` against Cline's `*** Begin Patch` grammar. | Grammar read from the patch **text alone**. It is **not** apply-against-a-real-file success. |
 | `diff_minimality` | Flags blind whole-block rewrites: 3 or more deleted lines immediately retyped with no anchor. | Reference-free, and detects **one** bloat shape. Its score also depends on file layout. |
 | `apply_recovery` | Of every `apply_patch` Cline marked failed, the fraction recovered by a strictly-later confirmed one. | Trajectory recovery, **not** fix-correctness. |
-| `editor_recovery` | The same, ported to Cline's `editor` tool: of every failed `editor` call, the fraction re-touched by a strictly-later confirmed `editor` call on the same path. | Trajectory pattern only. Blind to cross-tool recovery, and path matching is literal, so one file spelled two ways is a false miss. A low score means "did not recover via a same-path confirmed editor call", not "did not recover". |
+| `editor_recovery` | The same, ported to Cline's `editor` tool: of every failed `editor` call, the fraction re-touched by a strictly-later confirmed `editor` call on the same path. | Trajectory pattern only. Blind to cross-tool recovery. Path matching folds only `\` versus `/` and the drive prefix (`recovery_path.py`), so a case or relative-path difference in one file's spelling is still a false miss. A low score means "did not recover via a same-path confirmed editor call", not "did not recover". |
 
 **Which scorers fire depends on the trace.** The three `apply_patch` scorers grade
 `apply_patch` grammar only. Almost no current Cline session emits `apply_patch`: all five tool
@@ -312,6 +312,7 @@ src/clinescope/        the package
   apply_recovery.py    scorer
   editor_recovery.py   scorer
   tool_verdict.py      shared failure/success oracle for the two recovery scorers
+  recovery_path.py     shared path-spelling key the two recovery scorers match files on
   tool_vocab.py        pinned Cline tool-name vocabulary for --expected
   report.py            rendering
   render_safety.py     escapes trace-derived text before it is rendered
