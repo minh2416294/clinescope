@@ -4,7 +4,13 @@ All notable changes to Clinescope are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.3.0] - 2026-09-28
+
+Most current Cline sessions edit with `editor`, not `apply_patch`, so 1.2.1 had
+almost nothing to score on them. This release adds two scorers for those runs,
+`editor_recovery` and `tool_input`, gate flags `--min-editor-recovery` and
+`--min-tool-selection`, and three context lines, `cline_verdict`, `test_cmd` and
+`editor_newlines`, that show what Cline recorded without scoring it.
 
 ### Added
 
@@ -365,11 +371,6 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Known limitation
 
-- `editor_recovery` is report-only in this release. It renders in the `clinescope`
-  report and feeds `--advice`, but `clinescope-gate`, `python -m clinescope.compare`
-  and `clinescope-corpus` do not read it yet, so an editor-only session has no
-  gateable signal. Wiring it into the gate is deliberately deferred until someone
-  gates CI on one.
 - There is no shape scorer for `editor`, only this trajectory one. A candidate
   design exists and was not shipped, because every real `editor` replacement call
   available scores clean under it, so the check would have been unexercised by
@@ -632,6 +633,7 @@ with four deterministic scorers (`tool_selection`, `diff_coherence`,
 chance-level and kept out of the gate, a real-trace validation corpus, a CI gate,
 and `--advice` / `--compare`.
 
+[1.3.0]: https://github.com/minh2416294/clinescope/releases/tag/v1.3.0
 [1.2.1]: https://github.com/minh2416294/clinescope/releases/tag/v1.2.1
 [1.2.0]: https://github.com/minh2416294/clinescope/releases/tag/v1.2.0
 [1.1.0]: https://github.com/minh2416294/clinescope/releases/tag/v1.1.0
