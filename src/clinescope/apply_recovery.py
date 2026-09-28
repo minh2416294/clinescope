@@ -23,9 +23,9 @@ later unrelated edit to the same file counts), does NOT verify semantic correctn
 and is BLIND to cross-tool recovery: an agent that abandons ``apply_patch`` and
 correctly fixes the file via ``write_to_file`` / ``replace_in_file`` scores that failure
 as UNrecovered -- a disclosed false-negative, so a LOW score means "did not recover
-via a same-file confirmed apply_patch", NOT "did not recover". Literal path matching
-(no case-fold, no slash/relative normalization) false-MISSES the same file spelled
-differently. It is deliberately CONSERVATIVE on missing verdicts: a later same-file
+via a same-file confirmed apply_patch", NOT "did not recover". Path matching folds
+only the separator and the drive prefix (:mod:`clinescope.recovery_path`), so a case
+difference or a relative spelling of the same file still false-MISSES. It is deliberately CONSERVATIVE on missing verdicts: a later same-file
 retry with ``is_error is None`` (no ``tool_result`` -- a truncated trace) is NOT
 scored as recovery, only surfaced on ``unverified_reattempt_pairs``, so the number
 can never be inflated by truncating the log. A HIGH score means "failed patches were
@@ -56,7 +56,8 @@ re-attempted on the same files and Cline confirmed those re-attempts applied", N
   ``*** Update File:`` and ``*** Add File:`` headers, plus the ``*** Move to:``
   DESTINATION. It EXCLUDES ``*** Delete File:`` paths and the Move SOURCE: re-deleting
   a named file, or touching a file's pre-rename name, is not evidence the failed
-  EDIT was re-applied. Paths matched literally (rstrip only), no normalization.
+  EDIT was re-applied. Paths are rstripped, then compared by
+  :func:`clinescope.recovery_path.recovery_path_key`; messages keep the raw spelling.
 * Scored per failed FILE, not per failed CALL: a call failing on ``{a.py, b.py}``
   contributes 2 pairs; fixing only ``a.py`` scores 0.5 (no laundering a half-fix into
   a full 1.0). ``partially_recovered_failures`` surfaces such calls.
@@ -83,6 +84,7 @@ from clinescope.diff_coherence import (
     diff_coherence_normalize,
     diff_coherence_read_patch_text,
 )
+from clinescope.recovery_path import recovery_path_key
 from clinescope.tool_verdict import tool_verdict_effective
 from clinescope.world_a import ToolCall, Trace
 
@@ -174,6 +176,7 @@ class _ApplyPatchView:
     is_error: bool | None
     raw_is_error: bool | None
     targets: frozenset[str]
+    target_keys: frozenset[str]
     unparseable: bool
 
 
@@ -221,6 +224,7 @@ def _recovery_apply_patch_views(trace: Trace) -> list[_ApplyPatchView]:
                 is_error=tool_verdict_effective(call),
                 raw_is_error=call.is_error,
                 targets=targets,
+                target_keys=frozenset(recovery_path_key(path) for path in targets),
                 unparseable=unparseable,
             )
         )
@@ -358,8 +362,9 @@ def _recovery_pair_is_recovered(
     """
     if path == _UNPARSEABLE:
         return False
+    key = recovery_path_key(path)
     return any(
-        view.index > fail_index and view.is_error is False and path in view.targets
+        view.index > fail_index and view.is_error is False and key in view.target_keys
         for view in views
     )
 
@@ -368,8 +373,13 @@ def _recovery_first_fixer(
     fail_index: int, path: str, views: list[_ApplyPatchView]
 ) -> int:
     """Index of the FIRST later confirmed call that re-touched path (for evidence)."""
+    key = recovery_path_key(path)
     for view in views:
-        if view.index > fail_index and view.is_error is False and path in view.targets:
+        if (
+            view.index > fail_index
+            and view.is_error is False
+            and key in view.target_keys
+        ):
             return view.index
     return -1
 
@@ -393,7 +403,9 @@ def _recovery_refail_count(
         for fail_index, path in failures
         if path != _UNPARSEABLE
         and any(
-            view.index > fail_index and view.is_error is True and path in view.targets
+            view.index > fail_index
+            and view.is_error is True
+            and recovery_path_key(path) in view.target_keys
             for view in views
         )
     )
@@ -412,7 +424,9 @@ def _recovery_unverified_count(
         for fail_index, path in failures
         if path != _UNPARSEABLE
         and any(
-            view.index > fail_index and view.is_error is None and path in view.targets
+            view.index > fail_index
+            and view.is_error is None
+            and recovery_path_key(path) in view.target_keys
             for view in views
         )
     )

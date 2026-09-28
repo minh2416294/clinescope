@@ -23,6 +23,7 @@ back: a scorer never reads a report, and a renderer never re-scores.
 | Trace loading, the version gate, and what the loader refuses to coerce | `src/clinescope/world_a.py`, module docstring |
 | The second trace format, and why it is an adapter rather than a model | `src/clinescope/cline_extension.py`, module docstring |
 | How a tool-call verdict is resolved, and why it fails closed | `src/clinescope/tool_verdict.py`, module docstring |
+| When the two recovery scorers treat two path spellings as one file, and the rule's known false match | `src/clinescope/recovery_path.py`, module docstring |
 | The gate's exit contract, and why applicability is decided on a call count | `src/clinescope/gate.py`, module docstring |
 | Why the multi-trace scorecard is a sibling command and never a build gate | `src/clinescope/compare.py`, module docstring |
 | Neutralising untrusted text: the repr choice, the quotes, the leaf-module rule | `src/clinescope/render_safety.py`, module docstring |

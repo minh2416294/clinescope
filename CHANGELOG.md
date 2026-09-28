@@ -211,6 +211,14 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Fixed
 
+- `apply_recovery` and `editor_recovery` no longer count one Windows file spelled two
+  ways as two files. Both now match on `recovery_path_key`, which turns `\` into `/`,
+  `/c/` into `c:/`, and lowercases the drive letter only, so a failure on
+  `/c/Users/m/app.py` recovered by a confirmed edit to `C:\Users\m\app.py` now counts.
+  A case difference or a relative spelling is still a miss, and a Linux folder named
+  `c` can falsely match drive C (pinned in a test). No score changed on any of the 76
+  committed traces or on the maintainer's 24 local sessions, so this closes a
+  documented risk rather than correcting a score anyone has seen.
 - A second audit, run by reading every claim against the code it describes rather
   than by grepping, reconciled nine more contradictions. The ones a reader would have
   acted on: `.claude/claude-security-guidance.md` said there is exactly one outbound

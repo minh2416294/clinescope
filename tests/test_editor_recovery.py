@@ -389,6 +389,67 @@ def test_trailing_whitespace_is_stripped_before_paths_are_matched() -> None:
     assert result.failed_target_paths == (CALC,)
 
 
+# --- one file, two spellings (recovery_path_key) ------------------------------
+# Git Bash hands Cline "/c/Users/...", PowerShell hands it "C:\Users\...". Both
+# name one file, so a confirmed retry under the other spelling is a recovery.
+
+GIT_BASH_APP = "/c/Users/m/app.py"
+WINDOWS_APP = "C:\\Users\\m\\app.py"
+
+
+def test_git_bash_and_windows_spellings_of_one_file_recover() -> None:
+    trace = _editor_trace(
+        _editor_call("c1", GIT_BASH_APP, is_error=True),
+        _editor_call("c2", WINDOWS_APP, is_error=False),
+    )
+    result = score_editor_recovery(trace)
+
+    assert result.score == 1.0
+    assert result.confirmed_recovered_pairs == 1
+    assert result.violations == ()
+    # Evidence keeps the spelling the trace used for the failure.
+    assert result.recovery_pairs == ((0, 1, GIT_BASH_APP),)
+    assert result.failed_target_paths == (GIT_BASH_APP,)
+
+
+def test_a_case_difference_after_the_drive_is_still_a_miss() -> None:
+    trace = _editor_trace(
+        _editor_call("c1", "C:\\Users\\M\\app.py", is_error=True),
+        _editor_call("c2", WINDOWS_APP, is_error=False),
+    )
+    result = score_editor_recovery(trace)
+
+    assert result.score == 0.0
+    assert result.unrecovered_pairs == 1
+
+
+def test_known_false_match_linux_folder_named_c_counts_as_recovery() -> None:
+    # Documented cost of the rule: on Linux, /c/data is a real top-level folder,
+    # not drive C. If one trace names both, they match. Pinned so it stays known.
+    trace = _editor_trace(
+        _editor_call("c1", "/c/data/x.py", is_error=True),
+        _editor_call("c2", "C:\\data\\x.py", is_error=False),
+    )
+    result = score_editor_recovery(trace)
+
+    assert result.score == 1.0
+
+
+def test_refail_and_unverified_reattempt_match_across_spellings() -> None:
+    # Pairs: (0, git-bash spelling) and (1, windows spelling). Pair 0 fails again
+    # at call 1 under the other spelling; both pairs see a verdictless retry at 2.
+    trace = _editor_trace(
+        _editor_call("c1", GIT_BASH_APP, is_error=True),
+        _editor_call("c2", WINDOWS_APP, is_error=True),
+        _editor_call("c3", "c:/Users/m/app.py", is_error=None),
+    )
+    result = score_editor_recovery(trace)
+
+    assert result.score == 0.0
+    assert result.same_file_refail_count == 1
+    assert result.unverified_reattempt_pairs == 2
+
+
 def test_verdict_coverage_reports_a_partial_fraction() -> None:
     # One resolved verdict, one unresolved. Pins a NON-endpoint coverage value so a
     # mutant returning only 0.0/1.0 for coverage fails.
