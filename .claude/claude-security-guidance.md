@@ -84,7 +84,7 @@ radius is a published agreement figure, never a build verdict. Rate it according
 its threshold, 1 when one genuinely regressed, and 2 when nothing was verified. An abstention must
 never become a 1, and a usage error must never become a 0 or a 1. The decision that a trace with no
 `apply_patch` is not applicable is made on `apply_patch_call_count`, not on the score
-(`gate.py:203`), so a malformed patch that really is present still fails the build. A change that
+(`gate.py:228`), so a malformed patch that really is present still fails the build. A change that
 lets a scorer's placeholder zero reach the gate as a regression verdict is a real finding.
 
 **4. Every action reference is a full commit SHA.** In `.github/workflows/`, a `uses:` line pinned

@@ -237,7 +237,7 @@ Pass `--expected editor read_files` on those runs, not `apply_patch`:
 clinescope path/to/messages.json --expected editor read_files
 ```
 
-`editor_recovery` asks the `apply_recovery` question of the `editor` tool: of every `editor` call Cline marked failed, how many did a later confirmed `editor` call on the same path re-touch? The `diff_coherence 0/100` above still means "no `apply_patch` to grade here", not "your agent wrote a broken patch". There is no shape or grammar scorer for `editor`, and [LIMITATIONS.md](../LIMITATIONS.md) explains why, plus why you should not gate CI on an editor-only trace yet.
+`editor_recovery` asks the `apply_recovery` question of the `editor` tool: of every `editor` call Cline marked failed, how many did a later confirmed `editor` call on the same path re-touch? The `diff_coherence 0/100` above still means "no `apply_patch` to grade here", not "your agent wrote a broken patch". There is no shape or grammar scorer for `editor`, and [LIMITATIONS.md](../LIMITATIONS.md) explains why. To gate CI on an editor run, see [Gate a run in CI](usage.md#gate-a-run-in-ci).
 
 ## 5. Improve the agent
 

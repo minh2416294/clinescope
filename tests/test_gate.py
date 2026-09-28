@@ -19,6 +19,7 @@ Ground-truth is the real scorers, never a hand-asserted score (Day-16 lesson):
 from __future__ import annotations
 
 import ast
+import json
 from math import sqrt
 from pathlib import Path
 from statistics import NormalDist
@@ -430,6 +431,197 @@ def test_malformed_patch_still_fails_the_gate() -> None:
     report = run_gate(trace, {"diff_coherence": 0.75})
     assert report.exit_code == 1
     assert report.all_abstained is False
+
+
+# --- gating an editor run: --min-editor-recovery and --min-tool-selection ----
+# Almost every current Cline session edits with `editor`. editor_recovery is the one
+# scorer that grades those edits, and tool_selection is the one that yields a number on
+# every run, so a clean editor run (nothing failed, editor_recovery n/a) can still pass.
+
+
+def _editor_call(call_id: str, path: str, *, is_error: bool | None) -> ToolCall:
+    return ToolCall(
+        id=call_id,
+        name="editor",
+        input={"path": path, "old_text": "a\n", "new_text": "b\n"},
+        result_content=None if is_error is None else "result",
+        is_error=is_error,
+    )
+
+
+def _write_clean_editor_trace(tmp_path: Path) -> Path:
+    trace = tmp_path / "clean-editor.json"
+    trace.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "sessionId": "clean-editor-1",
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "id": "call-1",
+                                "name": "editor",
+                                "input": {"path": "a.py", "new_text": "x = 1\n"},
+                            }
+                        ],
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": "call-1",
+                                "content": "ok",
+                                "is_error": False,
+                            }
+                        ],
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return trace
+
+
+@pytest.mark.skipif(
+    not EDITOR_ONLY.exists(), reason="real editor-only trace not present"
+)
+def test_main_editor_recovery_passes_on_a_recovered_editor_run(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = main([str(EDITOR_ONLY), "--min-editor-recovery", "1.0"])
+
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "[gate] editor_recovery: 1.0000 >= min 1.0000 -> PASS" in out
+    assert "VERDICT: PASS (thresholds: editor_recovery>=1.0000)" in out
+
+
+def test_run_gate_unrecovered_editor_failure_fails_exit_1() -> None:
+    trace = Trace(
+        version=1,
+        turns=(),
+        tool_calls=(_editor_call("c1", "a.py", is_error=True),),
+        dropped_items=(),
+    )
+    report = run_gate(trace, {"editor_recovery": 1.0})
+
+    assert report.exit_code == 1
+    assert report.results[0].actual == 0.0
+
+
+def test_main_clean_editor_run_needs_tool_selection_to_pass(tmp_path: Path) -> None:
+    clean = _write_clean_editor_trace(tmp_path)
+
+    # Nothing failed, so editor_recovery abstains and nothing is verified.
+    assert main([str(clean), "--min-editor-recovery", "1.0"]) == 2
+    # tool_selection yields a number on every run, so the clean run can pass.
+    assert (
+        main(
+            [
+                str(clean),
+                "--min-editor-recovery",
+                "1.0",
+                "--min-tool-selection",
+                "1.0",
+                "--expected",
+                "editor",
+            ]
+        )
+        == 0
+    )
+
+
+@pytest.mark.skipif(
+    not EDITOR_ONLY.exists(), reason="real editor-only trace not present"
+)
+def test_main_tool_selection_below_its_bar_fails_exit_1(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # The trace calls read_files and editor, never apply_patch: recall 1 of 2.
+    exit_code = main(
+        [
+            str(EDITOR_ONLY),
+            "--min-tool-selection",
+            "1.0",
+            "--expected",
+            "editor",
+            "apply_patch",
+        ]
+    )
+
+    assert exit_code == 1
+    assert (
+        "[gate] tool_selection: 0.5000 < min 1.0000 -> FAIL" in capsys.readouterr().out
+    )
+
+
+@pytest.mark.skipif(
+    not EDITOR_ONLY.exists(), reason="real editor-only trace not present"
+)
+def test_main_editor_run_gated_only_on_apply_patch_flags_prints_a_hint(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = main([str(EDITOR_ONLY), "--min-diff-coherence", "0.75"])
+
+    assert exit_code == 2
+    err = capsys.readouterr().err
+    assert (
+        "hint: this trace has 2 editor calls and 0 apply_patch calls; "
+        "gate it with --min-editor-recovery" in err
+    )
+
+
+def test_main_min_tool_selection_without_expected_is_exit_2(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = main([str(BASELINE), "--min-tool-selection", "1.0"])
+
+    assert exit_code == 2
+    assert "error: --min-tool-selection needs --expected" in capsys.readouterr().err
+
+
+def test_main_expected_without_min_tool_selection_is_exit_2(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = main(
+        [str(BASELINE), "--min-diff-coherence", "0.75", "--expected", "apply_patch"]
+    )
+
+    assert exit_code == 2
+    err = capsys.readouterr().err
+    assert "error: --expected is only read by --min-tool-selection" in err
+
+
+def test_main_no_threshold_error_names_the_new_flags(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert main([str(BASELINE)]) == 2
+    err = capsys.readouterr().err
+    assert "--min-tool-selection" in err
+    assert "--min-editor-recovery" in err
+
+
+def test_main_unknown_expected_name_warns_like_the_cli(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    main([str(BASELINE), "--min-tool-selection", "0.5", "--expected", "editr"])
+
+    assert "warning: unknown tool 'editr'" in capsys.readouterr().err
+
+
+def test_help_says_tool_selection_checks_names_only(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit):
+        main(["--help"])
+
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "tool names only, not their arguments" in help_text
 
 
 # --- the load-bearing constraint: the gate NEVER touches the judge ----------

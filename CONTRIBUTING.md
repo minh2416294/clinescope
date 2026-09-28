@@ -22,7 +22,8 @@ The `[dev]` extra pulls in `pytest`, `pytest-cov`, `ruff`, and `mypy` — the sa
 ## Running the tests and linters
 
 Run these before you push. CI runs the same four, plus a fifth step that dogfoods `clinescope-gate`
-against two committed traces (asserting both a pass and an expected exit-1 regression):
+against three committed traces (passes on two, an expected exit-1 regression, and an exact exit 2 on
+the editor trace gated only on an apply_patch flag):
 
 ```bash
 pytest -q                 # tests

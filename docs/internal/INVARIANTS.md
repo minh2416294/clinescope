@@ -83,7 +83,7 @@ is the only one a build depends on precisely.
 The tidy-up this entry exists to stop is hoisting the integers into one shared constant, which
 reads as removing duplication. It would change several observable contracts at the same time,
 and one of them is asserted in both directions by this project's own continuous integration:
-the dogfood step requires a pass on one committed trace and an exact `1` on another, so a
+the dogfood step requires passes, an exact `1` on one committed trace and an exact `2` on another, so a
 renumbering that still "works" locally fails there for a reason nobody will connect to the
 change. Anything that unifies them needs each command's contract re-derived first.
 
