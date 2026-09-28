@@ -53,10 +53,13 @@ from clinescope.compare import (
     CompareReport,
     CompareRow,
     ScorerCell,
+    editor_recovery_cell,
     render_compare_report,
+    unloaded_row_cells,
 )
 from clinescope.diff_coherence import score_diff_coherence
 from clinescope.diff_minimality import score_diff_minimality
+from clinescope.editor_recovery import score_editor_recovery
 from clinescope.labels import (
     LabelError,
     ScorerExpectation,
@@ -278,6 +281,10 @@ def _score_trace(trace_path: Path, label: TraceLabel) -> _ScoredTrace:
             cell=render_score_out_of_100(value),
             verdict=summary_verdict(value),
         )
+    # Table only: editor_recovery is not in the label vocabulary (_SCORER_COLUMNS).
+    compare_cells["editor_recovery"] = editor_recovery_cell(
+        score_editor_recovery(trace)
+    )
     return _ScoredTrace(
         cells=cells,
         score_is_none=score_is_none,
@@ -409,9 +416,11 @@ def _as_compare_report(report: CorpusReport) -> CompareReport:
 
 def _as_compare_row(item: CorpusItemResult) -> CompareRow:
     if not item.loaded:
-        na = {name: ScorerCell(cell="n/a", verdict="n/a") for name in _SCORER_COLUMNS}
         return CompareRow(
-            label=item.display, cells=na, loaded=False, error="; ".join(item.mismatches)
+            label=item.display,
+            cells=unloaded_row_cells(),
+            loaded=False,
+            error="; ".join(item.mismatches),
         )
     return CompareRow(
         label=item.display, cells=dict(item.compare_cells), loaded=True, error=None

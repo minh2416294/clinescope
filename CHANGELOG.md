@@ -13,6 +13,11 @@ All notable changes to Clinescope are recorded here. The format follows
   `tests/test_version_consistency.py` pins to `pyproject.toml`. Before this the flag
   was rejected with "unrecognized arguments" and the quickstart sent you to
   `pip show`.
+- An `editor_recovery` column in the `python -m clinescope.compare` and
+  `clinescope-corpus` tables. It shows the score when an `editor` call failed,
+  `n/a` when editor ran and nothing failed, and `-` when the trace made no
+  `editor` call, matching the single-trace report, which prints no line then.
+  The corpus shows the column but does not check it against a label.
 - `editor_recovery`, a trajectory scorer for Cline's `editor` tool. Of every
   `editor` call Cline marked failed, it scores the fraction later recovered by a
   strictly-later `editor` call Cline confirmed non-failing on the same path. It

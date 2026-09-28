@@ -35,14 +35,14 @@ clinescope-corpus
 
 ```
 === clinescope compare ===
-trace                                                  tool_selection  diff_coherence  diff_minimality  apply_recovery
------------------------------------------------------  --------------  --------------  ---------------  --------------
-gpt-oss:20b update-1hunk (clean)                       100/100 PASS    100/100 PASS    100/100 PASS     n/a
-gpt-oss:20b add-file (clean)                           100/100 PASS    100/100 PASS    100/100 PASS     n/a
-gpt-oss:20b update-2hunk (clean)                       100/100 PASS    100/100 PASS    100/100 PASS     n/a
-gpt-oss:20b apply-fail (no recovery)                   100/100 PASS    100/100 PASS    100/100 PASS     0/100 FAIL
-qwen2.5-coder:1.5b hallucinated-tool (no apply_patch)  0/100           0/100 FAIL      n/a              n/a
-llama3.1:8b code-dump (no apply_patch)                 0/100           0/100 FAIL      n/a              n/a
+trace                                                  tool_selection  diff_coherence  diff_minimality  apply_recovery  editor_recovery
+-----------------------------------------------------  --------------  --------------  ---------------  --------------  ---------------
+gpt-oss:20b update-1hunk (clean)                       100/100 PASS    100/100 PASS    100/100 PASS     n/a             -
+gpt-oss:20b add-file (clean)                           100/100 PASS    100/100 PASS    100/100 PASS     n/a             -
+gpt-oss:20b update-2hunk (clean)                       100/100 PASS    100/100 PASS    100/100 PASS     n/a             -
+gpt-oss:20b apply-fail (no recovery)                   100/100 PASS    100/100 PASS    100/100 PASS     0/100 FAIL      -
+qwen2.5-coder:1.5b hallucinated-tool (no apply_patch)  0/100           0/100 FAIL      n/a              n/a             -
+llama3.1:8b code-dump (no apply_patch)                 0/100           0/100 FAIL      n/a              n/a             -
 
 === corpus verdict ===
 6/6 items match their labels

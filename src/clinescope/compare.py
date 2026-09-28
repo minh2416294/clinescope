@@ -25,6 +25,9 @@ that trace:
   set; ``PASS`` only at 1.0; a BLANK verdict, never ``FAIL``, for sub-perfect
   recall). A test asserts every ``examples/*.json`` row matches its single-trace
   summary cells.
+* ``editor_recovery`` -> :func:`editor_recovery_cell`: the same two helpers when
+  the trace has an ``editor`` call, and ``-`` when it has none, because the
+  single-trace report prints no editor_recovery line there. ``-`` is not ``n/a``.
 
 **Per-trace expected tools.** ``tool_selection`` scores recall against a
 caller-supplied expected set. Across N heterogeneous traces a single global
@@ -57,6 +60,7 @@ from pathlib import Path
 from clinescope.apply_recovery import score_apply_recovery
 from clinescope.diff_coherence import score_diff_coherence
 from clinescope.diff_minimality import score_diff_minimality
+from clinescope.editor_recovery import EditorRecoveryScore, score_editor_recovery
 from clinescope.labels import LabelError, TraceLabel, labels_load
 from clinescope.report import (
     render_score_out_of_100,
@@ -72,6 +76,7 @@ _SCORER_COLUMNS = (
     "diff_coherence",
     "diff_minimality",
     "apply_recovery",
+    "editor_recovery",
 )
 
 _EXIT_OK = 0
@@ -197,7 +202,7 @@ def _compare_row(trace_path: Path, label: TraceLabel | None) -> CompareRow:
     except Exception as err:  # noqa: BLE001 -- deliberate per-row load boundary (see above)
         return CompareRow(
             label=display,
-            cells=_all_na_cells(),
+            cells=unloaded_row_cells(),
             loaded=False,
             error=f"{type(err).__name__}: {err}",
         )
@@ -237,10 +242,27 @@ def _score_cells(trace: Trace, label: TraceLabel | None) -> dict[str, ScorerCell
             cell=render_score_out_of_100(value),
             verdict=summary_verdict(value),
         )
+    cells["editor_recovery"] = editor_recovery_cell(score_editor_recovery(trace))
     return cells
 
 
-def _all_na_cells() -> dict[str, ScorerCell]:
+def editor_recovery_cell(score: EditorRecoveryScore) -> ScorerCell:
+    """The editor_recovery (cell, verdict), shared with :mod:`clinescope.corpus`.
+
+    ``-`` when the trace has no ``editor`` call: the single-trace report prints no
+    editor_recovery line there, which is a different outcome from an ``n/a``
+    abstention (editor ran, nothing failed) and from a number.
+    """
+    if score.editor_call_count == 0:
+        return ScorerCell(cell="-", verdict="")
+    return ScorerCell(
+        cell=render_score_out_of_100(score.score),
+        verdict=summary_verdict(score.score),
+    )
+
+
+def unloaded_row_cells() -> dict[str, ScorerCell]:
+    """All-``n/a`` cells for a row whose trace could not be loaded."""
     return {name: ScorerCell(cell="n/a", verdict="n/a") for name in _SCORER_COLUMNS}
 
 
