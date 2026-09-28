@@ -32,6 +32,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from clinescope import __version__
 from clinescope._datafiles import DataFilesNotFound, datafiles_root
 from clinescope.apply_recovery import ApplyRecoveryScore, score_apply_recovery
 from clinescope.cline_extension import load_extension_trace
@@ -118,6 +119,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         action=_ListToolsAction,
         nargs=0,
         help="Print the known Cline tool names (for --expected) and exit",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"clinescope {__version__}",
     )
     parser.add_argument(
         "--advice",

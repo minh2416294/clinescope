@@ -2,9 +2,8 @@
 
 The package version lives in two files and, until this test, nothing compared
 them. ``src/clinescope/__init__.py`` defines ``__version__``, which is what a
-user reads via ``python -c "import clinescope; print(clinescope.__version__)"``
-(the check ``docs/quickstart.md`` documents, since there is no ``--version``
-flag). ``pyproject.toml`` holds the version hatchling stamps into the sdist and
+user reads via ``clinescope --version`` (the check ``docs/quickstart.md``
+documents). ``pyproject.toml`` holds the version hatchling stamps into the sdist and
 the wheel, which is what pip and PyPI resolve against.
 
 Bumping one and forgetting the other passed the whole suite, mypy, and CI.
