@@ -41,6 +41,7 @@ from clinescope.cline_extension import load_extension_trace
 from clinescope.cmd_after_edit import CmdAfterEditCheck, cmd_after_edit_check
 from clinescope.diff_coherence import DiffCoherenceScore, score_diff_coherence
 from clinescope.diff_minimality import DiffMinimalityScore, score_diff_minimality
+from clinescope.editor_newlines import EditorNewlinesCheck, editor_newlines_check
 from clinescope.editor_recovery import EditorRecoveryScore, score_editor_recovery
 from clinescope.extension_discovery import (
     ExtensionSession,
@@ -618,6 +619,10 @@ def _score_and_render(
     test_cmd_check: CmdAfterEditCheck | None = (
         cmd_after_edit_check(trace, test_cmd) if test_cmd is not None else None
     )
+    # Checked on the same rule as editor_recovery; the report shows it only on a hit.
+    newlines_check: EditorNewlinesCheck | None = (
+        editor_newlines_check(trace) if editor_score is not None else None
+    )
     return render_report(
         trace,
         score,
@@ -629,6 +634,7 @@ def _score_and_render(
         editor_recovery=editor_score,
         tool_input=input_score,
         test_cmd=test_cmd_check,
+        editor_newlines=newlines_check,
         expected_provided=expected_provided,
         advice=args.advice,
         verbose=args.verbose,
