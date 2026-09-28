@@ -27,6 +27,11 @@ clinescope path/to/messages.json --expected read_files apply_patch
 After `--expected`, list the tools you think the task needed. Run `clinescope --list-tools` to print
 the tools Clinescope knows (both the CLI and the VS Code extension tool names).
 
+If the run used `apply_patch`, the line under `diff_coherence` is `cline_verdict`: what Cline itself
+recorded for the patch `diff_coherence` graded. It reads `applied`, `rejected` followed by Cline's own
+reason, or `no verdict`. A `100/100` next to `rejected` means the patch text was well formed but did not
+fit your file. The line is not a score, and the gate ignores it.
+
 ## Score a VS Code extension session
 
 The Cline VS Code extension stores sessions in a different on-disk format from the CLI. `--vscode` reads

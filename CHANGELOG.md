@@ -8,6 +8,16 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Added
 
+- A `cline_verdict` line under `diff_coherence`, in the report and in `--verbose`.
+  It shows what Cline recorded for the patch `diff_coherence` grades (the first
+  `apply_patch`): `applied`, `rejected` with the first line of Cline's own error
+  text, or `no verdict`. It is context, not a score: the clean-run footer,
+  `compare`, the corpus and the gate ignore it, and a trace with no `apply_patch`
+  gets no line. Before this, `examples/live-gpt-oss-apply-fail.json` showed
+  `diff_coherence 100/100 PASS` for a patch Cline had rejected, and `--verbose`
+  printed only `cline_is_error: None`, because a real trace carries its verdict
+  inside the tool result rather than in `is_error`. `cline_is_error` itself is
+  unchanged. `clinescope --demo` and `docs/demo.svg` now include the line.
 - `clinescope --version`, which prints `clinescope` and the installed version, for
   example `clinescope 1.2.1`. It reads `clinescope.__version__`, which
   `tests/test_version_consistency.py` pins to `pyproject.toml`. Before this the flag
