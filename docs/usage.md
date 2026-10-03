@@ -16,6 +16,8 @@ To run it without installing first, use [uv](https://docs.astral.sh/uv/) or [pip
 uvx clinescope@latest --demo    # or: pipx run clinescope --demo
 ```
 
+`clinescope --version` prints `clinescope` and the installed version.
+
 ## Score a run
 
 Point Clinescope at a Cline log file (a `messages.json` trace) to score the run:
@@ -126,7 +128,7 @@ Run the same task against different models (or Cline versions) and score them al
 python -m clinescope.compare run-a.json run-b.json run-c.json
 ```
 
-The table has one column per check. In the `editor_recovery` column, `n/a` means the run used `editor` and no edit failed, and `-` means the run made no `editor` call at all (the single-run report prints no line for it then).
+The table has one column per check except `tool_input`, which it does not show. In the `editor_recovery` column, `n/a` means the run used `editor` and no edit failed, and `-` means the run made no `editor` call at all (the single-run report prints no line for it then).
 
 ## Gate a run in CI
 

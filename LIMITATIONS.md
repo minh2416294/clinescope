@@ -420,9 +420,9 @@ real captured session shipped here. What that implies about the scorer, the dist
 and the pre-registered condition that unblocks the experiment are in
 [`docs/diff-minimality-correlation.md`](docs/diff-minimality-correlation.md).
 
-**The other two gated scorers have no agreement number at all.** `diff_coherence` and
-`apply_recovery` are gated the same way and have never been measured against a human label. Read
-their silence as unmeasured, not as validated.
+**The other gated scorers have no agreement number at all.** `tool_selection`, `diff_coherence`,
+`apply_recovery` and `editor_recovery` are gated the same way and have never been measured against a
+human label. Read their silence as unmeasured, not as validated.
 
 What to do instead: treat `--min-diff-minimality` as a regression tripwire for a shape you have
 confirmed appears in your own traces, not as a general bloat filter. Score your own traces first.

@@ -19,9 +19,9 @@ shipped scorers. Three rules decide what counts.
 
 **The population is deduplicated by `sessionId`, never by file hash.** Four sessions ship
 twice, once at the top of `examples/` and once under `examples/corpus/`. The two copies are
-byte-different and score identically, so a file count reports 73 traces where the honest
-answer is 69 distinct sessions. Counting files would inflate the real-capture population by
-a third.
+byte-different and score identically, so a file count reports 76 traces where the honest
+answer is 72 distinct sessions. Counting files would inflate the real-capture population by
+more than a fifth.
 
 **Real captures and authored fixtures are counted separately**, because mixing them is the
 mistake that would make this whole page look like a measurement. The split is mechanical: a
@@ -39,11 +39,13 @@ manufacture the variance this page exists to say does not exist.
 
 | Population | Distinct sessions | `diff_minimality` | `diff_coherence` |
 |---|---|---|---|
-| **Real captures** | **15** | 5 scored, **all 1.0**; 10 abstain (`n/a`) | 5 at 1.0; 10 hard-zero |
+| **Real captures** | **18** | 5 scored, **all 1.0**; 13 abstain (`n/a`) | 5 at 1.0; 13 hard-zero |
 | Authored fixtures | 54 | 46 at 1.0, 1 at 0.5, 7 at 0.0; 0 abstain | 53 at 1.0, 1 at 0.75 |
 
 The real-capture row has one distinct `diff_minimality` value and no session below 1.0. The
 authored row has three distinct values and eight below 1.0.
+
+Counts updated 2026-10-03: #141 and #142 added three real captures, all of which abstain.
 
 ## Why that makes the keystone undefined
 
@@ -58,17 +60,17 @@ back 0.5, which looks like a measured result meaning "no better than chance" and
 an arithmetic identity that never touched the labels. A broken instrument returns a
 plausible number rather than an error, and 0.5 here is that number.
 
-There is a second, independent blocker underneath the first. Ten of the fifteen sessions
+There is a second, independent blocker underneath the first. Thirteen of the eighteen sessions
 abstain, so even if the remaining five varied, the correlation would be computed over n = 5.
 
 **`diff_coherence` does not rescue this, despite not being constant.** The keystone names both
 scorers, and the table above shows `diff_coherence` taking two values on real captures where
 `diff_minimality` takes one, which looks at first like a usable spread. It is not. Those two
-values separate the five sessions that contain a patch from the ten that contain none: every
+values separate the five sessions that contain a patch from the thirteen that contain none: every
 capture with an `apply_patch` call scores 1.0, and every capture without one hard-zeros. The
 variance is therefore entirely "did this trace contain a patch at all", which is not a question
 any human labeler is being asked, and across the five traces that do have a patch to judge the
-score is again a single value. Correlating all fifteen would measure the presence of the
+score is again a single value. Correlating all eighteen would measure the presence of the
 artifact rather than agreement about its content.
 
 ## Pre-registration
@@ -107,12 +109,12 @@ That is a product finding, and `.claude/rules/measurement.md` already says so. I
 abstention rate over real traces second among the things worth measuring, ahead of the
 scores themselves, on the grounds that a scorer which abstains on most traces people
 actually have is aimed at the wrong format. Its thresholds table puts the suspicion line at
-above 50 percent. `diff_minimality` abstains on 10 of 15 real captured sessions, which is
-67 percent.
+above 50 percent. `diff_minimality` abstains on 13 of 18 real captured sessions, which is
+72 percent.
 
-The gate flag says the same thing from the other end. Running `clinescope-gate` over the 13
+The gate flag says the same thing from the other end. Running `clinescope-gate` over the 16
 real captured CLI sessions at `--min-diff-minimality 1.0`, the strictest value the flag
-accepts, returns exit 0 five times and exit 2 eight times. Exit 1, the build-failing code,
+accepts, returns exit 0 five times and exit 2 eleven times. Exit 1, the build-failing code,
 does not occur. There is no threshold a user can choose that makes this flag fail a build on
 a real trace shipped with it, which is the already-published fact this distribution
 re-derives from the scores directly.
@@ -188,7 +190,7 @@ clinescope-gate examples/corpus/live-gpt-oss-trace.json --min-diff-minimality 1.
 
 ## Honest caveats
 
-- **N = 15 is small, and none of it is user data.** Every capture is the author's own, run
+- **N = 18 is small, and none of it is user data.** Every capture is the author's own, run
   against local Ollama models. A different model, a different task mix, or somebody else's
   work would plausibly produce a different distribution. This measures the traces shipped
   here and makes no claim beyond them.
@@ -200,8 +202,8 @@ clinescope-gate examples/corpus/live-gpt-oss-trace.json --min-diff-minimality 1.
   them by `sessionId` is therefore nominal; it happens to be correct here because the two
   files are two different tasks, but it would not catch the same extension task shipped
   twice under two names.
-- **`diff_coherence` is reported for context.** Its 10 hard-zeros are the documented
-  no-`apply_patch` case, not 10 malformed patches. Why its two values still cannot carry the
+- **`diff_coherence` is reported for context.** Its 13 hard-zeros are the documented
+  no-`apply_patch` case, not 13 malformed patches. Why its two values still cannot carry the
   keystone is above, under "Why that makes the keystone undefined".
 - **One distinct value is the finding, not a sample-size problem.** Collecting 50 more
   sessions of the same kind would not fix it. What the gate above asks for is specifically

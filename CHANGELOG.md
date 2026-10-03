@@ -4,6 +4,21 @@ All notable changes to Clinescope are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Five user-facing docs no longer describe limits that 1.3.0 changed. `LIMITATIONS.md`
+  named two gated scorers with no agreement number, when the gate also reads
+  `tool_selection` and `editor_recovery` (#137). `docs/usage.md` said `compare` has one
+  column per check, but `tool_input` has none (#140), and it now lists `--version`
+  (#134). `docs/harness-gap.md` called an `editor` shape scorer a roadmap item, which
+  `LIMITATIONS.md` has said is not planned since #142, and notes that the report now
+  prints the harnessed Granite `diff_coherence` cell as `n/a` (#138).
+  `docs/diff-minimality-correlation.md` recounts its population after #141 and #142
+  added three real captures: 18 real sessions, 13 of them abstaining, still none below
+  1.0. The README demo caption no longer says the clean run shows advice.
+
 ## [1.3.0] - 2026-09-28
 
 Most current Cline sessions edit with `editor`, not `apply_patch`, so 1.2.1 had
