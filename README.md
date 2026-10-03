@@ -2,7 +2,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg?style=flat-square)
-![Coverage 93%](https://img.shields.io/badge/coverage-93%25-brightgreen.svg?style=flat-square)
+![Coverage gate 90%](https://img.shields.io/badge/coverage_gate-90%25-brightgreen.svg?style=flat-square)
 
 > Clinescope is an independent, unofficial tool - not affiliated with, endorsed by, or sponsored by [Cline](https://cline.bot/) or Cline Bot Inc. "Cline" is a trademark of Cline Bot Inc., used only to describe compatibility.
 

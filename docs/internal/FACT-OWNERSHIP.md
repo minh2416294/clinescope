@@ -116,6 +116,11 @@ to weigh.
 - The **measured coverage figure** appears both in `pyproject.toml`, beside the floor it
   justifies, and in `CONTRIBUTING.md`, where a contributor reads it. The second is a copy
   rather than a pin: nothing compares them, and they have already disagreed once.
+- The **line-coverage floor** appears again in the README badge, `coverage gate 90%`, which
+  PyPI's project page also shows. The badge is a static image, so nothing compares it to
+  `fail_under`. It names the floor rather than the measured figure because the floor only
+  changes on purpose, while a measured figure drifts with every pull request: the badge said
+  93% while CI measured 94.69%.
 - The **gate's three exit codes** are written out again in `REVIEW.md`, under what counts as an
   Important finding, and in `.claude/claude-security-guidance.md`, in its checklist. Both are
   accurate against the owner today and neither is compared to it by anything. They are copies
