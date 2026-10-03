@@ -269,10 +269,10 @@ anyway, since `main` takes no direct pushes.
 (`test (3.11)`, `test (3.12)`, `test (3.13)`, `claude-review`). A red check blocks the merge. Do
 not merge past one.
 
-**`claude-review` is a required check, so waiting for the review is enforced rather than
+**`claude-review` is a required check, so waiting for the check is enforced rather than
 remembered.** `.github/workflows/claude-code-review.yml` runs on every pull request opened by
 anyone with write access, and the merge is blocked until it reports. Nobody can bypass it: the
-`main-guard` ruleset has an empty `bypass_actors` list. Two consequences worth knowing before
+`main-guard` ruleset has an empty `bypass_actors` list. Four consequences worth knowing before
 you change either piece:
 
 * **That workflow must keep its `synchronize` trigger.** A required check reports against the
@@ -283,6 +283,13 @@ you change either piece:
   public repository, so the action cannot authenticate. This is accepted deliberately: the
   contributor model here is write access and branches in this repository, not forks. An outside
   pull request needs a maintainer to merge it another way.
+* **That workflow must keep the three `gh` tools in `--allowedTools`.** The review plugin reads
+  the pull request with `gh pr view` and `gh pr diff` and posts with `gh pr comment`. Without
+  them it stopped at its first step on #140, #142 and #144, posted nothing, and passed.
+* **A green `claude-review` is not proof that a review happened.** The action also skips, and
+  passes, on any pull request that edits that workflow file, because the file must match `main`
+  (the #109 run says so). The plugin can also decide a pull request needs no review. Before
+  reading green as reviewed, check that the run posted a comment or a review.
 
 Conventional commit subjects. Branches are short kebab-case, for example
 `fix/abstention-not-zero`.
