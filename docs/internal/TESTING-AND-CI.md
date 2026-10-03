@@ -61,8 +61,8 @@ regression, which is the most expensive kind of false alarm for somebody new her
 package and the scripts directory, but the build passes an explicit path on the command line,
 and mypy ignores its configured paths whenever it is given one. So the build type-checks the
 package ONLY: `tests/` is out, which is the widely-known half, and `scripts/` is out too, which
-is not. Measured on this tree: the configured invocation reports 29 source files and the one
-the build runs reports 27, and the two missing files are the two in `scripts/`.
+is not. Measured on this tree: the configured invocation reports 33 source files and the one
+the build runs reports 31, and the two missing files are the two in `scripts/`.
 
 Two consequences worth separating. A type-ignore inside a test is unvalidated, and a test
 helper can drift out of step with the value object it constructs with no type-level signal.

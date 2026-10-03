@@ -18,6 +18,11 @@ All notable changes to Clinescope are recorded here. The format follows
   `docs/diff-minimality-correlation.md` recounts its population after #141 and #142
   added three real captures: 18 real sessions, 13 of them abstaining, still none below
   1.0. The README demo caption no longer says the clean run shows advice.
+- Two internal files no longer state counts that 1.3.0 changed. `REVIEW.md` told
+  reviewers there are five scorers when `tool_input` (#140) made six.
+  `docs/internal/TESTING-AND-CI.md` said the type checker reports 29 configured and 27
+  checked files; four new modules (#136, #140, #141, #142) make it 33 and 31, measured
+  again. The gap is still exactly the two files in `scripts/`.
 
 ## [1.3.0] - 2026-09-28
 

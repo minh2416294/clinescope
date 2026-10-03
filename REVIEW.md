@@ -42,7 +42,7 @@ production calibration does not fit. Reserve Important for these five:
 ## Always check
 
 - The specific deterministic check is named, rather than the scorers being described as judging
-  how good a patch is. There are five scorers, not four.
+  how good a patch is. There are six scorers, not four or five.
 - An abstention is reported as `n/a`, never as a zero.
 - `dependencies = []` is unchanged.
 - A behaviour change carries its README, CHANGELOG, CLAUDE.md and `docs/internal/` update in the
