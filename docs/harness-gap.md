@@ -45,6 +45,9 @@ session, scored with `clinescope ... --expected read_files apply_patch`.
 "not rendered" is not `n/a`. A trace with no `editor` call gets no `editor_recovery` line at all,
 so there is no cell to compare. Only the harnessed Granite run emits `editor` calls.
 
+Since 1.3.0 (#138) the report prints the harnessed Granite `diff_coherence` cell as `n/a`, because
+that run edited with `editor`; the scorer itself still returns 0.0, which is the value above.
+
 On qwen2.5-coder:7b, the community member's exact recipe, the measured delta is zero on all four
 scorers. But the scores hide the interesting part. Without the harness, qwen reached for the default
 `editor` tool. With the harness, it reached for `apply_patch` instead: the harness moved the model's
@@ -118,9 +121,9 @@ from a different angle.
 - **Granite's zero delta is partly a scorer-coverage limit, not a task failure.** Harnessed, Granite
   edited `calc.py` correctly, just via the `editor` tool rather than `apply_patch`. Clinescope's three
   diff scorers grade `apply_patch` grammar only, so they abstain on an `editor` edit and the run scores
-  `0` and `n/a` even though the file was edited right. A `write_to_file` / `replace_in_file` / `editor`
-  diff-grammar scorer is a stated roadmap item, and the Granite result is a second, independent nudge
-  toward it.
+  `0` and `n/a` even though the file was edited right. A `write_to_file` / `replace_in_file`
+  diff-grammar scorer is a stated roadmap item. A shape scorer for `editor`, the tool Granite used, is
+  not planned; `LIMITATIONS.md` gives the reason under "`diff_coherence` has no `editor` analogue".
 - **"Curated corpus" is the community member's framing, not a claim from the model card.** The Granite
   card describes its curated data as one of three supervised-finetuning sources (public, synthetic, and
   a select human-curated set) and credits tool calling to post-training (finetuning plus reinforcement

@@ -27,7 +27,7 @@ When a run has an `apply_patch`, a `cline_verdict` line under `diff_coherence` s
 
 An `editor_newlines` line appears only when an `editor` call that Cline accepted replaced text that had real line breaks with one line holding literal `\n` instead. In one real run that call turned a whole file into one line with 78 literal `\n`, Python could not parse it, and every check still passed. The line keeps the `clean run` line off. It is not a score. It never opens the file, it does not check a new file written this way, and it does not look at later edits.
 
-<p align="center"><img src="docs/demo.svg" alt="clinescope scoring three real captured Cline runs: a clean run, a run whose failed patch was never retried, and a run where the model called no tools, each with advice to fix the agent" width="720"></p>
+<p align="center"><img src="docs/demo.svg" alt="clinescope scoring three real captured Cline runs: a clean run, a run whose failed patch was never retried, and a run where the model called no tools; the two failing runs show advice to fix the agent" width="720"></p>
 
 <p align="center"><em>Three real captured runs; run <code>clinescope --demo</code> to score one yourself.</em></p>
 
