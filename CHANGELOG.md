@@ -6,6 +6,15 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The README badge now reads `coverage gate 90%`, the floor `fail_under` enforces,
+  instead of a hand-set measured figure. It said 93% while CI measured 94.69% (#148).
+- `docs/demo.svg` is redrawn from real `clinescope` output: quoted session ids, the
+  advice wording the CLI prints today, and `--advice` on the scene that shows advice.
+  A new test re-runs each scene's command, so the picture cannot drift silently
+  again (#149).
+
 ### Fixed
 
 - Five user-facing docs no longer describe limits that 1.3.0 changed. `LIMITATIONS.md`
@@ -29,6 +38,15 @@ All notable changes to Clinescope are recorded here. The format follows
   CLI output instead of a shortened form. `docs/building-with-agents.md` said a human
   owns every merge; an agent session usually runs the merge once the four required
   checks are green, under a rule the maintainer set, and the page now says so.
+- The required `claude-review` check passed without reviewing, for two reasons. It
+  could not run the `gh` commands its plugin needs, so on #140, #142 and #144 it
+  stopped at its first step (#146). After the action moved to v1.0.238 (#145) it
+  stopped again on every pull request: Claude Code 2.1.286 started the plugin's
+  eligibility agent in the background, and the one-shot run ended while the model
+  waited for it. `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` keeps agents in the
+  foreground (#155); a probe run on #154 confirmed the agent's answer now reaches the
+  model. `show_full_output` is on for now so a run's log shows the model's reply
+  (#153). No package code changed.
 
 ## [1.3.0] - 2026-09-28
 
