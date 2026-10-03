@@ -23,6 +23,12 @@ All notable changes to Clinescope are recorded here. The format follows
   `docs/internal/TESTING-AND-CI.md` said the type checker reports 29 configured and 27
   checked files; four new modules (#136, #140, #141, #142) make it 33 and 31, measured
   again. The gap is still exactly the two files in `scripts/`.
+- Three sentences that were wrong before 1.3.0 are corrected. The `docs/demo.svg`
+  label said every demo run shows advice, when the clean run shows none; the generator
+  now says the two failing runs do. The quickstart's `--advice` sample is now the exact
+  CLI output instead of a shortened form. `docs/building-with-agents.md` said a human
+  owns every merge; an agent session usually runs the merge once the four required
+  checks are green, under a rule the maintainer set, and the page now says so.
 
 ## [1.3.0] - 2026-09-28
 

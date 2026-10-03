@@ -245,7 +245,7 @@ def render() -> str:
         f"viewBox='0 0 {WIDTH} {HEIGHT}' role='img' "
         f"aria-label='clinescope scoring three real Cline runs: a clean run passes, "
         f"a run with an unrecovered failed patch, and a run where the model called no "
-        f"tools; each with advice to fix the agent'>"
+        f"tools; the two failing runs show advice to fix the agent'>"
         f"{_style_block()}"
         f"<rect x='0' y='0' width='{WIDTH}' height='{HEIGHT}' rx='10' fill='{BG}'/>"
         f"{_window_bar()}"

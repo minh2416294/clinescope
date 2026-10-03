@@ -15,7 +15,7 @@ evidence.
 
 The agent drafted code, wrote first-pass tests, ran searches across the tree, and produced draft prose. A
 human set every scorer's definition and its honest boundary, decided what was in scope for each change,
-owned every merge, and owned the reader-facing docs (this page included): reviewing an agent's draft,
+set the merge rules, and owned the reader-facing docs (this page included): reviewing an agent's draft,
 correcting it, and deciding the published wording, rather than letting a draft ship unread.
 
 The split is the whole point. An agent is good at the mechanical middle of a change: given a clear spec
@@ -96,14 +96,15 @@ the measured agreement. That result was kept and published rather than quietly r
 earlier number, because the point of measuring a signal is to learn what it is worth, not to defend a
 figure.
 
-## A human owns every merge and every release
+## A human sets the merge rules and owns every release
 
 Nothing merges or ships on its own. Every change lands through a pull request that runs CI before it can
 merge; [`CONTRIBUTING.md`](../CONTRIBUTING.md) describes the flow (branch, open a PR against `main`, CI
-runs on the PR), and CI itself is [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). Merging is a
-human step, so a change does not skip review.
+runs on the PR), and CI itself is [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). An agent
+session usually runs the merge once the four required checks are green, under a rule the maintainer set;
+when the automated review posts nothing, the maintainer decides.
 
-Releases are the same. [`.github/workflows/release.yml`](../.github/workflows/release.yml) publishes to
+Releases stay a human step. [`.github/workflows/release.yml`](../.github/workflows/release.yml) publishes to
 PyPI only when a human publishes a GitHub Release; a push, a PR, or a tag alone does nothing. It uses
 Trusted Publishing over OIDC, so there is no PyPI token stored in the repo to leak, and the upload runs in
 a protected `pypi` environment where a required-reviewer approval can gate it. The consequential,
@@ -125,7 +126,7 @@ broken, so that a green suite means the checks ran, not merely that they exist.
 ## What this page is not claiming
 
 It is not claiming the agent built Clinescope on its own; a human owns the design, the invariants, the
-merges, and the published words. It is not claiming a productivity multiplier; no such number is measured
+merge rules, and the published words. It is not claiming a productivity multiplier; no such number is measured
 here, so none is offered. And it is not claiming the scorers are more than they are: each one is
 deliberately narrow, and exactly what it does and does not measure is spelled out in
 [`LIMITATIONS.md`](../LIMITATIONS.md).
