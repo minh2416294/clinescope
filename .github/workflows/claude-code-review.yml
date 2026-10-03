@@ -65,11 +65,6 @@ jobs:
           # review never resumes and posts nothing (run 37139197879 shows it). Disabling
           # background tasks makes every agent run in the foreground.
           settings: '{"env": {"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}}'
-          # TEMPORARY. Shows the model's reply, which is how the cause above was found; a debug
-          # re-run does not reveal it. It prints the reply and the pull request text to a public
-          # log, so remove it once a run proves the setting above works. CLAUDE.md, "Shipping a
-          # change", has the run IDs.
-          show_full_output: true
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 

@@ -45,8 +45,9 @@ All notable changes to Clinescope are recorded here. The format follows
   eligibility agent in the background, and the one-shot run ended while the model
   waited for it. `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` keeps agents in the
   foreground (#155); a probe run on #154 confirmed the agent's answer now reaches the
-  model. `show_full_output` is on for now so a run's log shows the model's reply
-  (#153). No package code changed.
+  model, and #156 got a posted review, though that run skipped the plugin's separate
+  review agents. `show_full_output` was on while the cause was found (#153) and is off
+  again. No package code changed.
 
 ## [1.3.0] - 2026-09-28
 
