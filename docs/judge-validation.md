@@ -1,8 +1,8 @@
 # Judge validation
 
-Clinescope's six scorers are all deterministic -- no LLM is involved. Three of them
-(`diff_coherence`, `diff_minimality`, `apply_recovery`) are what `clinescope-gate` gates on, via
-its three `--min-*` flags. Clinescope also ships one optional LLM judge, asked the same holistic
+Clinescope's six scorers are all deterministic -- no LLM is involved. Five of them
+(`tool_selection`, `diff_coherence`, `diff_minimality`, `apply_recovery`, `editor_recovery`) are
+what `clinescope-gate` gates on, via its five `--min-*` flags. Clinescope also ships one optional LLM judge, asked the same holistic
 "is this patch wasteful?" question the human labelers answer. It was built to test whether a cheap
 local model could stand in for that human judgement. Measured against them, it cannot: the numbers
 below are why it is advisory-only and why nothing gates on it.
