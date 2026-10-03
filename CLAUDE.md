@@ -272,7 +272,7 @@ not merge past one.
 **`claude-review` is a required check, so waiting for the check is enforced rather than
 remembered.** `.github/workflows/claude-code-review.yml` runs on every pull request opened by
 anyone with write access, and the merge is blocked until it reports. Nobody can bypass it: the
-`main-guard` ruleset has an empty `bypass_actors` list. Four consequences worth knowing before
+`main-guard` ruleset has an empty `bypass_actors` list. Five consequences worth knowing before
 you change either piece:
 
 * **That workflow must keep its `synchronize` trigger.** A required check reports against the
@@ -290,6 +290,16 @@ you change either piece:
   passes, on any pull request that edits that workflow file, because the file must match `main`
   (the #109 run says so). The plugin can also decide a pull request needs no review. Before
   reading green as reviewed, check that the run posted a comment or a review.
+* **Since the action moved to v1.0.238 (#145), no review run has posted.** Six runs on five pull
+  requests, all on Claude Code 2.1.286: 37124176057 (#148), 37124386339 (#149), 37125513592
+  (#150), 37125705783 (#151), and both attempts of 37126250981 (#152, which changes `scripts/`,
+  so it is not only docs PRs). Each ran 2 or 3 turns in 4 to 5 seconds, with 0 permission
+  denials, and posted nothing. On v1.0.206 the same plugin ran 36 turns and posted on #147.
+  The cause is not known yet: the action hides the model's reply unless `show_full_output` is
+  true, and despite the hint it prints, a debug re-run (the second attempt of 37126250981) did
+  not show it. `show_full_output: true` is on so the next run's log says why. It prints the
+  model's reply and the pull request text to a public log, so turn it off once the cause is
+  found.
 
 Conventional commit subjects. Branches are short kebab-case, for example
 `fix/abstention-not-zero`.
