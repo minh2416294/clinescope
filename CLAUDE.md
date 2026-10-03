@@ -295,11 +295,15 @@ you change either piece:
   (#150), 37125705783 (#151), and both attempts of 37126250981 (#152, which changes `scripts/`,
   so it is not only docs PRs). Each ran 2 or 3 turns in 4 to 5 seconds, with 0 permission
   denials, and posted nothing. On v1.0.206 the same plugin ran 36 turns and posted on #147.
-  The cause is not known yet: the action hides the model's reply unless `show_full_output` is
-  true, and despite the hint it prints, a debug re-run (the second attempt of 37126250981) did
-  not show it. `show_full_output: true` is on so the next run's log says why. It prints the
-  model's reply and the pull request text to a public log, so turn it off once the cause is
-  found.
+  A debug re-run (the second attempt of 37126250981) did not show why, despite the hint the
+  action prints: only `show_full_output: true` reveals the model's reply. With it on, run
+  37139197879 (#154, a probe never merged) showed the cause. The plugin's first step launches
+  its eligibility check with the `Agent` tool, Claude Code 2.1.286 starts that agent in the
+  background, and the model ends its turn "waiting for its result". In the action's one-shot
+  run, the end of that turn ends the session, so the review never resumes and nothing posts.
+  The workflow now sets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` through the action's `settings`
+  input, so agents run in the foreground. `show_full_output: true` stays on until a run proves
+  the fix, because it prints the model's reply and the pull request text to a public log.
 
 Conventional commit subjects. Branches are short kebab-case, for example
 `fix/abstention-not-zero`.
