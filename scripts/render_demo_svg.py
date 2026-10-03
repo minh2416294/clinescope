@@ -23,10 +23,13 @@ opacity 1, the others at base opacity 0. A renderer that ignores SMIL therefore
 still shows a complete, representative scored report; the animation only adds the
 cycle. Every line is drawn exactly once per scene (no overlapping layers).
 
-All report text is genuine `clinescope` stdout captured this session, not a mockup.
+All report text is genuine `clinescope` stdout, not a mockup, and
+tests/test_render_demo_svg.py re-runs each scene's command to keep it that way.
 Two width edits only: the advice file path is shortened to a basename (honest: it is
-a generic capture path with no real user data), and scene 2's cline_verdict line is
-wrapped onto a second, indented line because it is wider than the canvas.
+a generic capture path with no real user data), and a line wider than the canvas is
+wrapped onto indented rows, marked by "\\n" in its text. Two lines a terminal shows
+go to stderr, so they are not drawn: the `--demo` header, and the feedback question
+printed after a report when stdout is a terminal.
 
 Run: python scripts/render_demo_svg.py   (from the repo root)
 """
@@ -77,7 +80,7 @@ class Scene:
 _SCENE_CLEAN = Scene(
     command="clinescope live-gpt-oss-trace.json --expected read_files apply_patch",
     lines=(
-        ("clinescope report - session 1783709423832_y5y2f (2 tool calls)", DIM),
+        ("clinescope report - session '1783709423832_y5y2f' (2 tool calls)", DIM),
         ("tool_selection  100/100  PASS", GREEN),
         ("diff_coherence  100/100  PASS", GREEN),
         ("cline_verdict   applied", GREEN),
@@ -94,15 +97,13 @@ _SCENE_CLEAN = Scene(
 _SCENE_APPLY_FAIL = Scene(
     command="clinescope --demo",
     lines=(
-        ("clinescope report - session 1783723826783_g3hi7 (2 tool calls)", DIM),
+        ("clinescope report - session '1783723826783_g3hi7' (2 tool calls)", DIM),
         ("tool_selection  100/100  PASS", GREEN),
         ("diff_coherence  100/100  PASS", GREEN),
         (
-            "cline_verdict   rejected   ('apply_patch failed: Patch could not be applied",
-            RED,
-        ),
-        (
-            "                             because 1 hunk did not match the current file content.')",
+            "cline_verdict   rejected   ('apply_patch failed: Patch could not be applied"
+            "\n                             because 1 hunk did not match the current file"
+            " content.')",
             RED,
         ),
         ("diff_minimality 100/100  PASS", GREEN),
@@ -110,18 +111,24 @@ _SCENE_APPLY_FAIL = Scene(
         ("", FG),
         ("advice (how to improve the agent):", YELLOW),
         ("  [apply_recovery] no_apply_recovery", YELLOW),
-        ("    - The agent failed a patch and did not recover it", FG),
-        ("      (0/1 recovered; unrecovered file: validator.py).", FG),
-        ("    - Add a retry: after a failed apply_patch, re-read the", FG),
-        ("      file and try a corrected patch instead of giving up.", FG),
+        (
+            "    - The agent failed a patch and did not recover it (0/1 recovered;"
+            "\n      unrecovered files: 'validator.py').",
+            FG,
+        ),
+        (
+            "    - Add a retry instruction: after a failed apply_patch, re-read the file"
+            "\n      and try a corrected patch instead of giving up.",
+            FG,
+        ),
     ),
 )
 
 # Scene 3 - the model called no tools ("said done, did nothing").
 _SCENE_MISSING = Scene(
-    command="clinescope qwen-missing-tools.json --expected read_files apply_patch",
+    command="clinescope qwen-missing-tools.json --expected read_files apply_patch --advice",
     lines=(
-        ("clinescope report - session 1783823285576_8f1km (0 tool calls)", DIM),
+        ("clinescope report - session '1783823285576_8f1km' (0 tool calls)", DIM),
         ("tool_selection    0/100   (missing: apply_patch, read_files)", RED),
         ("diff_coherence    0/100  FAIL   (no apply_patch tool call in trace)", RED),
         ("diff_minimality     n/a  n/a   (no apply_patch - nothing to check)", DIM),
@@ -130,10 +137,27 @@ _SCENE_MISSING = Scene(
         ("advice (how to improve the agent):", YELLOW),
         ("  [tool_selection] missing_tools", YELLOW),
         ("    - The agent never called: apply_patch, read_files.", FG),
-        ("    - Tell it which tool the task needs (read a file with", FG),
-        ("      read_files before you patch it).", FG),
+        (
+            "    - Add to your prompt an instruction to use the right tool for the task"
+            "\n      (e.g. 'Always read a file with read_files before you patch it').",
+            FG,
+        ),
+        ("  [diff_coherence] malformed_patch", YELLOW),
+        ("    - The patch is malformed: no apply_patch tool call in trace.", FG),
+        (
+            "    - The model is emitting invalid apply_patch grammar. Add a few-shot"
+            "\n      example of a correct '*** Begin Patch' block to your prompt, or try a"
+            "\n      stronger model.",
+            FG,
+        ),
     ),
 )
+
+
+def _scene_rows(scene: Scene) -> list[tuple[str, str]]:
+    """The drawn rows: each report line split at its "\\n" wrap points."""
+    return [(row, color) for text, color in scene.lines for row in text.split("\n")]
+
 
 # Cycle order. The FIRST scene has animation-delay 0 and the keyframe starts at
 # opacity 1, so the very first painted frame already shows it in full -- a renderer
@@ -143,7 +167,7 @@ _SCENE_MISSING = Scene(
 CYCLE = (_SCENE_APPLY_FAIL, _SCENE_CLEAN, _SCENE_MISSING)
 
 # Canvas height sized to the tallest scene so no scene ever overflows/clips.
-_MAX_LINES = max(len(s.lines) for s in CYCLE)
+_MAX_LINES = max(len(_scene_rows(s)) for s in CYCLE)
 HEIGHT = PAD_TOP + LINE_H * (_MAX_LINES + 3)
 TOTAL = SCENE * len(CYCLE)
 
@@ -207,10 +231,10 @@ def _scene_group(index: int, scene: Scene) -> str:
     """
     parts = [_text(PAD_X, PAD_TOP + LINE_H, f"{PROMPT_STR}{scene.command}", FG)]
     first_report_y = PAD_TOP + LINE_H * 3  # blank line after the command
-    for i, (line, color) in enumerate(scene.lines):
-        if not line:
+    for i, (row, color) in enumerate(_scene_rows(scene)):
+        if not row:
             continue
-        parts.append(_text(PAD_X, first_report_y + i * LINE_H, line, color))
+        parts.append(_text(PAD_X, first_report_y + i * LINE_H, row, color))
     return f"<g class='scene s{index}'>{''.join(parts)}</g>"
 
 
@@ -232,7 +256,7 @@ def render() -> str:
 
 def main() -> None:
     OUT_SVG.parent.mkdir(parents=True, exist_ok=True)
-    OUT_SVG.write_text(render(), encoding="utf-8")
+    OUT_SVG.write_text(render(), encoding="utf-8", newline="")
     print(f"wrote {OUT_SVG} ({OUT_SVG.stat().st_size} bytes)")
 
 
