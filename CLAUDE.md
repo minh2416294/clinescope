@@ -141,7 +141,8 @@ are quoted here because they fire before any code is written.
 
 **Every new feature must be required by a real user's feedback.** A feature proposed without a
 named specific reason (it supports a user, it gets a user, or it is something a user will pay
-for) gets challenged, not built.
+for) gets challenged, not built. One narrow, dated exception lets the maintainer write advice
+for a result an existing check already computes; `scope.md` owns it and what it never covers.
 
 **Answer all seven before building. Cannot answer all seven means do not build it:**
 

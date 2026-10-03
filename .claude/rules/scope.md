@@ -110,6 +110,35 @@ Build the smallest version that resolves the quote from step 1. Not the version 
 the next three requests. If a second user asks for the extension later, that is a second run of
 this procedure, and it will be a better-informed one.
 
+## The one exception to step 1: advice wording
+
+Added 2026-10-04 by the maintainer, on the record, in #158. It is the only standing exception to
+step 1, and it is deliberately small.
+
+**The maintainer may write or reword advice for a result an existing check already computes,
+without a user quote.** Advice means the "what to do" and "why" sentences a report prints next to
+that result. It was added because #158 made every problem show what to do, and five existing
+results had no advice: an `--expected-input` no `editor` call carried, a run with no edit
+Clinescope can check, an `editor` call that wrote literal `\n` where the old text had line breaks,
+a `--test-cmd` command that did not run after the last edit, and one Cline marked failed. No user
+asked for that advice. The maintainer chose it.
+
+It never covers:
+
+- a new check, scorer, context line or score;
+- a sentence that claims more than the check measured;
+- any exit code, `clinescope-gate` output, or failure-kind label.
+
+Advice written under it still answers to the honesty rule in [`CLAUDE.md`](../../CLAUDE.md): each
+sentence stays inside what its check measures, and the "why" comes from that check's caveat in
+`LIMITATIONS.md`. Each use writes its own dated disposition:
+
+```
+SCOPE: build (owner's exception, YYYY-MM-DD) - <the advice added, and for which result>
+```
+
+Anything that needs more than this goes through the full procedure.
+
 ## The honest limit of this document
 
 This procedure is written by the person it is meant to constrain, which is a real weakness and
@@ -117,3 +146,7 @@ worth naming rather than hiding. It works to the extent that step 1 is run hones
 is exactly the step that is easiest to fake by writing a plausible user into existence.
 
 The mitigation is that step 1 demands a **link**. A link either resolves or it does not.
+
+The advice-wording exception above weakens that mitigation in one place, because the person it
+exempts is the person who wrote it. Its limit is the list of what it never covers: if a change
+needs an item on that list, the exception does not apply.

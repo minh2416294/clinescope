@@ -19,7 +19,8 @@ All notable changes to Clinescope are recorded here. The format follows
 - Problems that had no advice now get some: an `--expected-input` no `editor` call carried, an
   `editor` call that wrote literal `\n` where the old text had line breaks, and a `--test-cmd`
   command that did not run after the last edit or that Cline marked failed. The maintainer
-  chose to add these; no user asked for them.
+  chose to add these; no user asked for them. `.claude/rules/scope.md` now records this as a
+  narrow, dated exception for advice wording, with what it never covers.
 - The feedback question asks whether anything in the report disagreed with your read of the
   run, not whether a score did.
 - `docs/demo.svg` shows the plain report, so it is taller (778 px, was 470).
