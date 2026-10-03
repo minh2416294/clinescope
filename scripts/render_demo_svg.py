@@ -23,13 +23,13 @@ opacity 1, the others at base opacity 0. A renderer that ignores SMIL therefore
 still shows a complete, representative scored report; the animation only adds the
 cycle. Every line is drawn exactly once per scene (no overlapping layers).
 
-All report text is genuine `clinescope` stdout, not a mockup, and
-tests/test_render_demo_svg.py re-runs each scene's command to keep it that way.
-Two width edits only: the advice file path is shortened to a basename (honest: it is
-a generic capture path with no real user data), and a line wider than the canvas is
-wrapped onto indented rows, marked by "\\n" in its text. Two lines a terminal shows
-go to stderr, so they are not drawn: the `--demo` header, and the feedback question
-printed after a report when stdout is a terminal.
+All report text is genuine `clinescope` stdout (the plain-English default view), not
+a mockup, and tests/test_render_demo_svg.py re-runs each scene's command to keep it
+that way. One width edit only: a line wider than the canvas is wrapped onto indented
+rows, marked by "\\n" in its text. The plain view already shows a file by its name
+only. The colors are the SVG's own; the terminal prints plain text. Two lines a
+terminal shows go to stderr, so they are not drawn: the `--demo` header, and the
+feedback question printed after a report when stdout is a terminal.
 
 Run: python scripts/render_demo_svg.py   (from the repo root)
 """
@@ -76,20 +76,19 @@ class Scene:
     lines: tuple[tuple[str, str], ...]
 
 
-# Scene 1 - a clean run: every scorer passes, nothing to fix.
+# Scene 1 - a clean run: every check that ran passed, so only What went well shows.
 _SCENE_CLEAN = Scene(
     command="clinescope live-gpt-oss-trace.json --expected read_files apply_patch",
     lines=(
-        ("clinescope report - session '1783709423832_y5y2f' (2 tool calls)", DIM),
-        ("tool_selection  100/100  PASS", GREEN),
-        ("diff_coherence  100/100  PASS", GREEN),
-        ("cline_verdict   applied", GREEN),
-        ("diff_minimality 100/100  PASS", GREEN),
-        (
-            "apply_recovery      n/a  n/a   (no failed patches - nothing to recover)",
-            DIM,
-        ),
-        ("clean run - nothing to fix", GREEN),
+        ("Clinescope found no problems in the checks below.", GREEN),
+        ("", FG),
+        ("What went well", GREEN),
+        ("- The agent used every tool you listed.", FG),
+        ("- The agent's first patch follows the format Cline expects.", FG),
+        ("- No part of the patch was deleted and retyped whole.", FG),
+        ("- No edit failed, so there was nothing to retry.", FG),
+        ("", FG),
+        ("Session '1783709423832_y5y2f'", DIM),
     ),
 )
 
@@ -97,59 +96,72 @@ _SCENE_CLEAN = Scene(
 _SCENE_APPLY_FAIL = Scene(
     command="clinescope --demo",
     lines=(
-        ("clinescope report - session '1783723826783_g3hi7' (2 tool calls)", DIM),
-        ("tool_selection  100/100  PASS", GREEN),
-        ("diff_coherence  100/100  PASS", GREEN),
-        (
-            "cline_verdict   rejected   ('apply_patch failed: Patch could not be applied"
-            "\n                             because 1 hunk did not match the current file"
-            " content.')",
-            RED,
-        ),
-        ("diff_minimality 100/100  PASS", GREEN),
-        ("apply_recovery    0/100  FAIL   (0/1 failed patches recovered)", RED),
+        ("Clinescope found 1 problem in this Cline run.", RED),
         ("", FG),
-        ("advice (how to improve the agent):", YELLOW),
-        ("  [apply_recovery] no_apply_recovery", YELLOW),
+        ("Problem", RED),
+        ("- Cline marked the agent's edit to 'validator.py' as failed.", FG),
+        ("- No later edit to that file went through.", FG),
+        ("", FG),
+        ("What to do", YELLOW),
+        ("- Your prompt should tell the agent to retry after a failed edit.", FG),
+        ("- The agent should re-read the file first.", FG),
+        ("- Then it should try a corrected edit instead of giving up.", FG),
+        ("", FG),
+        ("Why", YELLOW),
         (
-            "    - The agent failed a patch and did not recover it (0/1 recovered;"
-            "\n      unrecovered files: 'validator.py').",
+            "- Clinescope only counts a later edit to the same file with the same tool.",
             FG,
         ),
-        (
-            "    - Add a retry instruction: after a failed apply_patch, re-read the file"
-            "\n      and try a corrected patch instead of giving up.",
-            FG,
-        ),
+        ("- A fix made another way does not show up in this check.", FG),
+        ("", FG),
+        ("What went well", GREEN),
+        ("- The agent used every tool you listed.", FG),
+        ("- The agent's first patch follows the format Cline expects.", FG),
+        ("- No part of the patch was deleted and retyped whole.", FG),
+        ("", FG),
+        ("Session '1783723826783_g3hi7'", DIM),
     ),
 )
 
 # Scene 3 - the model called no tools ("said done, did nothing").
 _SCENE_MISSING = Scene(
-    command="clinescope qwen-missing-tools.json --expected read_files apply_patch --advice",
+    command="clinescope qwen-missing-tools.json --expected read_files apply_patch",
     lines=(
-        ("clinescope report - session '1783823285576_8f1km' (0 tool calls)", DIM),
-        ("tool_selection    0/100   (missing: apply_patch, read_files)", RED),
-        ("diff_coherence    0/100  FAIL   (no apply_patch tool call in trace)", RED),
-        ("diff_minimality     n/a  n/a   (no apply_patch - nothing to check)", DIM),
-        ("apply_recovery      n/a  n/a   (no apply_patch - nothing to recover)", DIM),
+        ("Clinescope found 2 problems in this Cline run.", RED),
         ("", FG),
-        ("advice (how to improve the agent):", YELLOW),
-        ("  [tool_selection] missing_tools", YELLOW),
-        ("    - The agent never called: apply_patch, read_files.", FG),
+        ("Problem 1 of 2", RED),
+        ("- The agent never used apply_patch or read_files.", FG),
+        ("- You listed them as tools the agent should use.", FG),
+        ("", FG),
+        ("What to do", YELLOW),
+        ("- Your prompt should name the tools the agent must use.", FG),
         (
-            "    - Add to your prompt an instruction to use the right tool for the task"
-            "\n      (e.g. 'Always read a file with read_files before you patch it').",
+            '- One example rule is "Always read a file with read_files before you patch it."',
             FG,
         ),
-        ("  [diff_coherence] malformed_patch", YELLOW),
-        ("    - The patch is malformed: no apply_patch tool call in trace.", FG),
+        ("", FG),
+        ("Why", YELLOW),
+        ("- Clinescope only checks that each tool you listed was called.", FG),
+        ("- It does not check what the agent sent to the tool.", FG),
+        ("", FG),
+        ("Problem 2 of 2", RED),
+        ("- The agent made no edit that Clinescope can check.", FG),
+        ("", FG),
+        ("What to do", YELLOW),
+        ("- If the agent changed files another way, this is expected.", FG),
         (
-            "    - The model is emitting invalid apply_patch grammar. Add a few-shot"
-            "\n      example of a correct '*** Begin Patch' block to your prompt, or try a"
-            "\n      stronger model.",
+            "- If the task needed an edit and none happened, your prompt should tell the agent to\n  edit the file with its tools.",
             FG,
         ),
+        ("", FG),
+        ("Why", YELLOW),
+        ("- Clinescope checks the format of only one kind of edit.", FG),
+        ("- This run made no edit of that kind.", FG),
+        ("", FG),
+        ("Did not apply", DIM),
+        ("- 2 checks did not apply, because the run had no patch to read.", DIM),
+        ("", DIM),
+        ("Session '1783823285576_8f1km'", DIM),
     ),
 )
 
@@ -245,7 +257,7 @@ def render() -> str:
         f"viewBox='0 0 {WIDTH} {HEIGHT}' role='img' "
         f"aria-label='clinescope scoring three real Cline runs: a clean run passes, "
         f"a run with an unrecovered failed patch, and a run where the model called no "
-        f"tools; the two failing runs show advice to fix the agent'>"
+        f"tools; the two failing runs say what went wrong, what to do and why'>"
         f"{_style_block()}"
         f"<rect x='0' y='0' width='{WIDTH}' height='{HEIGHT}' rx='10' fill='{BG}'/>"
         f"{_window_bar()}"

@@ -38,7 +38,10 @@ from clinescope.advice import (
     advice_for_apply_recovery,
     advice_for_diff_coherence,
     advice_for_diff_minimality,
+    advice_for_editor_newlines,
     advice_for_editor_recovery,
+    advice_for_test_cmd,
+    advice_for_tool_input,
     advice_for_tool_selection,
 )
 from clinescope.apply_recovery import ApplyRecoveryScore
@@ -122,12 +125,19 @@ def render_report(
     if not advice:
         return summary
     advice_block = _render_advice_block(
-        score, diff_coherence, diff_minimality, apply_recovery, editor_recovery
+        score,
+        diff_coherence,
+        diff_minimality,
+        apply_recovery,
+        editor_recovery,
+        tool_input=tool_input,
+        editor_newlines=editor_newlines,
+        test_cmd=test_cmd,
     )
     return summary if advice_block is None else f"{summary}\n{advice_block}"
 
 
-# --- Advice / coach layer (opt-in via --advice; reads existing evidence) -------
+# --- Advice / coach layer (the CLI asks for it on every run; reads existing evidence)
 
 
 def _render_advice_block(
@@ -136,14 +146,23 @@ def _render_advice_block(
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
     editor_recovery: EditorRecoveryScore | None = None,
+    *,
+    tool_input: ToolInputScore | None = None,
+    editor_newlines: EditorNewlinesCheck | None = None,
+    test_cmd: CmdAfterEditCheck | None = None,
 ) -> str | None:
-    # One advice entry per FAILING scorer, in report order; a passing/abstaining
-    # scorer contributes nothing. Returns None when there is nothing to coach, so
-    # a clean run under --advice adds no block.
+    # One advice entry per FAILING check, in report order; a passing/abstaining
+    # check contributes nothing. Returns None when there is nothing to coach, so
+    # a clean run adds no block. An entry outside the failure taxonomy prints its
+    # name alone.
     entries: list[tuple[str, ScorerAdvice]] = []
     ts = advice_for_tool_selection(score)
     if ts is not None:
         entries.append(("tool_selection", ts))
+    if tool_input is not None:
+        ti = advice_for_tool_input(tool_input)
+        if ti is not None:
+            entries.append(("tool_input", ti))
     if diff_coherence is not None:
         dc = advice_for_diff_coherence(
             diff_coherence,
@@ -163,12 +182,23 @@ def _render_advice_block(
         er = advice_for_editor_recovery(editor_recovery)
         if er is not None:
             entries.append(("editor_recovery", er))
+    if editor_newlines is not None:
+        en = advice_for_editor_newlines(editor_newlines)
+        if en is not None:
+            entries.append(("editor_newlines", en))
+    if test_cmd is not None:
+        tc = advice_for_test_cmd(test_cmd)
+        if tc is not None:
+            entries.append(("test_cmd", tc))
     if not entries:
         return None
 
     lines = ["", "advice (how to improve the agent):"]
     for name, entry in entries:
-        lines.append(f"  [{name}] {entry.label.value}")
+        if entry.label is None:
+            lines.append(f"  [{name}]")
+        else:
+            lines.append(f"  [{name}] {entry.label.value}")
         lines.extend(f"    - {line}" for line in entry.lines)
     return "\n".join(lines)
 

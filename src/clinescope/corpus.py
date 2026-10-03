@@ -350,7 +350,7 @@ def _check_one_scorer(
 
 def _check_advice_labels(label: TraceLabel, scored: _ScoredTrace) -> list[str]:
     # Check 2a: every labelled FailureLabel is actually emitted by some scorer.
-    actual_labels = {a.label for a in scored.advice.values()}
+    actual_labels = {a.label for a in scored.advice.values() if a.label is not None}
     reasons: list[str] = []
     for value in label.expected_failure_labels:
         try:
@@ -440,7 +440,8 @@ def _failure_mode_breakdown(report: CorpusReport) -> list[tuple[str, int]]:
     counts: dict[str, int] = {}
     for item in report.items:
         for a in item.actual_advice.values():
-            counts[a.label.value] = counts.get(a.label.value, 0) + 1
+            if a.label is not None:
+                counts[a.label.value] = counts.get(a.label.value, 0) + 1
     return sorted(counts.items())
 
 

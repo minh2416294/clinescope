@@ -17,11 +17,17 @@ from clinescope.advice import (
     advice_for_apply_recovery,
     advice_for_diff_coherence,
     advice_for_diff_minimality,
+    advice_for_editor_newlines,
+    advice_for_test_cmd,
+    advice_for_tool_input,
     advice_for_tool_selection,
 )
 from clinescope.apply_recovery import ApplyRecoveryScore
+from clinescope.cmd_after_edit import CmdAfterEditCheck
 from clinescope.diff_coherence import DiffCoherenceScore
 from clinescope.diff_minimality import DiffMinimalityScore
+from clinescope.editor_newlines import EditorNewlinesCheck
+from clinescope.tool_input import ExpectedInput, ToolInputScore
 from clinescope.tool_selection import ToolSelectionScore
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
@@ -37,7 +43,14 @@ def test_cli_advice_on_failing_trace_quotes_real_evidence(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     exit_code = main(
-        [str(BADPATCH), "--expected", "read_files", "apply_patch", "--advice"]
+        [
+            str(BADPATCH),
+            "--expected",
+            "read_files",
+            "apply_patch",
+            "--advice",
+            "--details",
+        ]
     )
     out = capsys.readouterr().out
     assert exit_code == 0
@@ -55,19 +68,21 @@ def test_cli_advice_on_failing_trace_quotes_real_evidence(
 def test_cli_advice_on_clean_trace_adds_no_block(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    main([str(CLEAN), "--expected", "read_files", "apply_patch", "--advice"])
+    main(
+        [str(CLEAN), "--expected", "read_files", "apply_patch", "--advice", "--details"]
+    )
     out = capsys.readouterr().out
     assert "advice (how to improve the agent):" not in out
 
 
 @pytest.mark.skipif(not BADPATCH.exists(), reason="needs example trace")
-def test_cli_default_output_has_no_advice_without_flag(
+def test_cli_details_shows_advice_without_the_flag(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    # The default (no --advice) must be unchanged: no advice block appears.
-    main([str(BADPATCH), "--expected", "read_files", "apply_patch"])
+    # Advice is no longer opt-in: --details shows it on a failing run.
+    main([str(BADPATCH), "--expected", "read_files", "apply_patch", "--details"])
     out = capsys.readouterr().out
-    assert "advice (how to improve the agent):" not in out
+    assert "advice (how to improve the agent):" in out
 
 
 # --- tool_selection ----------------------------------------------------------
@@ -173,8 +188,12 @@ def test_diff_coherence_run_with_neither_tool_still_advises() -> None:
 
     assert advice is not None
     assert advice.label is FailureLabel.MALFORMED_PATCH
-    assert (
-        advice.lines[0] == "The patch is malformed: no apply_patch tool call in trace."
+    assert advice.lines == (
+        "The agent made no edit that Clinescope can check "
+        "(no apply_patch tool call in trace).",
+        "If the agent changed files another way, this is expected.",
+        "If the task needed an edit and none happened, your prompt should tell the "
+        "agent to edit the file with its tools.",
     )
 
 
@@ -283,7 +302,7 @@ def test_apply_recovery_advice_uses_dash_when_no_target_path_recorded() -> None:
     assert advice is not None
     assert advice.lines[0] == (
         "The agent failed a patch and did not recover it "
-        "(0/1 recovered; unrecovered files: -)."
+        "(0/1 recovered; failed files: -)."
     )
 
 
@@ -327,3 +346,111 @@ def test_apply_recovery_abstain_yields_no_advice() -> None:
         cline_apply_is_error=None,
     )
     assert advice_for_apply_recovery(score) is None
+
+
+# --- advice for every problem (Day 80) ----------------------------------------
+# Every problem the report names now carries a "what to do", so the signals that had no
+# advice rule get one. These entries name no failure-taxonomy label: the taxonomy stays
+# the five failure modes the corpus measures.
+
+
+def test_tool_input_advice_names_the_missing_input() -> None:
+    missing = ExpectedInput(tool="editor", key="path", value="calc.py")
+    score = ToolInputScore(
+        score=0.0,
+        expected=frozenset({missing}),
+        matched=frozenset(),
+        missing=frozenset({missing}),
+    )
+    advice = advice_for_tool_input(score)
+
+    assert advice is not None
+    assert advice.label is None
+    assert advice.lines == (
+        "No editor call carried: editor path=calc.py.",
+        "Your prompt should name the input the agent must use.",
+        "For a file, your task should give its path.",
+    )
+
+
+def test_tool_input_advice_is_silent_when_nothing_is_missing() -> None:
+    found = ExpectedInput(tool="editor", key="path", value="calc.py")
+    score = ToolInputScore(
+        score=1.0,
+        expected=frozenset({found}),
+        matched=frozenset({found}),
+        missing=frozenset(),
+    )
+    assert advice_for_tool_input(score) is None
+
+
+def test_editor_newlines_advice_quotes_the_path_and_says_what_to_open() -> None:
+    advice = advice_for_editor_newlines(
+        EditorNewlinesCheck(hits=((3, "C:\\work\\a\x1bb.py"),))
+    )
+
+    assert advice is not None
+    assert advice.label is None
+    assert advice.lines == (
+        "1 editor call wrote literal \\n where the old text had line breaks "
+        "(call 3: 'C:\\\\work\\\\a\\x1bb.py').",
+        "Open the file named above and check that its line breaks are still in place.",
+    )
+
+
+def test_editor_newlines_advice_says_each_file_for_several_hits() -> None:
+    advice = advice_for_editor_newlines(
+        EditorNewlinesCheck(hits=((1, "a.py"), (4, None)))
+    )
+
+    assert advice is not None
+    assert advice.lines == (
+        "2 editor calls wrote literal \\n where the old text had line breaks "
+        "(call 1: 'a.py'; call 4: -).",
+        "Open each file named above and check that its line breaks are still in place.",
+    )
+
+
+def test_editor_newlines_advice_is_silent_with_no_hit() -> None:
+    assert advice_for_editor_newlines(EditorNewlinesCheck(hits=())) is None
+
+
+def test_test_cmd_advice_when_no_command_ran_after_the_last_edit() -> None:
+    advice = advice_for_test_cmd(CmdAfterEditCheck(status="not_run"))
+
+    assert advice is not None
+    assert advice.label is None
+    assert advice.lines == (
+        "No matching command ran after the last edit.",
+        "Run your tests yourself on the final files.",
+        "Your prompt can tell the agent to run the tests after its last edit.",
+    )
+
+
+def test_test_cmd_advice_when_cline_marked_the_command_failed() -> None:
+    advice = advice_for_test_cmd(
+        CmdAfterEditCheck(status="ran", command_index=5, success=False, error="boom")
+    )
+
+    assert advice is not None
+    assert advice.lines == (
+        "A matching command ran after the last edit, and Cline marked it as failed.",
+        "Read the command's output in the Cline run to see what failed.",
+        "Run your tests yourself on the final files.",
+    )
+
+
+@pytest.mark.parametrize(
+    "check",
+    [
+        CmdAfterEditCheck(status="ran", command_index=5, success=True),
+        CmdAfterEditCheck(status="ran", command_index=5, success=None),
+        CmdAfterEditCheck(status="no_edit"),
+        CmdAfterEditCheck(status="every_edit_failed"),
+        CmdAfterEditCheck(status="execute_command"),
+    ],
+)
+def test_test_cmd_advice_is_silent_when_nothing_is_wrong(
+    check: CmdAfterEditCheck,
+) -> None:
+    assert advice_for_test_cmd(check) is None

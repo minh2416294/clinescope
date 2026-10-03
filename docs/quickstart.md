@@ -12,7 +12,7 @@ All processing takes place in your local environment. On the default deployment,
 
 ## See it work first (no Cline, no Ollama, no key)
 
-Clinescope ships real captured Cline traces inside the package, so you can watch it score before setting anything up. The fastest look is `clinescope --demo`, which scores one bundled trace (a real run whose patch failed and was never retried) with advice on:
+Clinescope ships real captured Cline traces inside the package, so you can watch it score before setting anything up. The fastest look is `clinescope --demo`, which scores one bundled trace (a real run whose patch failed and was never retried) and says what went wrong, what to do about it, and why:
 
 ```bash
 python -m pip install clinescope
@@ -201,7 +201,7 @@ Point Clinescope at the trace. After `--expected`, list the tools the task neede
 clinescope path/to/messages.json --expected apply_patch read_files
 ```
 
-You get one line per scorer:
+By default you get a plain-English report. Each problem comes first, with what to do about it and why the check could be wrong. Then come the checks that went well, and any check that did not apply to this run. `--details` shows the technical report instead, one line per check:
 
 - **`tool_selection`**: did it call the tool names you passed to `--expected`?
 - **`diff_coherence`**: does its `apply_patch` text parse against Cline's `*** Begin Patch` grammar? It does not check that the patch applies.
@@ -211,26 +211,53 @@ You get one line per scorer:
 Here is a real run of a small local model asked to fix a bug. It answered in fluent prose ("the fix is complete, a patch was applied") but never actually called a tool, and the file was never touched. Clinescope caught it (your session id will be a timestamp Cline assigned, like `1783823285576_8f1km`):
 
 ```
-clinescope report - session '1783823285576_8f1km' (0 tool calls)
-tool_selection    0/100   (missing: apply_patch, read_files)
-diff_coherence    0/100  FAIL   (no apply_patch tool call in trace)
-diff_minimality     n/a  n/a   (no apply_patch - nothing to check)
-apply_recovery      n/a  n/a   (no apply_patch - nothing to recover)
+Clinescope found 2 problems in this Cline run.
+
+Problem 1 of 2
+- The agent never used apply_patch or read_files.
+- You listed them as tools the agent should use.
+
+What to do
+- Your prompt should name the tools the agent must use.
+- One example rule is "Always read a file with read_files before you patch it."
+
+Why
+- Clinescope only checks that each tool you listed was called.
+- It does not check what the agent sent to the tool.
+
+Problem 2 of 2
+- The agent made no edit that Clinescope can check.
+
+What to do
+- If the agent changed files another way, this is expected.
+- If the task needed an edit and none happened, your prompt should tell the agent to edit the file with its tools.
+
+Why
+- Clinescope checks the format of only one kind of edit.
+- This run made no edit of that kind.
+
+Did not apply
+- 2 checks did not apply, because the run had no patch to read.
+
+Session '1783823285576_8f1km'
 ```
 
-Reading it: the agent claimed it fixed the bug, but the trace records zero tool calls, so no file was touched. `tool_selection 0/100` means it never called the tools; `diff_coherence FAIL` means there was no patch to check; the two `n/a` lines mean there was no patch to measure (not an error). That gap between "the agent said it succeeded" and "the agent did nothing" is what Clinescope exists to catch.
+Reading it: the agent claimed it fixed the bug, but the trace records zero tool calls, so no file was touched. The first problem says it never called the tools you listed. The second says there was no edit to check. The two checks under "Did not apply" had no patch to read, which is not an error. That gap between "the agent said it succeeded" and "the agent did nothing" is what Clinescope exists to catch.
 
-**If your run used the `editor` tool instead of `apply_patch`.** Most current Cline CLI sessions do. Cline only routes a session to `apply_patch` when the provider is `openai-native` or the model id contains `codex` or `gpt`, and only in act mode; everything else gets `editor`. On those sessions a `note:` line says the three `apply_patch` checks did not run, those three show `n/a`, and a fifth line appears:
+**If your run used the `editor` tool instead of `apply_patch`.** Most current Cline CLI sessions do. Cline only routes a session to `apply_patch` when the provider is `openai-native` or the model id contains `codex` or `gpt`, and only in act mode; everything else gets `editor`. On those sessions the three `apply_patch` checks are listed under "Did not apply", and the retry check for `editor` runs instead:
 
 ```
-clinescope report - session '1787455395427_4abgw' (3 tool calls)
-note: 0 apply_patch calls, 2 editor calls - the 3 apply_patch checks did not run
-tool_selection  100/100  PASS
-diff_coherence      n/a  n/a   (editor run - no apply_patch to check)
-diff_minimality     n/a  n/a   (no apply_patch - nothing to check)
-apply_recovery      n/a  n/a   (no apply_patch - nothing to recover)
-editor_recovery 100/100  PASS   (1/1 failed edits recovered)
-clean run - nothing to fix
+Clinescope found no problems in the checks below.
+
+What went well
+- The agent used every tool you listed.
+- 1 edit failed, and a later edit to the same file went through.
+- No edit replaced real line breaks with the text \n.
+
+Did not apply
+- 3 checks did not apply, because they only read a kind of edit this run did not use.
+
+Session '1787455395427_4abgw'
 ```
 
 Pass `--expected editor read_files` on those runs, not `apply_patch`:
@@ -239,27 +266,13 @@ Pass `--expected editor read_files` on those runs, not `apply_patch`:
 clinescope path/to/messages.json --expected editor read_files
 ```
 
-`editor_recovery` asks the `apply_recovery` question of the `editor` tool: of every `editor` call Cline marked failed, how many did a later confirmed `editor` call on the same path re-touch? The `n/a` on `diff_coherence` means "no `apply_patch` to grade here", not "your agent wrote a broken patch". A run with neither `apply_patch` nor `editor`, like the one above it, still shows `diff_coherence 0/100 FAIL`, because there nothing was edited at all. There is no shape or grammar scorer for `editor`, and [LIMITATIONS.md](../LIMITATIONS.md) explains why. To gate CI on an editor run, see [Gate a run in CI](usage.md#gate-a-run-in-ci).
+In `--details`, that check is `editor_recovery`, the `apply_recovery` question asked of the `editor` tool: of every `editor` call Cline marked failed, how many did a later confirmed `editor` call on the same path re-touch? The three `apply_patch` checks show `n/a` there, which means "no `apply_patch` to grade here", not "your agent wrote a broken patch". A run with neither `apply_patch` nor `editor`, like the one above it, still reports a problem, because nothing was edited at all. There is no shape or grammar scorer for `editor`, and [LIMITATIONS.md](../LIMITATIONS.md) explains why. To gate CI on an editor run, see [Gate a run in CI](usage.md#gate-a-run-in-ci).
 
 ## 5. Improve the agent
 
-Add `--advice` to turn a failing scorer into a concrete fix for your prompt:
+The report already says what to do about each problem. Edit your prompt or your Cline rules the way it suggests, re-run the Cline task, and score again. A run with no problems is the goal.
 
-```bash
-clinescope path/to/messages.json --expected apply_patch read_files --advice
-```
-
-```
-advice (how to improve the agent):
-  [tool_selection] missing_tools
-    - The agent never called: apply_patch, read_files.
-    - Add to your prompt an instruction to use the right tool for the task (e.g. 'Always read a file with read_files before you patch it').
-  [diff_coherence] malformed_patch
-    - The patch is malformed: no apply_patch tool call in trace.
-    - The model is emitting invalid apply_patch grammar. Add a few-shot example of a correct '*** Begin Patch' block to your prompt, or try a stronger model.
-```
-
-Then edit your prompt per the advice, re-run the Cline task, and score again. A clean run (every applicable scorer passing) is the goal.
+`--advice` is no longer needed, because advice now shows on every run that has a problem. Older commands that pass it still work.
 
 ## Score a VS Code extension session
 

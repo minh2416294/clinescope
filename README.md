@@ -8,7 +8,7 @@
 
 **Clinescope runs on the Cline CLI and the VS Code extension.** Run `clinescope --vscode` to auto-discover and score a VS Code extension session (see [Score a VS Code extension session](docs/usage.md#score-a-vs-code-extension-session)).
 
-Clinescope reads the log of one Cline run and scores it on six checks.
+Clinescope reads the log of one Cline run and scores it on six checks. By default it says in plain English what went wrong, what to do about it, why the check could be wrong, and what went well. `--details` shows the technical report instead: each check's name and score, with the same advice.
 
 | Check | What it tells you | What it does not tell you |
 |---|---|---|
@@ -19,15 +19,15 @@ Clinescope reads the log of one Cline run and scores it on six checks.
 | `apply_recovery` | After a failed `apply_patch`, whether a later patch to the same file went through. | Whether the later patch fixed the problem. |
 | `editor_recovery` | The same, for Cline's `editor` tool. | The same. |
 
-Most Cline sessions today use `editor`. On those runs a `note:` line says the three patch checks did not run, and all three show `n/a`.
+Most Cline sessions today use `editor`. On those runs the three patch checks are listed under "Did not apply". In `--details`, a `note:` line says they did not run, and all three show `n/a`.
 
-When a run has an `apply_patch`, a `cline_verdict` line under `diff_coherence` shows what Cline did with that same patch: `applied`, `rejected` (with Cline's own reason), or `no verdict`. A patch can pass `diff_coherence` and still be rejected, because the check reads the patch text while Cline tries it on your file. The line is not a score.
+In `--details`, when a run has an `apply_patch`, a `cline_verdict` line under `diff_coherence` shows what Cline did with that same patch: `applied`, `rejected` (with Cline's own reason), or `no verdict`. A patch can pass `diff_coherence` and still be rejected, because the check reads the patch text while Cline tries it on your file. The line is not a score.
 
-`--test-cmd TEXT` adds a `test_cmd` line: did a command containing TEXT run after the last edit, and what did Cline record for it (`success`, or Cline's own error text)? It runs nothing and does not prove the fix works. Cline keeps one flag for a whole command line, so `pytest; echo done` can read `success` after pytest failed. The last edit counts any file, so a helper script written after the tests also reads `not run`. A `not run`, or a run Cline marked failed, keeps the `clean run` line off.
+`--test-cmd TEXT` asks whether a command containing TEXT ran after the last edit, and what Cline recorded for it (`success`, or Cline's own error text). It runs nothing and does not prove the fix works. Cline keeps one flag for a whole command line, so `pytest; echo done` can read `success` after pytest failed. The last edit counts any file, so a helper script written after the tests also reads `not run`. A `not run`, or a run Cline marked failed, is reported as a problem.
 
-An `editor_newlines` line appears only when an `editor` call that Cline accepted replaced text that had real line breaks with one line holding literal `\n` instead. In one real run that call turned a whole file into one line with 78 literal `\n`, Python could not parse it, and every check still passed. The line keeps the `clean run` line off. It is not a score. It never opens the file, it does not check a new file written this way, and it does not look at later edits.
+An `editor_newlines` problem appears only when an `editor` call that Cline accepted replaced text that had real line breaks with one line holding literal `\n` instead. In one real run that call turned a whole file into one line with 78 literal `\n`, Python could not parse it, and every check still passed. It is not a score. It never opens the file, it does not check a new file written this way, and it does not look at later edits.
 
-<p align="center"><img src="docs/demo.svg" alt="clinescope scoring three real captured Cline runs: a clean run, a run whose failed patch was never retried, and a run where the model called no tools; the two failing runs show advice to fix the agent" width="720"></p>
+<p align="center"><img src="docs/demo.svg" alt="clinescope scoring three real captured Cline runs: a clean run, a run whose failed patch was never retried, and a run where the model called no tools; the two failing runs say what went wrong, what to do and why" width="720"></p>
 
 <p align="center"><em>Three real captured runs; run <code>clinescope --demo</code> to score one yourself.</em></p>
 
@@ -37,7 +37,7 @@ A Cline run can include a failed edit that the agent never went back to. You onl
 
 - **No setup.** It reads the log Cline already writes. The scores need no AI model, no API key, no network, and no other packages.
 - **It names what went wrong.** A failed patch that was never retried, a tool you expected that never got called, a block of lines deleted and rewritten.
-- **It tells you what to change.** `--advice` prints one instruction per problem that you can add to your prompt or your Cline rules.
+- **It tells you what to change.** Every problem comes with what to do (often an instruction you can add to your prompt or your Cline rules) and the limit of the check that found it.
 - **It can guard your CI.** `clinescope-gate` fails the build when a score drops below the bar you set.
 - **Same log, same score.** No model is involved, so a score only moves when the run changed.
 
@@ -65,19 +65,19 @@ I read five eval tools on 2026-09-13: DeepEval, promptfoo, Langfuse, Braintrust 
     clinescope path/to/messages.json --expected read_files apply_patch
     ```
 
-    After `--expected`, list the tools you think the task needed. Run `clinescope --list-tools` to print the tools in Clinescope.
+    After `--expected`, list the tools you think the task needed. Run `clinescope --list-tools` to print the tools in Clinescope. The report lists each problem with what to do about it.
 
-    **Improve your prompt:**
+    **See the technical report:**
 
     ```bash
-    clinescope path/to/messages.json --expected read_files apply_patch --advice
+    clinescope path/to/messages.json --expected read_files apply_patch --details
     ```
 
 Learn more in the [usage guide](docs/usage.md). New to this? The [quickstart](docs/quickstart.md) walks you from installing Clinescope to scoring your own session, and step 2 links out to Cline's own docs if you still need the Cline CLI itself.
 
 ## Feedback
 
-Ran Clinescope on your own Cline trace? One question: did any score disagree with your own read of the run? Tell me which one on the [feedback form](https://github.com/minh2416294/clinescope/issues/new?template=feedback.yml). A score you think is wrong is the single most useful thing you can send, because it is the only answer that tells me something the code does not already say.
+Ran Clinescope on your own Cline trace? One question: did anything in the report disagree with your own read of the run? Tell me which part on the [feedback form](https://github.com/minh2416294/clinescope/issues/new?template=feedback.yml). A result you think is wrong is the single most useful thing you can send, because it is the only answer that tells me something the code does not already say.
 
 For a reproducible scorer or CLI bug, the [Bug report](https://github.com/minh2416294/clinescope/issues/new/choose) form is a better fit. To contribute a change, see [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, tests, and what a scorer change needs.
 

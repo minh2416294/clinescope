@@ -1,8 +1,12 @@
 """Thin CLI for the walking skeleton: load -> score -> EMIT.
 
 Usage:
-    python -m clinescope <trace.json> --expected read_files [write_file ...] [--verbose]
+    python -m clinescope <trace.json> --expected read_files [...] [--details | --verbose]
     python -m clinescope --vscode [--path DIR | --latest] [--expected ...]
+
+The default output is the plain-English report (:mod:`clinescope.plain_report`).
+``--details`` prints the technical report with advice on every failing run, and
+``--verbose`` the full debug dump.
 
 Two input sources, one scoring path. Without ``--vscode`` it loads a Cline CLI
 World-A trace (``{version:1, messages:[...]}``). With ``--vscode`` it reads a
@@ -49,6 +53,7 @@ from clinescope.extension_discovery import (
     discover_sessions,
     enumerate_sessions,
 )
+from clinescope.plain_report import plain_report_render
 from clinescope.render_safety import quote_untrusted_text
 from clinescope.report import render_report
 from clinescope.tool_input import (
@@ -162,7 +167,18 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--advice",
         action="store_true",
-        help="Append per-failing-scorer coaching (what to change) to the summary",
+        help=(
+            "No longer needed: advice now shows on every failing run. Kept so older "
+            "commands still work"
+        ),
+    )
+    parser.add_argument(
+        "--details",
+        action="store_true",
+        help=(
+            "Show the technical report (each check's name, score and Cline's verdict) "
+            "instead of the plain-English one, with advice on every failing run"
+        ),
     )
     parser.add_argument(
         "--verbose",
@@ -268,7 +284,7 @@ def _maybe_print_feedback_footer() -> None:
     if not sys.stdout.isatty():
         return
     print(
-        "\nRan this on your own Cline trace? One question: did any score above "
+        "\nRan this on your own Cline trace? One question: did anything above "
         "disagree with your own read of the run?"
         f"\nTell me which one: {_FEEDBACK_URL}",
         file=sys.stderr,
@@ -280,7 +296,7 @@ def main(
 ) -> int:
     args = _parse_args(argv)
     if args.demo:
-        return _emit_bundled_demo_report()
+        return _emit_bundled_demo_report(args.details)
     expected_provided = args.expected is not None
     expected = args.expected if expected_provided else []
     if expected_provided:
@@ -319,8 +335,8 @@ def main(
 # no local file: it scores a REAL bundled trace with advice ON, so the top-of-
 # README demo shows the tool CATCHING a failure (the PASS+FAIL mix on
 # live-gpt-oss-apply-fail.json), not a canned all-green screenshot. The inputs are
-# fixed (a curated, deterministic experience), so it reads NOTHING off the user's
-# args -- any --expected / --advice / --vscode / positional trace is cleanly
+# fixed (a curated, deterministic experience), so it reads only --details off the
+# user's args -- any --expected / --advice / --vscode / positional trace is cleanly
 # ignored (last mode wins). Resolves the trace via the same datafiles resolver the
 # corpus/gold features use, so it works from a pip/uvx install with no clone.
 
@@ -328,7 +344,7 @@ _DEMO_TRACE_NAME = "live-gpt-oss-apply-fail.json"
 _DEMO_EXPECTED = ["read_files", "apply_patch"]
 
 
-def _emit_bundled_demo_report() -> int:
+def _emit_bundled_demo_report(details: bool) -> int:
     try:
         trace_path = datafiles_root() / "examples" / _DEMO_TRACE_NAME
         trace = load_trace(trace_path)
@@ -353,7 +369,7 @@ def _emit_bundled_demo_report() -> int:
             trace,
             _DEMO_EXPECTED,
             True,
-            argparse.Namespace(advice=True, verbose=False),
+            argparse.Namespace(details=details, verbose=False),
             session_id=session_id,
         )
     )
@@ -623,8 +639,26 @@ def _score_and_render(
     newlines_check: EditorNewlinesCheck | None = (
         editor_newlines_check(trace) if editor_score is not None else None
     )
-    return render_report(
-        trace,
+    if args.details or args.verbose:
+        # Advice is on for every run: a problem never shows without what to do.
+        # --advice is accepted and changes nothing.
+        return render_report(
+            trace,
+            score,
+            session_id=session_id,
+            session_label=session_label,
+            diff_coherence=diff_score,
+            diff_minimality=minimality_score,
+            apply_recovery=recovery_score,
+            editor_recovery=editor_score,
+            tool_input=input_score,
+            test_cmd=test_cmd_check,
+            editor_newlines=newlines_check,
+            expected_provided=expected_provided,
+            advice=True,
+            verbose=args.verbose,
+        )
+    return plain_report_render(
         score,
         session_id=session_id,
         session_label=session_label,
@@ -634,10 +668,9 @@ def _score_and_render(
         editor_recovery=editor_score,
         tool_input=input_score,
         test_cmd=test_cmd_check,
+        test_cmd_text=test_cmd or "",
         editor_newlines=newlines_check,
         expected_provided=expected_provided,
-        advice=args.advice,
-        verbose=args.verbose,
     )
 
 

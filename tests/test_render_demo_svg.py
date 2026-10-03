@@ -11,7 +11,7 @@ matter and are pinned:
    README hero would render blank for those users.
 2. DRIFT: the committed docs/demo.svg must equal render() byte-for-byte, so the checked-in
    hero can never silently diverge from the generator (mirrors tests/test_fixture_drift.py).
-3. REAL OUTPUT: each scene's lines, with the script's two stated width edits undone, must
+3. REAL OUTPUT: each scene's lines, with the script's stated width edit undone, must
    equal what `clinescope` prints today for that scene's command. Check 2 alone could not
    see the report change under the hero: the session id gained quotes and the advice was
    reworded while the SVG still matched its own generator.
@@ -41,10 +41,6 @@ _SCENE_TRACES = {
     / "corpus"
     / "qwen-missing-tools.json",
 }
-# Width edit 1: the advice path is shortened to its basename.
-_ADVICE_PATH = (
-    "'C:\\\\Users\\\\user\\\\clinescope-day11\\\\cap2\\\\repo\\\\validator.py'"
-)
 
 
 def _load_render_module() -> ModuleType:
@@ -100,8 +96,8 @@ def test_scene_lines_match_real_clinescope_output(
     argv = [str(_SCENE_TRACES.get(arg, arg)) for arg in argv]
 
     assert main(argv) == 0
-    real = capsys.readouterr().out.replace(_ADVICE_PATH, "'validator.py'").splitlines()
+    real = capsys.readouterr().out.splitlines()
 
-    # Width edit 2: a line wider than the canvas carries "\n" plus indent at each wrap.
+    # The width edit: a line wider than the canvas carries "\n" plus indent at each wrap.
     shown = [re.sub(r"\n *", " ", text) for text, _ in scene.lines]
     assert shown == real

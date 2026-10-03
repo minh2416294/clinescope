@@ -37,7 +37,7 @@ _NO_TOOLS = _EXAMPLES / "corpus" / "qwen-missing-tools.json"  # no tool call at 
 
 
 def _cli_lines(capsys: pytest.CaptureFixture[str], *argv: str) -> list[str]:
-    assert main(list(argv)) == 0
+    assert main(list(argv) + ["--details"]) == 0
     return capsys.readouterr().out.splitlines()
 
 
