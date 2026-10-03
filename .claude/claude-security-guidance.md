@@ -20,7 +20,10 @@ Two other workflows also reach a third party and are in scope for the same suppl
 even though they publish nothing. `.github/workflows/claude.yml` and
 `.github/workflows/claude-code-review.yml` both run `anthropics/claude-code-action` with a secret
 OAuth token and `id-token: write`, sending repository and pull-request content to an external
-service. `claude-code-review.yml` is a required check, so it runs on every pull request.
+service. `claude-code-review.yml` is a required check, so it runs on every pull request. It lets
+the model run `gh pr view`, `gh pr diff` and `gh pr comment`, so text in a pull request could
+steer it into posting a comment. Only users with write access trigger it, and fork runs get no
+secrets.
 
 Damage from the first adversary is specific rather than generic: terminal escape sequences land
 ahead of the scorer lines in the report and can overwrite them, displaying a score the tool never
