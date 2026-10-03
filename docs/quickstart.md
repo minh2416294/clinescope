@@ -253,10 +253,10 @@ clinescope path/to/messages.json --expected apply_patch read_files --advice
 advice (how to improve the agent):
   [tool_selection] missing_tools
     - The agent never called: apply_patch, read_files.
-    - Add to your prompt an instruction to use the right tool for the task.
+    - Add to your prompt an instruction to use the right tool for the task (e.g. 'Always read a file with read_files before you patch it').
   [diff_coherence] malformed_patch
-    - The model is emitting invalid apply_patch grammar. Add a few-shot example of a
-      correct '*** Begin Patch' block to your prompt, or try a stronger model.
+    - The patch is malformed: no apply_patch tool call in trace.
+    - The model is emitting invalid apply_patch grammar. Add a few-shot example of a correct '*** Begin Patch' block to your prompt, or try a stronger model.
 ```
 
 Then edit your prompt per the advice, re-run the Cline task, and score again. A clean run (every applicable scorer passing) is the goal.
