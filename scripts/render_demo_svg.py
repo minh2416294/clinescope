@@ -27,8 +27,9 @@ All report text is genuine `clinescope` stdout, not a mockup, and
 tests/test_render_demo_svg.py re-runs each scene's command to keep it that way.
 Two width edits only: the advice file path is shortened to a basename (honest: it is
 a generic capture path with no real user data), and a line wider than the canvas is
-wrapped onto indented rows, marked by "\\n" in its text. The `--demo` header goes to
-stderr, so it is not drawn.
+wrapped onto indented rows, marked by "\\n" in its text. Two lines a terminal shows
+go to stderr, so they are not drawn: the `--demo` header, and the feedback question
+printed after a report when stdout is a terminal.
 
 Run: python scripts/render_demo_svg.py   (from the repo root)
 """
