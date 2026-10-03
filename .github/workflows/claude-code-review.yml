@@ -60,10 +60,15 @@ jobs:
           # still passed. The same three are in the action's own example,
           # examples/pr-review-comprehensive.yml at the SHA pinned above.
           claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"'
-          # TEMPORARY. Since v1.0.238 every run stops after 2 or 3 turns and posts nothing, and the
-          # model's reply is the only evidence of why. A debug re-run does not reveal it; only
-          # this input does. It prints the reply and the pull request text to a public log, so
-          # remove it once the cause is found. CLAUDE.md, "Shipping a change", has the run IDs.
+          # REQUIRED since v1.0.238. Claude Code 2.1.286 starts the plugin's eligibility agent in the
+          # background; the model then ends its turn to wait, which ends a one-shot run, so the
+          # review never resumes and posts nothing (run 37139197879 shows it). Disabling
+          # background tasks makes every agent run in the foreground.
+          settings: '{"env": {"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}}'
+          # TEMPORARY. Shows the model's reply, which is how the cause above was found; a debug
+          # re-run does not reveal it. It prints the reply and the pull request text to a public
+          # log, so remove it once a run proves the setting above works. CLAUDE.md, "Shipping a
+          # change", has the run IDs.
           show_full_output: true
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
