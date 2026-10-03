@@ -32,7 +32,7 @@ go to stderr, so they are not drawn: the `--demo` header, and the feedback quest
 printed after a report when stdout is a terminal.
 
 Run: python scripts/render_demo_svg.py   (from the repo root)
-Probe line for the claude-review diagnosis; this pull request is never merged.
+Probe line for the claude-review fix check; this pull request is never merged.
 """
 
 from __future__ import annotations
