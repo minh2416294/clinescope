@@ -324,35 +324,46 @@ def _plain_recovery(
         else:
             results.went_well.append(_NO_RETRY_NEEDED)
         return
+    # The counts are per (call, file) pair, so one failed apply_patch touching three
+    # files counts three. The sentences therefore name the files and never count
+    # edits, except for a single pair, which is one call on one file.
+    # failed_target_paths lists every failed file, recovered or not.
     total = score.total_failed_pairs
-    if score.score == 1.0:
-        if total == 1:
-            results.went_well.append(
-                "1 edit failed, and a later edit to the same file went through."
-            )
-        else:
-            results.went_well.append(
-                f"{total} edits failed, and each had a later edit to the same file "
-                "that went through."
-            )
-        return
-    # failed_target_paths lists every failed file, recovered or not, so only the
-    # counts say how many were left without a later edit that went through.
     names = [
         _plain_file_name(path) for path in score.failed_target_paths if path != sentinel
     ]
+    if score.score == 1.0:
+        results.went_well.append(_plain_recovered_sentence(total, names))
+        return
+    unnamed = len(names) < len(score.failed_target_paths)
     steps = _DO_RETRY + ((_DO_EDITOR_RETRY_CAUSE,) if editor else ())
     results.problems.append(
         _Problem(
-            _plain_recovery_problem(total, score.unrecovered_pairs, names),
+            _plain_recovery_problem(total, score.unrecovered_pairs, names, unnamed),
             steps,
             _WHY_RETRY,
         )
     )
 
 
+def _plain_recovered_sentence(total: int, names: list[str]) -> str:
+    # A score of 1.0 means every pair was recovered, and a pair with no readable file
+    # never is, so every failed file is named here.
+    if total == 1:
+        return "1 edit failed, and a later edit to the same file went through."
+    if len(names) == 1:
+        return (
+            f"Edits to {names[0]} failed, and that file later got an edit that went "
+            "through."
+        )
+    return (
+        f"Edits to {_plain_and_list(names)} failed, and each of those files later got "
+        "an edit that went through."
+    )
+
+
 def _plain_recovery_problem(
-    total: int, unrecovered: int, names: list[str]
+    total: int, unrecovered: int, names: list[str], unnamed: bool
 ) -> tuple[str, ...]:
     if total == 1:
         if not names:
@@ -364,16 +375,23 @@ def _plain_recovery_problem(
             f"Cline marked the agent's edit to {names[0]} as failed.",
             "No later edit to that file went through.",
         )
-    lines = [f"Cline marked {total} of the agent's edits as failed."]
     if names:
-        lines.append(f"They were edits to {_plain_and_list(names)}.")
-    if unrecovered == total:
-        lines.append("No later edit to those files went through.")
+        lines = [
+            f"Cline marked the agent's edits to {_plain_and_list(names)} as failed."
+        ]
     else:
+        lines = ["Cline marked several of the agent's edits as failed."]
+    if unnamed:
+        lines.append("Clinescope could not tell which file some of them were for.")
+    if unrecovered < total:
         lines.append(
-            f"{unrecovered} of them had no later edit to the same file that went "
-            "through."
+            "For some of those files, a failed edit had no later edit to the same file "
+            "that went through."
         )
+    elif len(names) == 1 and not unnamed:
+        lines.append("No later edit to that file went through.")
+    else:
+        lines.append("No later edit to those files went through.")
     return tuple(lines)
 
 

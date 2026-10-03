@@ -647,9 +647,9 @@ def test_some_failed_edits_recovered_and_some_did_not() -> None:
     assert (
         _block(
             "Problem",
-            "- Cline marked 3 of the agent's edits as failed.",
-            "- They were edits to 'a.py' and 'b.py'.",
-            "- 1 of them had no later edit to the same file that went through.",
+            "- Cline marked the agent's edits to 'a.py' and 'b.py' as failed.",
+            "- For some of those files, a failed edit had no later edit to the same"
+            " file that went through.",
         )
         in out
     )
@@ -661,7 +661,76 @@ def test_no_failed_edit_recovered_across_several_files() -> None:
             score=0.0, total=2, unrecovered=2, paths=("a.py", "b.py")
         )
     )
-    assert "- No later edit to those files went through." in out
+    assert (
+        _block(
+            "- Cline marked the agent's edits to 'a.py' and 'b.py' as failed.",
+            "- No later edit to those files went through.",
+        )
+        in out
+    )
+
+
+def test_one_failed_patch_touching_three_files_is_not_counted_as_three_edits() -> None:
+    # total_failed_pairs counts each failed FILE of each failed call, so one patch
+    # touching three files is three pairs. The sentence must not call it three edits.
+    out = _render(
+        apply_recovery=_apply_recovery(
+            score=0.0, total=3, unrecovered=3, paths=("a.py", "b.py", "c.py")
+        )
+    )
+    assert (
+        _block(
+            "- Cline marked the agent's edits to 'a.py', 'b.py' and 'c.py' as failed.",
+            "- No later edit to those files went through.",
+        )
+        in out
+    )
+    assert "3 of the agent's edits" not in out
+
+
+@pytest.mark.parametrize(
+    ("paths", "lines"),
+    [
+        (
+            ("a.py",),
+            (
+                "- Cline marked the agent's edits to 'a.py' as failed.",
+                "- No later edit to that file went through.",
+            ),
+        ),
+        (
+            ("<unparseable>",),
+            (
+                "- Cline marked several of the agent's edits as failed.",
+                "- Clinescope could not tell which file some of them were for.",
+                "- No later edit to those files went through.",
+            ),
+        ),
+    ],
+)
+def test_two_failed_edits_with_one_or_no_named_file(
+    paths: tuple[str, ...], lines: tuple[str, ...]
+) -> None:
+    out = _render(
+        apply_recovery=_apply_recovery(score=0.0, total=2, unrecovered=2, paths=paths)
+    )
+    assert _block(*lines) in out
+
+
+def test_several_unreadable_failed_edits_say_so() -> None:
+    out = _render(
+        apply_recovery=_apply_recovery(
+            score=0.0, total=2, unrecovered=2, paths=("<unparseable>", "a.py")
+        )
+    )
+    assert (
+        _block(
+            "- Cline marked the agent's edits to 'a.py' as failed.",
+            "- Clinescope could not tell which file some of them were for.",
+            "- No later edit to those files went through.",
+        )
+        in out
+    )
 
 
 def test_failed_edit_with_no_readable_file_says_so() -> None:
@@ -680,12 +749,27 @@ def test_failed_edit_with_no_readable_file_says_so() -> None:
     assert "unparseable" not in out
 
 
-def test_several_recovered_edits_go_under_what_went_well() -> None:
-    out = _render(apply_recovery=_apply_recovery(score=1.0, total=2, paths=("a.py",)))
-    assert (
-        "- 2 edits failed, and each had a later edit to the same file that went"
-        " through." in out
-    )
+@pytest.mark.parametrize(
+    ("paths", "sentence"),
+    [
+        (
+            ("a.py",),
+            "- Edits to 'a.py' failed, and that file later got an edit that went"
+            " through.",
+        ),
+        (
+            ("a.py", "b.py"),
+            "- Edits to 'a.py' and 'b.py' failed, and each of those files later got"
+            " an edit that went through.",
+        ),
+    ],
+)
+def test_several_recovered_failures_go_under_what_went_well(
+    paths: tuple[str, ...], sentence: str
+) -> None:
+    out = _render(apply_recovery=_apply_recovery(score=1.0, total=2, paths=paths))
+    assert sentence in out
+    assert "2 edits" not in out
 
 
 def test_retries_without_any_cline_verdict_did_not_apply() -> None:
