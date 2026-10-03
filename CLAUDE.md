@@ -289,8 +289,13 @@ you change either piece:
 * **A green `claude-review` is not proof that a review happened.** The action also skips, and
   passes, on any pull request that edits that workflow file, because the file must match `main`
   (the #109 run says so). The plugin can also decide a pull request needs no review. Before
-  reading green as reviewed, check that the run posted a comment or a review.
-* **Since the action moved to v1.0.238 (#145), no review run has posted.** Six runs on five pull
+  reading green as reviewed, check that the run posted a comment or a review. A posted comment
+  is not proof of a full review either: on #156 the model skipped the plugin's review agents,
+  read the diff itself, and still posted "Checked for bugs and CLAUDE.md compliance" (run
+  37139774705). The run's `modelUsage`, printed even with full output off, lists Opus only
+  when the review agents ran, as on #147.
+* **That workflow must keep `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` in its `settings` input.**
+  After the action moved to v1.0.238 (#145), no review run posted. Six runs on five pull
   requests, all on Claude Code 2.1.286: 37124176057 (#148), 37124386339 (#149), 37125513592
   (#150), 37125705783 (#151), and both attempts of 37126250981 (#152, which changes `scripts/`,
   so it is not only docs PRs). Each ran 2 or 3 turns in 4 to 5 seconds, with 0 permission
@@ -301,9 +306,10 @@ you change either piece:
   its eligibility check with the `Agent` tool, Claude Code 2.1.286 starts that agent in the
   background, and the model ends its turn "waiting for its result". In the action's one-shot
   run, the end of that turn ends the session, so the review never resumes and nothing posts.
-  The workflow now sets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` through the action's `settings`
-  input, so agents run in the foreground. `show_full_output: true` stays on until a run proves
-  the fix, because it prints the model's reply and the pull request text to a public log.
+  With the setting, agents run in the foreground, and run 37139774705 on #156 posted.
+  `show_full_output` was on for #153 to #156 and is off again, because it prints the model's
+  reply and the pull request text to a public log. To diagnose a silent run, turn it on the same
+  way; a debug re-run will not show the reply.
 
 Conventional commit subjects. Branches are short kebab-case, for example
 `fix/abstention-not-zero`.
