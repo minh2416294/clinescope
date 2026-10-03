@@ -36,7 +36,7 @@ mypy src                  # type-check
 so `pytest -q` finds the package whether or not it's installed.
 
 CI additionally runs the suite under coverage and **fails if line coverage drops below 90%**
-(measured at 93%). To reproduce that gate locally:
+(measured at 94.69% on 2026-10-03). To reproduce that gate locally:
 
 ```bash
 pytest -q --cov=clinescope --cov-report=term-missing --cov-fail-under=90
