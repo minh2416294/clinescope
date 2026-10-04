@@ -26,6 +26,7 @@ back: a scorer never reads a report, and a renderer never re-scores.
 | When the two recovery scorers treat two path spellings as one file, and the rule's known false match | `src/clinescope/recovery_path.py`, module docstring |
 | The gate's exit contract, and why applicability is decided on a call count | `src/clinescope/gate.py`, module docstring |
 | Why the multi-trace scorecard is a sibling command and never a build gate | `src/clinescope/compare.py`, module docstring |
+| The default plain-English report: every check shown once (a problem with what to do and why, what went well, or did not apply), and a file shown by name only | `src/clinescope/plain_report.py`, module docstring |
 | Neutralising untrusted text: the repr choice, the quotes, the leaf-module rule | `src/clinescope/render_safety.py`, module docstring |
 | Locating bundled data so an installed package works | `src/clinescope/_datafiles.py`, module docstring |
 | Why the patch text handed to the judge is fenced, and why the tag is a digest | `src/clinescope/judge.py`, at the prompt builder |
@@ -47,7 +48,8 @@ it grades. `src/clinescope/tool_input.py` is split the same way: `__main__.py` s
 when `--expected-input` is given, and the `--test-cmd` line from `src/clinescope/cmd_after_edit.py`
 (a context check, not a scorer) is computed only when that flag is given. The `editor_newlines`
 line from `src/clinescope/editor_newlines.py`, another context check, is computed on the same rule
-as `editor_recovery`, and `report.py` renders it only when it has a hit. Somebody looking for the
+as `editor_recovery`; `report.py` (the `--details` view) renders it only when it has a hit, and
+`plain_report.py` lists a run with no hit under "What went well". Somebody looking for the
 omission inside the scorer will not find it. The same
 split applies to the `n/a` that `diff_coherence` shows on an editor run: the scorer still
 returns its hard zero, and `src/clinescope/report.py` decides to display `n/a`, in

@@ -71,7 +71,9 @@ def test_report_omits_the_line_when_the_scorer_is_not_passed() -> None:
 
 
 def test_cli_adds_no_editor_line_to_an_apply_patch_trace(capsys) -> None:  # type: ignore[no-untyped-def]
-    exit_code = main([str(_APPLY_PATCH_TRACE), "--expected", "apply_patch"])
+    exit_code = main(
+        [str(_APPLY_PATCH_TRACE), "--expected", "apply_patch", "--details"]
+    )
     out = capsys.readouterr().out
 
     assert exit_code == 0
@@ -83,7 +85,9 @@ def test_cli_adds_no_editor_line_to_an_apply_patch_trace(capsys) -> None:  # typ
 
 
 def test_cli_renders_the_editor_line_on_the_real_capture(capsys) -> None:  # type: ignore[no-untyped-def]
-    exit_code = main([str(_REAL_EDITOR_TRACE), "--expected", "editor", "read_files"])
+    exit_code = main(
+        [str(_REAL_EDITOR_TRACE), "--expected", "editor", "read_files", "--details"]
+    )
     out = capsys.readouterr().out
 
     assert exit_code == 0
@@ -218,7 +222,7 @@ def _apply_patch_call(call_id: str) -> ToolCall:
 
 
 def test_cli_editor_run_report_is_the_approved_report(capsys) -> None:  # type: ignore[no-untyped-def]
-    exit_code = main([str(_REAL_EDITOR_TRACE)])
+    exit_code = main([str(_REAL_EDITOR_TRACE), "--details"])
 
     assert exit_code == 0
     assert capsys.readouterr().out == _EDITOR_RUN_REPORT
@@ -227,14 +231,14 @@ def test_cli_editor_run_report_is_the_approved_report(capsys) -> None:  # type: 
 def test_cli_editor_run_gives_no_malformed_patch_advice(capsys) -> None:  # type: ignore[no-untyped-def]
     # Nothing failed on this run, so --advice adds no block and the output is the
     # same report, byte for byte.
-    exit_code = main([str(_REAL_EDITOR_TRACE), "--advice"])
+    exit_code = main([str(_REAL_EDITOR_TRACE), "--advice", "--details"])
 
     assert exit_code == 0
     assert capsys.readouterr().out == _EDITOR_RUN_REPORT
 
 
 def test_cli_run_with_neither_tool_keeps_the_hard_zero(capsys) -> None:  # type: ignore[no-untyped-def]
-    exit_code = main([str(_NEITHER_TOOL_TRACE), "--advice"])
+    exit_code = main([str(_NEITHER_TOOL_TRACE), "--advice", "--details"])
     out = capsys.readouterr().out
 
     assert exit_code == 0

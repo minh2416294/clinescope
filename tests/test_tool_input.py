@@ -168,7 +168,10 @@ def test_parse_rejects_what_it_cannot_score(tool: str, pair: str) -> None:
 def test_cli_prints_a_pass_line_under_tool_selection(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    assert main([str(_GRANITE), "--expected-input", "editor", "path=calc.py"]) == 0
+    assert (
+        main([str(_GRANITE), "--expected-input", "editor", "path=calc.py", "--details"])
+        == 0
+    )
     lines = capsys.readouterr().out.splitlines()
 
     selection = next(
@@ -187,6 +190,7 @@ def test_cli_names_the_missing_input(capsys: pytest.CaptureFixture[str]) -> None
             "--expected-input",
             "editor",
             "path=other.py",
+            "--details",
         ]
     )
     lines = capsys.readouterr().out.splitlines()
@@ -199,7 +203,7 @@ def test_cli_names_the_missing_input(capsys: pytest.CaptureFixture[str]) -> None
 def test_cli_without_the_flag_prints_no_line(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    main([str(_GRANITE)])
+    main([str(_GRANITE), "--details"])
 
     assert "tool_input" not in capsys.readouterr().out
 
@@ -207,7 +211,7 @@ def test_cli_without_the_flag_prints_no_line(
 def test_cli_a_match_keeps_the_clean_run_footer(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    main([str(_GRANITE), "--expected-input", "editor", "path=calc.py"])
+    main([str(_GRANITE), "--expected-input", "editor", "path=calc.py", "--details"])
 
     assert capsys.readouterr().out.splitlines()[-1] == "clean run - nothing to fix"
 
@@ -237,7 +241,9 @@ def test_cli_missing_equals_is_a_usage_error(
 def test_cli_unknown_key_warns_and_still_scores(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    exit_code = main([str(_GRANITE), "--expected-input", "editor", "pth=calc.py"])
+    exit_code = main(
+        [str(_GRANITE), "--expected-input", "editor", "pth=calc.py", "--details"]
+    )
     captured = capsys.readouterr()
 
     assert exit_code == 0

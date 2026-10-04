@@ -73,7 +73,7 @@ def test_expected_provided_still_scores_normally_render() -> None:
 def test_cli_no_expected_prints_na_and_note(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    exit_code = main([str(APPLY_PATCH_TRACE)])
+    exit_code = main([str(APPLY_PATCH_TRACE), "--details"])
     out = capsys.readouterr().out
     assert exit_code == 0
     tool_line = next(ln for ln in out.splitlines() if ln.startswith("tool_selection"))
@@ -88,7 +88,9 @@ def test_cli_no_expected_prints_na_and_note(
 def test_cli_typo_warns_with_suggestion_and_still_exits_0(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    exit_code = main([str(APPLY_PATCH_TRACE), "--expected", "read_files", "aply_patch"])
+    exit_code = main(
+        [str(APPLY_PATCH_TRACE), "--expected", "read_files", "aply_patch", "--details"]
+    )
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "unknown tool 'aply_patch'" in captured.err

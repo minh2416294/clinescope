@@ -53,10 +53,11 @@ presets set `enableApplyPatch: false`, and only two routing rules flip a session
 require `act` mode. Everything else emits `editor`, where `diff_minimality` and `apply_recovery`
 go silent, the `diff_coherence` scorer still hard-zeros but the report shows that zero as `n/a`,
 and `editor_recovery` is the one that produces a number. Verified on
-`examples/live-granite-editor-recovery.json`: it prints
+`examples/live-granite-editor-recovery.json`: with `--details` it prints
 `note: 0 apply_patch calls, 2 editor calls - the 3 apply_patch checks did not run` under the
-header and `diff_coherence n/a n/a (editor run - no apply_patch to check)`. That `n/a` is a
-display rule, not an abstention: `score_diff_coherence` still returns `0.0`, never `None`.
+header and `diff_coherence n/a n/a (editor run - no apply_patch to check)`, and the default
+plain-English view lists the three under "Did not apply". That `n/a` is a display rule, not an
+abstention: `score_diff_coherence` still returns `0.0`, never `None`.
 
 **An empty or no-tool-call trace does not score 0 across the board, and the three non-zero
 outcomes are not the same thing.** `tool_selection` and `diff_coherence` hard-zero.
@@ -66,8 +67,9 @@ outcome and not an `n/a`. Reporting an abstention as a zero is a specific, recur
 this repo's history. Before writing any sentence about what a trace scores, run the tool on it.
 
 **The report and the gate read that hard zero differently, on purpose.** The report shows
-`diff_coherence 0/100` with its reason on a trace with neither `apply_patch` nor `editor`, because
-a missing artifact should be loud. On an editor run (0 `apply_patch` calls and at least one
+`diff_coherence 0/100` with its reason on a trace with neither `apply_patch` nor `editor` (the
+plain view names it as a problem: no edit Clinescope can check), because a missing artifact
+should be loud. On an editor run (0 `apply_patch` calls and at least one
 `editor` call, decided by `report.is_editor_run`) it shows `n/a` and the `note:` line instead,
 gives no `malformed_patch` advice, and `compare` and the corpus follow the same rule.
 `clinescope-gate` treats a trace with no `apply_patch` as not applicable to the whole
@@ -139,7 +141,8 @@ are quoted here because they fire before any code is written.
 
 **Every new feature must be required by a real user's feedback.** A feature proposed without a
 named specific reason (it supports a user, it gets a user, or it is something a user will pay
-for) gets challenged, not built.
+for) gets challenged, not built. One narrow, dated exception lets the maintainer write advice
+for a result an existing check already computes; `scope.md` owns it and what it never covers.
 
 **Answer all seven before building. Cannot answer all seven means do not build it:**
 
@@ -166,7 +169,8 @@ Four further standing rules, in short form:
 pip install clinescope
 
 clinescope --demo                                        # score a bundled real trace, zero args
-clinescope <trace.json> --expected read_files apply_patch --advice
+clinescope <trace.json> --expected read_files apply_patch   # plain English: problems, what to do, why, what went well
+clinescope <trace.json> --expected read_files apply_patch --details   # the technical report, with the same advice
 clinescope <trace.json> --expected-input editor path=src/app.py   # did some editor call carry this input
 clinescope <trace.json> --test-cmd pytest                # did a command with this text run after the last edit
 clinescope --vscode                                      # find and score a VS Code extension session
@@ -189,9 +193,10 @@ failed, and what Cline recorded for it. That last edit is to any file, so a help
 after the tests makes a false `not run`. Never describe it as checking that the fix works: Cline
 keeps one flag per command line, and `LIMITATIONS.md` owns the rest of its caveats.
 
-**`editor_newlines` is a context line too, so the count still stays six.** It needs no flag and
-shows only on a hit: an `editor` call Cline did not mark failed whose `old_text` has real line
-breaks and whose `new_text` has none but has literal `\n`. A hit keeps the clean-run footer off. It
+**`editor_newlines` is a context line too, so the count still stays six.** It needs no flag, and
+in `--details` it shows only on a hit: an `editor` call Cline did not mark failed whose `old_text`
+has real line breaks and whose `new_text` has none but has literal `\n`. A hit is a problem in the
+plain view and keeps the clean-run footer off in `--details`. It
 is one shape backed by one real call (`examples/live-granite-escaped-newlines.json`), and it never
 opens the file, so never describe it as detecting broken files. `LIMITATIONS.md` owns its caveats.
 
@@ -367,9 +372,10 @@ src/clinescope/        the package
   tool_verdict.py      shared failure/success oracle: the two recovery scorers and report's cline_verdict line
   recovery_path.py     shared path-spelling key the two recovery scorers match files on
   tool_vocab.py        pinned Cline tool-name vocabulary for --expected
-  report.py            rendering
+  plain_report.py      the default plain-English report: problems with what to do and why, what went well
+  report.py            the technical rendering behind --details and --verbose
   render_safety.py     escapes trace-derived text before it is rendered
-  advice.py            rule-based zero-LLM coach
+  advice.py            rule-based zero-LLM coach: what to do for every problem the report names
   gate.py              clinescope-gate CLI
   corpus.py            clinescope-corpus CLI
   compare.py           multi-trace scorecard (python -m only)

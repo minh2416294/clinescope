@@ -8,6 +8,22 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Changed
 
+- `clinescope` now prints a plain-English report by default. Each problem comes first, with
+  what to do about it and why the check could be wrong, then the checks that went well, then
+  any check that did not apply to the run. It names no scorer and shows no score. A file is
+  shown by its name only. `--details` prints the technical report instead. Exit codes,
+  `clinescope-gate`, `compare`, the corpus and `dependencies = []` are unchanged (#158).
+- Advice is no longer opt-in: it shows on every run that has a problem, in both views and in
+  `--verbose`. `--advice` is still accepted and changes nothing.
+- Problems that had no advice now get some: an `--expected-input` no `editor` call carried, an
+  `editor` call that wrote literal `\n` where the old text had line breaks, and a `--test-cmd`
+  command that did not run after the last edit or that Cline marked failed. The maintainer
+  chose to add these; no user asked for them. `.claude/rules/scope.md` now records this as a
+  narrow, dated exception for advice wording, with what it never covers.
+- The feedback question asks whether anything in the report disagreed with your read of the
+  run, not whether a score did.
+- `docs/demo.svg` shows the plain report, so it is taller (778 px, was 470).
+
 - The README badge now reads `coverage gate 90%`, the floor `fail_under` enforces,
   instead of a hand-set measured figure. It said 93% while CI measured 94.69% (#148).
 - `docs/demo.svg` is redrawn from real `clinescope` output: quoted session ids, the
@@ -17,6 +33,12 @@ All notable changes to Clinescope are recorded here. The format follows
 
 ### Fixed
 
+- On a run with no edit at all, the advice said "The patch is malformed". There was no patch.
+  It now says the agent made no edit Clinescope can check, and that this is expected if the
+  agent changed files another way. The label stays `malformed_patch`, because the regression
+  corpus checks it (#158).
+- The retry advice called its file list "unrecovered files", but the list holds every file with
+  a failed edit, recovered or not. It now says "failed files" (#158).
 - Five user-facing docs no longer describe limits that 1.3.0 changed. `LIMITATIONS.md`
   named two gated scorers with no agreement number, when the gate also reads
   `tool_selection` and `editor_recovery` (#137). `docs/usage.md` said `compare` has one

@@ -61,7 +61,10 @@ def _trace(*calls: ToolCall) -> Trace:
 
 
 def test_rejected_patch_shows_clines_reason(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main([str(_APPLY_FAIL), "--expected", "read_files", "apply_patch"]) == 0
+    assert (
+        main([str(_APPLY_FAIL), "--expected", "read_files", "apply_patch", "--details"])
+        == 0
+    )
     lines = capsys.readouterr().out.splitlines()
 
     assert _REJECTED_LINE in lines
@@ -70,7 +73,7 @@ def test_rejected_patch_shows_clines_reason(capsys: pytest.CaptureFixture[str]) 
 def test_line_sits_directly_under_diff_coherence(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    main([str(_APPLY_FAIL)])
+    main([str(_APPLY_FAIL), "--details"])
     lines = capsys.readouterr().out.splitlines()
 
     coherence = next(
@@ -80,7 +83,7 @@ def test_line_sits_directly_under_diff_coherence(
 
 
 def test_applied_patch_shows_applied(capsys: pytest.CaptureFixture[str]) -> None:
-    main([str(_CLEAN), "--expected", "read_files", "apply_patch"])
+    main([str(_CLEAN), "--expected", "read_files", "apply_patch", "--details"])
     lines = capsys.readouterr().out.splitlines()
 
     assert "cline_verdict   applied" in lines
@@ -89,7 +92,7 @@ def test_applied_patch_shows_applied(capsys: pytest.CaptureFixture[str]) -> None
 
 
 def test_editor_run_gets_no_line(capsys: pytest.CaptureFixture[str]) -> None:
-    main([str(_EDITOR_RUN)])
+    main([str(_EDITOR_RUN), "--details"])
 
     assert "cline_verdict" not in capsys.readouterr().out
 

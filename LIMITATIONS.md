@@ -132,7 +132,7 @@ still counts), then looks at every later `run_commands` entry whose command cont
 case-sensitive text, so `--test-cmd pytest` also matches `echo pytest`. When several entries match, the
 last one is shown with what Cline recorded for it: `success`, Cline's own error text, `failed`, or
 `no Cline verdict`. It is not a score, it never runs anything, and no gate flag reads it. A `not run`, or
-a run Cline marked failed, keeps the clean-run footer off.
+a run Cline marked failed, is reported as a problem and keeps the clean-run footer off.
 
 The last edit is the last edit to ANY file, because a command is not tied to the files it tests. So a
 `not run` can be false. In `examples/live-test-cmd-helper-edit.json` the agent ran `python inventory.py`
@@ -159,9 +159,10 @@ The report adds an `editor_newlines` line when an `editor` call that Cline did n
 model meant many lines and wrote one. In `examples/live-granite-escaped-newlines.json` (granite4.1:8b,
 Cline CLI 3.0.65, 2026-09-27) that call replaced a whole file with one line holding 78 literal `\n`;
 `examples/corpus/README.md` records that Python could not parse the result. Cline recorded success, and
-before this line existed the report printed `clean run - nothing to fix`. A hit keeps that footer off.
-It is not a score, no gate flag reads it, `compare` and the corpus ignore it, and a trace with no hit
-renders exactly as before.
+before this line existed the report printed `clean run - nothing to fix`. A hit is reported as a problem, and in `--details` it keeps that footer off.
+It is not a score, no gate flag reads it, `compare` and the corpus ignore it, and in `--details` a trace
+with no hit renders exactly as before; the plain report lists it under "What went well", worded as the
+one shape below and never as a claim about every edit.
 
 It is one shape, backed by one real call. It skips a call with no `old_text`, so a new file or an
 `insert_line` call written this way is missed. It does not read later calls, so a hit stays even if the
@@ -188,15 +189,20 @@ What to do instead: when the line fires, open the file it names and check that i
 - `editor_recovery` scores a same-path retry TRAJECTORY for the `editor` tool, not whether the fix is
   RIGHT. There is no shape or quality scorer for `editor` at all.
 - The optional LLM judge is ADVISORY, never a gate signal (see below).
+- The plain-English report's "What went well" lines carry the limits of the checks behind them: a
+  later edit that "went through" is not a fix, and a patch that "follows the format Cline expects" is
+  not correct code. A check under "Did not apply" is neither a pass nor a fail.
 - `--min-diff-minimality` has never produced a build-failing verdict on any real captured trace
   shipped in this repository, at any threshold.
 
 ## The diff scorers grade `apply_patch` only, and most sessions no longer use it
 
 The three diff scorers grade Cline's `apply_patch` grammar. On a trace that edits with `editor`
-instead, the report prints a `note:` line naming both call counts and shows all three as `n/a`. The
+instead, the plain report lists all three under "Did not apply", and `--details` prints a `note:` line
+naming both call counts and shows all three as `n/a`. The
 `diff_coherence` scorer itself still returns a hard `0.0`, and on a trace that edits with `write_to_file`
-or `replace_in_file`, which has no `editor` call, the report still shows that zero as `0/100`.
+or `replace_in_file`, which has no `editor` call, `--details` still shows that zero as `0/100` and the
+plain report names it as a problem: the agent made no edit that Clinescope can check.
 `diff_minimality` / `apply_recovery` abstain (`n/a`) on all of these. That is honest, not a bug, but it
 is now the common case rather than the exception. Verified at cline/cline commit
 `4f836ae7d0ed29ece7ef4a2a478deb470fdd056e`: all five tool presets set `enableApplyPatch: false`
@@ -212,7 +218,7 @@ shown harm is the `editor_newlines` context line.
 `tool_selection` still scores all these tools (every family is in the pinned vocabulary).
 
 **`editor_recovery` is in the gate, and a clean editor run needs `tool_selection` to pass.** It renders
-in the `clinescope` report, feeds `--advice`, and has a column in the `python -m clinescope.compare`
+in the `clinescope` report, feeds its advice, and has a column in the `python -m clinescope.compare`
 and `clinescope-corpus` tables, where `-` means the trace made no `editor` call. The corpus shows that
 column but does not check it against a label. `clinescope-gate` reads it through
 `--min-editor-recovery`. It abstains when no `editor` call failed, so on a clean editor run it verifies
@@ -231,11 +237,13 @@ whether the score was zero. When such a trace has `editor` calls, the gate also 
 names `--min-editor-recovery`.
 
 The report makes the same distinction on an editor run, meaning 0 `apply_patch` calls and at least one
-`editor` call. There `diff_coherence` shows `n/a` with the reason `(editor run - no apply_patch to
-check)`, a `note:` line under the header keeps the missing `apply_patch` visible, and `--advice` gives
+`editor` call. In `--details`, `diff_coherence` shows `n/a` with the reason `(editor run - no apply_patch to
+check)`, a `note:` line under the header keeps the missing `apply_patch` visible, and the advice gives
 no `malformed_patch` advice. `compare` and the corpus follow the same rule. A trace with neither tool
 still shows `diff_coherence 0/100 FAIL` with its reason, because nothing was edited there at all and a
-missing artifact should be loud. **Gating an editor-only trace
+missing artifact should be loud. The plain report names it as a problem. In `--details` its advice
+still carries the label `malformed_patch`, the failure-taxonomy name the regression corpus checks, but
+the sentence says no edit could be checked, not that a patch was malformed. **Gating an editor-only trace
 on the apply_patch flags alone still verifies nothing**; gate it on `--min-editor-recovery` and
 `--min-tool-selection` instead.
 

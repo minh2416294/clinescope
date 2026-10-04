@@ -105,7 +105,7 @@ def test_plain_cli_path_is_unchanged(capsys: pytest.CaptureFixture[str]) -> None
     example = (
         Path(__file__).resolve().parent.parent / "examples" / "apply-patch-trace.json"
     )
-    exit_code = main([str(example), "--expected", "apply_patch"])
+    exit_code = main([str(example), "--expected", "apply_patch", "--details"])
     out = capsys.readouterr().out
     assert exit_code == 0
     assert "clinescope report - session" in out
@@ -129,7 +129,9 @@ def test_vscode_path_to_task_dir_scores(
         / "tasks"
         / "1000"
     )
-    exit_code = main(["--vscode", "--path", str(task_dir), "--expected", "apply_patch"])
+    exit_code = main(
+        ["--vscode", "--path", str(task_dir), "--expected", "apply_patch", "--details"]
+    )
     out = capsys.readouterr().out
     assert exit_code == 0
     assert "extension session" in out
@@ -152,7 +154,7 @@ def test_vscode_path_to_raw_api_history_file_scores(
         / "2000"
         / "api_conversation_history.json"
     )
-    exit_code = main(["--vscode", "--path", str(api_file)])
+    exit_code = main(["--vscode", "--path", str(api_file), "--details"])
     assert exit_code == 0
     assert "extension session" in capsys.readouterr().out
 

@@ -368,10 +368,10 @@ def test_cli_main_verbose_reads_session_id_and_prints_dump(
 @pytest.mark.skipif(
     not GOLDEN.exists(), reason="Cline golden fixture not checked out at expected path"
 )
-def test_cli_main_default_prints_summary_not_dump(
+def test_cli_main_details_prints_summary_not_dump(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    exit_code = main([str(GOLDEN), "--expected", "read_files"])
+    exit_code = main([str(GOLDEN), "--expected", "read_files", "--details"])
 
     assert exit_code == 0
     out = capsys.readouterr().out
@@ -474,7 +474,9 @@ def test_cli_valid_trace_still_scores_and_exits_0(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     # The error boundary must not regress the happy path.
-    exit_code = main([str(RECOVERY_EXAMPLE), "--expected", "read_files", "apply_patch"])
+    exit_code = main(
+        [str(RECOVERY_EXAMPLE), "--expected", "read_files", "apply_patch", "--details"]
+    )
 
     captured = capsys.readouterr()
     assert exit_code == 0
@@ -488,7 +490,7 @@ def test_cli_valid_trace_still_scores_and_exits_0(
 # stdout is a real terminal, so pipes, CI, and tool consumers never see it.
 
 FEEDBACK_URL_FRAGMENT = "issues/new?template=feedback.yml"
-QUESTION_FRAGMENT = "did any score above disagree with your own read of the run"
+QUESTION_FRAGMENT = "did anything above disagree with your own read of the run"
 
 
 @pytest.mark.skipif(
@@ -566,7 +568,7 @@ DEMO_TRACE = (
 def test_demo_scores_the_bundled_trace_and_exits_0(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    exit_code = main(["--demo"])
+    exit_code = main(["--demo", "--details"])
 
     captured = capsys.readouterr()
     out = captured.out

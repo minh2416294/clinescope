@@ -35,8 +35,12 @@ _OTHER_EDITOR_TRACES = (
 
 
 def _cli_lines(capsys: pytest.CaptureFixture[str], *argv: str) -> list[str]:
-    assert main(list(argv)) == 0
+    assert main(list(argv) + ["--details"]) == 0
     return capsys.readouterr().out.splitlines()
+
+
+def _newlines_line(lines: list[str]) -> str:
+    return next(line for line in lines if line.startswith("editor_newlines"))
 
 
 def test_the_flattened_edit_gets_a_line_and_no_clean_run_footer(
@@ -44,7 +48,7 @@ def test_the_flattened_edit_gets_a_line_and_no_clean_run_footer(
 ) -> None:
     lines = _cli_lines(capsys, str(_ESCAPED), "--expected", "editor")
 
-    assert lines[-1] == (
+    assert _newlines_line(lines) == (
         r"editor_newlines 1 editor call wrote literal \n where the old text had line"
         r" breaks (call 3: 'C:\\cs-day65-capture\\inventory.py')"
     )
@@ -126,7 +130,7 @@ def test_the_path_from_the_trace_is_escaped(
 
     lines = _cli_lines(capsys, str(variant), "--expected", "editor")
 
-    assert lines[-1].endswith(r"(call 3: 'bad\x1b[2Kname.py')")
+    assert _newlines_line(lines).endswith(r"(call 3: 'bad\x1b[2Kname.py')")
 
 
 def test_a_call_with_no_string_path_still_shows(
@@ -137,4 +141,4 @@ def test_a_call_with_no_string_path_still_shows(
     lines = _cli_lines(capsys, str(variant), "--expected", "editor")
 
     assert editor_newlines_check(load_trace(variant)).hits == ((3, None),)
-    assert lines[-1].endswith("(call 3: -)")
+    assert _newlines_line(lines).endswith("(call 3: -)")
