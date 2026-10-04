@@ -82,7 +82,7 @@ What each shows:
 ## Reproduce the scoring
 
 ```bash
-clinescope examples/harness-gap/qwen-harness.messages.json --expected read_files apply_patch --advice
+clinescope examples/harness-gap/qwen-harness.messages.json --expected read_files apply_patch --details
 ```
 
 The six traces are pinned by `tests/test_harness_gap_capture.py` (skipif-gated on their

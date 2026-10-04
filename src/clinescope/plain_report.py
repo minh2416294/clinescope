@@ -240,13 +240,21 @@ def _plain_apply_patch_family(
     diff_minimality: DiffMinimalityScore | None,
     apply_recovery: ApplyRecoveryScore | None,
 ) -> None:
+    # A score below 1 with no retyped block is the hard zero for a patch that could not
+    # be read. The same patch fails the format check, so that problem tells it.
+    unreadable = (
+        diff_minimality is not None
+        and diff_minimality.apply_patch_call_count > 0
+        and diff_minimality.score != 1.0
+        and diff_minimality.blind_rewrite_hunks == 0
+    )
     if diff_coherence is not None:
-        _plain_diff_coherence(results, diff_coherence)
+        _plain_diff_coherence(results, diff_coherence, unreadable=unreadable)
     no_patch = 0
     if diff_minimality is not None:
         if diff_minimality.apply_patch_call_count == 0:
             no_patch += 1
-        else:
+        elif not unreadable:
             _plain_diff_minimality(results, diff_minimality)
     if apply_recovery is not None:
         if apply_recovery.apply_patch_call_count == 0:
@@ -260,7 +268,9 @@ def _plain_apply_patch_family(
         )
 
 
-def _plain_diff_coherence(results: _Results, score: DiffCoherenceScore) -> None:
+def _plain_diff_coherence(
+    results: _Results, score: DiffCoherenceScore, *, unreadable: bool
+) -> None:
     if score.score == 1.0:
         results.went_well.append(
             "The agent's first patch follows the format Cline expects."
@@ -276,26 +286,19 @@ def _plain_diff_coherence(results: _Results, score: DiffCoherenceScore) -> None:
             )
         )
         return
-    results.problems.append(
-        _Problem(
-            ("The agent's first patch does not follow the format Cline expects.",),
-            _DO_FORMAT,
-            _WHY_FORMAT,
-        )
+    problem: tuple[str, ...] = (
+        "The agent's first patch does not follow the format Cline expects.",
     )
+    if unreadable:
+        problem += (
+            "Clinescope could not read it, so the check for retyped blocks failed too.",
+        )
+    results.problems.append(_Problem(problem, _DO_FORMAT, _WHY_FORMAT))
 
 
 def _plain_diff_minimality(results: _Results, score: DiffMinimalityScore) -> None:
     if score.score == 1.0:
         results.went_well.append("No part of the patch was deleted and retyped whole.")
-        return
-    if score.blind_rewrite_hunks == 0:
-        # A hard zero with no retyped block means the patch could not be read, which
-        # the format problem already names.
-        results.did_not_apply.append(
-            "Clinescope could not look for retyped blocks, because it could not read "
-            "the patch."
-        )
         return
     count = score.blind_rewrite_hunks
     verb = "was" if count == 1 else "were"

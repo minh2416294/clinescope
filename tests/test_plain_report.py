@@ -629,13 +629,25 @@ def test_retyped_blocks_are_a_problem(blind: int, sentence: str) -> None:
     )
 
 
-def test_unreadable_patch_does_not_count_as_a_retyped_block() -> None:
-    out = _render(diff_minimality=_minimality(0.0, blind=0, hunks=0))
-    assert "Problem" not in out
-    assert (
-        "- Clinescope could not look for retyped blocks, because it could not read"
-        " the patch." in out
+def test_unreadable_patch_fails_the_retyped_block_check_inside_the_format_problem() -> (
+    None
+):
+    out = _render(
+        diff_coherence=_coherence(0.0, calls=1),
+        diff_minimality=_minimality(0.0, blind=0, hunks=0),
     )
+    assert out.startswith("Clinescope found 1 problem in this Cline run.\n")
+    assert (
+        _block(
+            "Problem",
+            "- The agent's first patch does not follow the format Cline expects.",
+            "- Clinescope could not read it, so the check for retyped blocks failed too.",
+            "",
+            "What to do",
+        )
+        in out
+    )
+    assert "Did not apply" not in out
 
 
 def test_some_failed_edits_recovered_and_some_did_not() -> None:

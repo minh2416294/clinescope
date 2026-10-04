@@ -288,11 +288,11 @@ That opens an interactive picker (newest first; press Enter for the newest, `q` 
 - `clinescope --vscode --path <task-dir>` points at one session explicitly (a task directory, its `api_conversation_history.json`, or the extension's `globalStorage` root).
 - `clinescope --vscode --variant Cursor` limits discovery to one editor when you have several (Code, Cursor, VSCodium, ...).
 
-The report header reads `extension session '<taskId>' '<title>' [<variant>]`, so it is clear you are looking at an extension run, not a CLI one. The title is dropped when the extension recorded none.
+The report names the run `extension session '<taskId>' '<title>' [<variant>]` (the last line of the plain report, the header in `--details`), so it is clear you are looking at an extension run, not a CLI one. The title is dropped when the extension recorded none.
 
 **Why the id and title are in quotes.** Both are chosen by whatever wrote the session on disk, so Clinescope prints them quoted with any non-printable character escaped, and the same is true of the `session '<id>'` line in the CLI reports above. The quotes are part of the output, not a typo in this guide: they mark where untrusted text starts and ends, so a path or a title cannot blend into the label beside it.
 
-**One tool-name difference to know.** The CLI uses `apply_patch` / `read_files`; the extension often uses `write_to_file` / `replace_in_file` / `read_file` instead (it depends on your Cline and model). Run `clinescope --list-tools` to see the full set for `--expected` (both the CLI and extension names). The three diff scorers grade `apply_patch` grammar, so on a `write_to_file` session `tool_selection` still scores; `diff_coherence` reports a hard `0/100` (it found no `apply_patch` to grade), and `diff_minimality` / `apply_recovery` abstain (`n/a`). That `0/100` means "no `apply_patch` to grade here," not "your agent wrote a broken patch." A `write_to_file` grammar scorer is on the roadmap.
+**One tool-name difference to know.** The CLI uses `apply_patch` / `read_files`; the extension often uses `write_to_file` / `replace_in_file` / `read_file` instead (it depends on your Cline and model). Run `clinescope --list-tools` to see the full set for `--expected` (both the CLI and extension names). The three diff scorers grade `apply_patch` grammar, so on a `write_to_file` session `tool_selection` still scores, and the report says the agent made no edit that Clinescope can check. In `--details`, `diff_coherence` shows a hard `0/100` (it found no `apply_patch` to grade), and `diff_minimality` / `apply_recovery` abstain (`n/a`). That `0/100` means "no `apply_patch` to grade here," not "your agent wrote a broken patch." A `write_to_file` grammar scorer is on the roadmap.
 
 
 ## Related

@@ -45,7 +45,8 @@ session, scored with `clinescope ... --expected read_files apply_patch`.
 "not rendered" is not `n/a`. A trace with no `editor` call gets no `editor_recovery` line at all,
 so there is no cell to compare. Only the harnessed Granite run emits `editor` calls.
 
-Since 1.3.0 (#138) the report prints the harnessed Granite `diff_coherence` cell as `n/a`, because
+Since 1.3.0 (#138) the technical report (`--details` since #158) prints the harnessed Granite
+`diff_coherence` cell as `n/a`, because
 that run edited with `editor`; the scorer itself still returns 0.0, which is the value above.
 
 On qwen2.5-coder:7b, the community member's exact recipe, the measured delta is zero on all four
@@ -138,10 +139,13 @@ from a different angle.
 ## Reproduce the scoring
 
 ```bash
-clinescope examples/harness-gap/qwen-harness.messages.json --expected read_files apply_patch --advice
-clinescope examples/harness-gap/granite-harness.messages.json --expected read_files apply_patch
-clinescope examples/harness-gap/gptoss-harness.messages.json --expected read_files apply_patch
+clinescope examples/harness-gap/qwen-harness.messages.json --expected read_files apply_patch --details
+clinescope examples/harness-gap/granite-harness.messages.json --expected read_files apply_patch --details
+clinescope examples/harness-gap/gptoss-harness.messages.json --expected read_files apply_patch --details
 ```
+
+`--details` prints the scores in the table above. Without it, the same runs print the plain-English
+report, which shows no scores.
 
 The six traces and their expected scores are pinned by `tests/test_harness_gap_capture.py`. See
 [`examples/harness-gap/README.md`](../examples/harness-gap/README.md) for the full layout.
