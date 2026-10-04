@@ -1,11 +1,14 @@
 """Multi-trace comparison scorecard (deterministic, zero-LLM, stdlib-only).
 
-Scores N traces side by side and prints one comparison TABLE -- a row per trace,
-a column per scorer -- so a developer can eyeball, e.g., the same task run
+Scores N traces side by side so a developer can eyeball, e.g., the same task run
 against five different models at once (the Day-22 5-model failure sweep, as a
-first-class feature).
+first-class feature). By default it prints plain English: one line per run with
+its problems under it, then one What to do and one Why per kind of problem, built
+by :mod:`clinescope.plain_report` from the same score objects as the single-trace
+plain report. ``--details`` prints the comparison TABLE instead -- a row per trace,
+a column per scorer.
 
-    python -m clinescope.compare traceA.json traceB.json ... [--labels manifest.json]
+    python -m clinescope.compare traceA.json traceB.json ... [--labels manifest.json] [--details]
 
 A SIBLING CLI (like :mod:`clinescope.gate`), NOT a flag on the single-trace CLI:
 the single-trace ``python -m clinescope`` takes ONE positional trace, and its
@@ -14,8 +17,8 @@ own module and touches nothing there.
 
 **The anti-drift guarantee (the load-bearing property).** Each table cell and
 verdict is produced by the SAME functions the single-trace summary uses -- so a
-compare row reproduces exactly what ``python -m clinescope <trace>`` prints for
-that trace:
+compare row reproduces exactly what ``python -m clinescope <trace> --details``
+prints for that trace:
 
 * ``diff_minimality`` and ``apply_recovery`` ->
   :func:`clinescope.report.render_score_out_of_100` (round-half-up ``NN/100`` /
@@ -66,6 +69,14 @@ from clinescope.diff_coherence import score_diff_coherence
 from clinescope.diff_minimality import score_diff_minimality
 from clinescope.editor_recovery import EditorRecoveryScore, score_editor_recovery
 from clinescope.labels import LabelError, TraceLabel, labels_load
+from clinescope.plain_report import (
+    PLAIN_UNREADABLE,
+    PlainProblem,
+    PlainResults,
+    plain_kind_blocks,
+    plain_report_results,
+    plain_run_lines,
+)
 from clinescope.report import (
     diff_coherence_cell_verdict,
     render_score_out_of_100,
@@ -108,12 +119,15 @@ class CompareRow:
 
     ``loaded`` is ``False`` when the trace could not be loaded; then every
     :class:`ScorerCell` is ``n/a`` and ``error`` holds the one-line reason.
+    ``plain`` holds the plain-English results for a loaded trace, built from the
+    same score objects as the cells.
     """
 
     label: str
     cells: dict[str, ScorerCell]
     loaded: bool
     error: str | None
+    plain: PlainResults | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,12 +225,8 @@ def _compare_row(trace_path: Path, label: TraceLabel | None) -> CompareRow:
             loaded=False,
             error=f"{type(err).__name__}: {err}",
         )
-    return CompareRow(
-        label=display,
-        cells=_score_cells(trace, label),
-        loaded=True,
-        error=None,
-    )
+    cells, plain = _score_cells(trace, label)
+    return CompareRow(label=display, cells=cells, loaded=True, error=None, plain=plain)
 
 
 def _row_label(trace_path: Path, label: TraceLabel | None) -> str:
@@ -227,7 +237,9 @@ def _row_label(trace_path: Path, label: TraceLabel | None) -> str:
     return trace_path.stem
 
 
-def _score_cells(trace: Trace, label: TraceLabel | None) -> dict[str, ScorerCell]:
+def _score_cells(
+    trace: Trace, label: TraceLabel | None
+) -> tuple[dict[str, ScorerCell], PlainResults]:
     # tool_selection is opt-in per trace: only score it when the label supplies an
     # expected-tools set. Absent/None -> expected_provided False -> the same n/a
     # cell the single-trace CLI shows for an omitted --expected.
@@ -237,16 +249,17 @@ def _score_cells(trace: Trace, label: TraceLabel | None) -> dict[str, ScorerCell
     ts_cell, ts_verdict = tool_selection_cell_verdict(ts_score, expected_provided)
 
     editor_score = score_editor_recovery(trace)
-    dc_cell, dc_verdict = diff_coherence_cell_verdict(
-        score_diff_coherence(trace), editor_score
-    )
+    dc_score = score_diff_coherence(trace)
+    dm_score = score_diff_minimality(trace)
+    ar_score = score_apply_recovery(trace)
+    dc_cell, dc_verdict = diff_coherence_cell_verdict(dc_score, editor_score)
     cells = {
         "tool_selection": ScorerCell(cell=ts_cell, verdict=ts_verdict),
         "diff_coherence": ScorerCell(cell=dc_cell, verdict=dc_verdict),
     }
     abstaining_scores = {
-        "diff_minimality": score_diff_minimality(trace).score,
-        "apply_recovery": score_apply_recovery(trace).score,
+        "diff_minimality": dm_score.score,
+        "apply_recovery": ar_score.score,
     }
     for name, value in abstaining_scores.items():
         cells[name] = ScorerCell(
@@ -254,7 +267,17 @@ def _score_cells(trace: Trace, label: TraceLabel | None) -> dict[str, ScorerCell
             verdict=summary_verdict(value),
         )
     cells["editor_recovery"] = editor_recovery_cell(editor_score)
-    return cells
+    # The single-trace CLI passes editor_recovery only when the trace has an editor
+    # call; the plain results follow the same rule.
+    plain = plain_report_results(
+        ts_score,
+        diff_coherence=dc_score,
+        diff_minimality=dm_score,
+        apply_recovery=ar_score,
+        editor_recovery=editor_score if editor_score.editor_call_count else None,
+        expected_provided=expected_provided,
+    )
+    return cells, plain
 
 
 def editor_recovery_cell(score: EditorRecoveryScore) -> ScorerCell:
@@ -306,6 +329,34 @@ def render_compare_report(report: CompareReport) -> str:
     return "\n".join(lines)
 
 
+def render_compare_plain(report: CompareReport) -> str:
+    """Render the comparison in plain English: one line per run with its problems
+    listed under it, then one What to do and one Why per kind of problem."""
+    runs = [
+        (row.label, row.plain or PlainResults(problems=[PLAIN_UNREADABLE]))
+        for row in report.rows
+    ]
+    total = len(runs)
+    failing = sum(1 for _, results in runs if results.problems)
+    counted = "1 Cline run" if total == 1 else f"{total} Cline runs"
+    if failing == 0:
+        header = f"Clinescope compared {counted} and found no problems."
+    elif total == 1:
+        header = f"Clinescope compared {counted} and found problems in it."
+    else:
+        header = (
+            f"Clinescope compared {counted} and found problems in {failing} of them."
+        )
+    lines = [header]
+    entries: list[tuple[str, PlainProblem]] = []
+    for label, results in runs:
+        lines.append("")
+        lines.extend(plain_run_lines(label, results))
+        entries.extend((label, problem) for problem in results.problems)
+    lines.extend(plain_kind_blocks(entries))
+    return "\n".join(lines)
+
+
 def _row_cell_texts(row: CompareRow) -> list[str]:
     return [_cell_text(row.cells[name]) for name in _SCORER_COLUMNS]
 
@@ -339,9 +390,10 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="clinescope.compare",
         description=(
-            "Score N Cline World-A traces side by side and print a comparison "
-            "table (one row per trace; columns = the four scorers). Use --labels "
-            "to supply per-trace expected tools for the tool_selection column."
+            "Score N Cline World-A traces side by side and say, in plain English, "
+            "what went wrong in each run and what to do about it. --details prints "
+            "the comparison table instead. Use --labels to supply per-trace "
+            "expected tools for the tool_selection check."
         ),
     )
     parser.add_argument(
@@ -361,11 +413,19 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "supplies per-trace expected tools so tool_selection can be scored"
         ),
     )
+    parser.add_argument(
+        "--details",
+        action="store_true",
+        help="Print the comparison table, with each check's name and score",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Parse argv, score the traces, print the table, return the exit code.
+    """Parse argv, score the traces, print the report, return the exit code.
+
+    The report is plain English by default and the comparison table under
+    ``--details``.
 
     Returns ``0`` when every trace loaded and scored, ``2`` when at least one
     trace could not be loaded (an error row is still shown for it) or the
@@ -390,7 +450,10 @@ def main(argv: list[str] | None = None) -> int:
     except LabelError as err:
         print(f"error: invalid labels {args.labels}: {err}", file=sys.stderr)
         return _EXIT_LOAD_ERROR
-    print(render_compare_report(report))
+    if args.details:
+        print(render_compare_report(report))
+    else:
+        print(render_compare_plain(report))
     return report.exit_code
 
 

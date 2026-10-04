@@ -218,8 +218,8 @@ shown harm is the `editor_newlines` context line.
 `tool_selection` still scores all these tools (every family is in the pinned vocabulary).
 
 **`editor_recovery` is in the gate, and a clean editor run needs `tool_selection` to pass.** It renders
-in the `clinescope` report, feeds its advice, and has a column in the `python -m clinescope.compare`
-and `clinescope-corpus` tables, where `-` means the trace made no `editor` call. The corpus shows that
+in the `clinescope` report, feeds its advice, and has a column in the `--details` tables of
+`python -m clinescope.compare` and `clinescope-corpus`, where `-` means the trace made no `editor` call. The corpus shows that
 column but does not check it against a label. `clinescope-gate` reads it through
 `--min-editor-recovery`. It abstains when no `editor` call failed, so on a clean editor run it verifies
 nothing on its own and the gate exits `2`. `--min-tool-selection` with `--expected` is the one gated

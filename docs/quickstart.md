@@ -31,35 +31,47 @@ For the fuller picture, `clinescope-corpus` scores all six bundled traces at onc
 clinescope-corpus
 ```
 
-`clinescope-corpus` scores six real Cline runs and prints a scorecard:
+`clinescope-corpus` scores six real Cline runs and checks that each one gets the result written down for it. It starts like this:
 
 ```
-=== clinescope compare ===
-trace                                                  tool_selection  diff_coherence  diff_minimality  apply_recovery  editor_recovery
------------------------------------------------------  --------------  --------------  ---------------  --------------  ---------------
-gpt-oss:20b update-1hunk (clean)                       100/100 PASS    100/100 PASS    100/100 PASS     n/a             -
-gpt-oss:20b add-file (clean)                           100/100 PASS    100/100 PASS    100/100 PASS     n/a             -
-gpt-oss:20b update-2hunk (clean)                       100/100 PASS    100/100 PASS    100/100 PASS     n/a             -
-gpt-oss:20b apply-fail (no recovery)                   100/100 PASS    100/100 PASS    100/100 PASS     0/100 FAIL      -
-qwen2.5-coder:1.5b hallucinated-tool (no apply_patch)  0/100           0/100 FAIL      n/a              n/a             -
-llama3.1:8b code-dump (no apply_patch)                 0/100           0/100 FAIL      n/a              n/a             -
+Clinescope scored 6 example runs and compared each with its expected result.
+All 6 runs matched their expected result.
 
-=== corpus verdict ===
-6/6 items match their labels
-  [PASS] gpt-oss:20b update-1hunk (clean) (real)
-  [PASS] gpt-oss:20b add-file (clean) (real)
-  [PASS] gpt-oss:20b update-2hunk (clean) (real)
-  [PASS] gpt-oss:20b apply-fail (no recovery) (real)
-  [PASS] qwen2.5-coder:1.5b hallucinated-tool (no apply_patch) (real)
-  [PASS] llama3.1:8b code-dump (no apply_patch) (real)
+gpt-oss:20b update-1hunk (clean): no problems, as expected. 4 checks went well.
 
-failure modes covered:
-  malformed_patch: 2
-  missing_tools: 2
-  no_apply_recovery: 1
+gpt-oss:20b add-file (clean): no problems, as expected. 4 checks went well.
+
+gpt-oss:20b update-2hunk (clean): no problems, as expected. 4 checks went well.
+
+gpt-oss:20b apply-fail (no recovery): 1 problem, as expected. 3 checks went well.
+- Cline marked the agent's edit to 'validator.py' as failed. No later edit to that file went through.
+
+qwen2.5-coder:1.5b hallucinated-tool (no apply_patch): 2 problems, as expected. 2 checks did not apply.
+- The agent never used apply_patch or read_files. You listed them as tools the agent should use.
+- The agent made no edit that Clinescope can check.
+
+llama3.1:8b code-dump (no apply_patch): 2 problems, as expected. 2 checks did not apply.
+- The agent never used apply_patch or read_files. You listed them as tools the agent should use.
+- The agent made no edit that Clinescope can check.
+
+The example runs show 3 of the 5 kinds of failure Clinescope names: a missing or badly formed patch (2 runs), tools you listed were not used (2 runs) and a failed patch with no later patch that went through (1 run).
+
+A failed patch with no later patch that went through
+Runs: gpt-oss:20b apply-fail (no recovery)
+
+What to do
+- Your prompt should tell the agent to retry after a failed edit.
+- The agent should re-read the file first.
+- Then it should try a corrected edit instead of giving up.
+
+Why
+- Clinescope only counts a later edit to the same file with the same tool.
+- A fix made another way does not show up in this check.
 ```
 
-Clean runs pass; a run whose patch failed and was never retried shows `apply_recovery 0/100 FAIL`; a run where a weak model never emitted a real tool call shows `tool_selection 0/100`. That is the whole idea, on real data. Now score your own run.
+Two more blocks follow, one for each of the other two kinds of problem. `clinescope-corpus --details` prints the scorecard table instead, with each check's name and score.
+
+Clean runs have no problems; the run whose patch failed and was never retried has one; the runs where a weak model never emitted a real tool call have two. That is the whole idea, on real data. Now score your own run.
 
 ## 1. Install Clinescope
 
@@ -128,7 +140,7 @@ Confirm the install works before you produce a real Cline session. These command
 ```bash
 clinescope --demo                              # scores a bundled trace; exit 0
 clinescope --list-tools                        # prints the known Cline tool names; exit 0
-clinescope-corpus                              # scores six bundled traces: "6/6 items match their labels"; exit 0
+clinescope-corpus                              # scores six bundled traces: "All 6 runs matched their expected result."; exit 0
 python -m clinescope.judge_run --report-only   # recomputes the judge agreement from a cached run, no model call; exit 0
 clinescope --help                              # usage text; exit 0
 ```
@@ -234,7 +246,7 @@ What to do
 
 Why
 - Clinescope checks the format of only one kind of edit.
-- This run made no edit of that kind.
+- Clinescope found no edit of that kind.
 
 Did not apply
 - 2 checks did not apply, because the run had no patch to read.

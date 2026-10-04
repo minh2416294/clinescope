@@ -483,7 +483,7 @@ def test_malformed_manifest_exits_2(tmp_path: Path) -> None:
 def test_main_on_committed_corpus_prints_table_and_exits_0(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    code = main([str(CORPUS_MANIFEST)])
+    code = main([str(CORPUS_MANIFEST), "--details"])
     out = capsys.readouterr().out
 
     assert code == 0

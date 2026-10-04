@@ -156,7 +156,7 @@ _SCENE_MISSING = Scene(
         ("", FG),
         ("Why", YELLOW),
         ("- Clinescope checks the format of only one kind of edit.", FG),
-        ("- This run made no edit of that kind.", FG),
+        ("- Clinescope found no edit of that kind.", FG),
         ("", FG),
         ("Did not apply", DIM),
         ("- 2 checks did not apply, because the run had no patch to read.", DIM),

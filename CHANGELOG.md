@@ -23,6 +23,14 @@ All notable changes to Clinescope are recorded here. The format follows
 - The feedback question asks whether anything in the report disagreed with your read of the
   run, not whether a score did.
 - `docs/demo.svg` shows the plain report, so it is taller (778 px, was 470).
+- `python -m clinescope.compare` and `clinescope-corpus` now print plain English by default.
+  Each run gets one line with how many problems it has and how many checks went well or did
+  not apply, with its problems listed under it. After the runs, each kind of problem gets one
+  "What to do" and one "Why", naming the runs it applies to. The corpus also says whether each
+  run matched its expected result and which kinds of failure the runs show. `--details`
+  prints the tables as before, and every exit code is unchanged (#159).
+- The "Why" for a run with no edit Clinescope can check now reads "Clinescope found no edit
+  of that kind.", so it stays true when one advice block covers several runs (#159).
 
 - The README badge now reads `coverage gate 90%`, the floor `fail_under` enforces,
   instead of a hand-set measured figure. It said 93% while CI measured 94.69% (#148).

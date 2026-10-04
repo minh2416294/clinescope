@@ -26,7 +26,7 @@ back: a scorer never reads a report, and a renderer never re-scores.
 | When the two recovery scorers treat two path spellings as one file, and the rule's known false match | `src/clinescope/recovery_path.py`, module docstring |
 | The gate's exit contract, and why applicability is decided on a call count | `src/clinescope/gate.py`, module docstring |
 | Why the multi-trace scorecard is a sibling command and never a build gate | `src/clinescope/compare.py`, module docstring |
-| The default plain-English report: every check shown once (a problem with what to do and why, what went well, or did not apply), and a file shown by name only | `src/clinescope/plain_report.py`, module docstring |
+| The default plain-English report: every check shown once (a problem with what to do and why, what went well, or did not apply), and a file shown by name only. `compare` and `clinescope-corpus` reuse its per-run results and its run-line and advice-block helpers for their plain view | `src/clinescope/plain_report.py`, module docstring |
 | Neutralising untrusted text: the repr choice, the quotes, the leaf-module rule | `src/clinescope/render_safety.py`, module docstring |
 | Locating bundled data so an installed package works | `src/clinescope/_datafiles.py`, module docstring |
 | Why the patch text handed to the judge is fenced, and why the tag is a digest | `src/clinescope/judge.py`, at the prompt builder |

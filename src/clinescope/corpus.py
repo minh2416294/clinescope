@@ -24,13 +24,16 @@ Four checks per item, straight from the charter's GOAL-2 spec:
    level, never a rendered string.
 3. **No false positives** -- a ``clean`` item must emit NO advice at all (across
    all four scorers). Proves clinescope does not cry wolf.
-4. **A shareable report** -- one table (reusing :func:`clinescope.compare.\
-render_compare_report`) plus a per-check verdict and a failure-mode breakdown.
+4. **A shareable report** -- by default plain English (:func:`render_corpus_plain`):
+   whether each run matched its label, its problems, the kinds of failure covered,
+   and one What to do and one Why per kind of problem. ``--details`` prints one
+   table (reusing :func:`clinescope.compare.render_compare_report`) plus a
+   per-check verdict and a failure-mode breakdown.
 
 The runner is a REAL regression gate, not a demo: exit ``0`` when every item
 matches its label, ``1`` when ANY item fails a check, ``2`` for a usage-level
 problem (unloadable trace, empty corpus, malformed manifest). ``run_corpus`` and
-``render_corpus_report`` are pure; only :func:`main` does I/O.
+both renderers are pure; only :func:`main` does I/O.
 """
 
 from __future__ import annotations
@@ -65,6 +68,15 @@ from clinescope.labels import (
     ScorerExpectation,
     TraceLabel,
     labels_load,
+)
+from clinescope.plain_report import (
+    PLAIN_UNREADABLE,
+    PlainProblem,
+    PlainResults,
+    _plain_and_list,
+    plain_kind_blocks,
+    plain_report_results,
+    plain_run_lines,
 )
 from clinescope.report import (
     diff_coherence_cell_verdict,
@@ -112,6 +124,8 @@ class _ScoredTrace:
     # real score objects via the SAME helpers compare._score_cells uses, so the
     # corpus table is byte-identical to a compare table over the same traces.
     compare_cells: dict[str, ScorerCell]
+    # The plain-English results, from the same score objects.
+    plain: PlainResults
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,6 +155,8 @@ class CorpusItemResult:
     # (from the raw score, not the rendered string) so the summary table is
     # byte-identical to a compare table over the same traces. Empty when unloaded.
     compare_cells: dict[str, ScorerCell] = field(default_factory=dict)
+    # The plain-English results for the run. None when unloaded.
+    plain: PlainResults | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -229,6 +245,7 @@ def _check_item(key: str, label: TraceLabel, *, base_dir: Path) -> CorpusItemRes
         loaded=True,
         mismatches=tuple(mismatches),
         compare_cells=dict(scored.compare_cells),
+        plain=scored.plain,
     )
 
 
@@ -294,12 +311,21 @@ def _score_trace(trace_path: Path, label: TraceLabel) -> _ScoredTrace:
         )
     # Table only: editor_recovery is not in the label vocabulary (_SCORER_COLUMNS).
     compare_cells["editor_recovery"] = editor_recovery_cell(er)
+    plain = plain_report_results(
+        ts,
+        diff_coherence=dc,
+        diff_minimality=dm,
+        apply_recovery=ar,
+        editor_recovery=er if er.editor_call_count else None,
+        expected_provided=expected_provided,
+    )
     return _ScoredTrace(
         cells=cells,
         score_is_none=score_is_none,
         applicable=applicable,
         advice=advice,
         compare_cells=compare_cells,
+        plain=plain,
     )
 
 
@@ -445,6 +471,98 @@ def _failure_mode_breakdown(report: CorpusReport) -> list[tuple[str, int]]:
     return sorted(counts.items())
 
 
+_PLAIN_FAILURE_NAMES = {
+    FailureLabel.MISSING_TOOLS: "tools you listed were not used",
+    FailureLabel.MALFORMED_PATCH: "a missing or badly formed patch",
+    FailureLabel.BLIND_REWRITE: "blocks deleted and retyped whole",
+    FailureLabel.NO_APPLY_RECOVERY: (
+        "a failed patch with no later patch that went through"
+    ),
+    FailureLabel.NO_EDITOR_RECOVERY: (
+        "a failed editor edit with no later editor edit that went through"
+    ),
+}
+
+_PLAIN_MISMATCH = PlainProblem(
+    "Runs that did not match their expected result",
+    ("It did not match its expected result.",),
+    (
+        "The details view shows which result differs.",
+        "Find the change that made a check give a different answer.",
+    ),
+    (
+        "Each example run has a fixed expected result, written by hand.",
+        "A difference means a check now answers differently for that run.",
+    ),
+)
+
+
+def render_corpus_plain(report: CorpusReport) -> str:
+    """Render the corpus run in plain English: whether each run matched its expected
+    result, its problems, the kinds of failure the runs show, then one What to do and
+    one Why per kind of problem."""
+    total = len(report.items)
+    if total == 0:
+        return "Clinescope found no runs to score in this corpus."
+    matched = sum(1 for item in report.items if item.matched)
+    lines = _plain_corpus_header(total, matched)
+    entries: list[tuple[str, PlainProblem]] = []
+    for item in report.items:
+        lines.append("")
+        if item.plain is None:
+            results = PlainResults(problems=[PLAIN_UNREADABLE])
+            lines.extend(plain_run_lines(item.display, results))
+        elif item.matched:
+            results = item.plain
+            lines.extend(plain_run_lines(item.display, results, suffix=", as expected"))
+        else:
+            results = item.plain
+            lines.extend(
+                plain_run_lines(item.display, results, notes=_PLAIN_MISMATCH.problem)
+            )
+        entries.extend((item.display, problem) for problem in results.problems)
+        if item.plain is not None and not item.matched:
+            entries.append((item.display, _PLAIN_MISMATCH))
+    coverage = _plain_coverage(report)
+    if coverage:
+        lines.extend(["", coverage])
+    lines.extend(plain_kind_blocks(entries))
+    return "\n".join(lines)
+
+
+def _plain_corpus_header(total: int, matched: int) -> list[str]:
+    if total == 1:
+        verdict = "matched" if matched else "did not match"
+        return [
+            "Clinescope scored 1 example run and compared it with its expected result.",
+            f"The run {verdict} its expected result.",
+        ]
+    if matched == total:
+        verdict = f"All {total} runs matched their expected result."
+    else:
+        verdict = f"{matched} of {total} runs matched their expected result."
+    return [
+        f"Clinescope scored {total} example runs and compared each with its expected "
+        "result.",
+        verdict,
+    ]
+
+
+def _plain_coverage(report: CorpusReport) -> str:
+    breakdown = _failure_mode_breakdown(report)
+    if not breakdown:
+        return ""
+    parts = [
+        f"{_PLAIN_FAILURE_NAMES[FailureLabel(value)]} "
+        f"({count} {'run' if count == 1 else 'runs'})"
+        for value, count in breakdown
+    ]
+    return (
+        f"The example runs show {len(breakdown)} of the {len(FailureLabel)} kinds of "
+        f"failure Clinescope names: {_plain_and_list(parts)}."
+    )
+
+
 # --- CLI ----------------------------------------------------------------------
 
 
@@ -467,6 +585,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "The corpus manifest (JSON: trace path -> label). Defaults to the bundled "
             "examples/corpus/corpus.json (works from a source checkout or a pip install)."
         ),
+    )
+    parser.add_argument(
+        "--details",
+        action="store_true",
+        help="Print the scorecard table and the per-item verdicts instead",
     )
     return parser.parse_args(argv)
 
@@ -503,7 +626,10 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return _EXIT_USAGE
-    print(render_corpus_report(report))
+    if args.details:
+        print(render_corpus_report(report))
+    else:
+        print(render_corpus_plain(report))
     if report.exit_code == _EXIT_USAGE:
         print(
             "error: corpus run failed at the usage level "

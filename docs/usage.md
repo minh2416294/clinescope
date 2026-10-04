@@ -133,13 +133,15 @@ clinescope path/to/messages.json --expected read_files apply_patch --verbose
 
 ## Compare several runs side by side
 
-Run the same task against different models (or Cline versions) and score them all in one table:
+Run the same task against different models (or Cline versions) and score them all at once:
 
 ```bash
 python -m clinescope.compare run-a.json run-b.json run-c.json
 ```
 
-The table has one column per check except `tool_input`, which it does not show. In the `editor_recovery` column, `n/a` means the run used `editor` and no edit failed, and `-` means the run made no `editor` call at all (the single-run report prints no line for it then).
+Each run gets one line: how many problems it has, and how many checks went well or did not apply. Its problems are listed under that line. After the runs, each kind of problem gets one "What to do" and one "Why", naming the runs it applies to. A run with no problems gets no advice.
+
+`--details` prints a table instead, with one column per check except `tool_input`, which it does not show. In the `editor_recovery` column, `n/a` means the run used `editor` and no edit failed, and `-` means the run made no `editor` call at all (the single-run report prints no line for it then).
 
 ## Gate a run in CI
 

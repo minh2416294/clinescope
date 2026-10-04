@@ -126,7 +126,7 @@ def test_run_with_no_tool_calls_never_calls_the_missing_patch_malformed(
         "\n"
         "Why\n"
         "- Clinescope checks the format of only one kind of edit.\n"
-        "- This run made no edit of that kind.\n"
+        "- Clinescope found no edit of that kind.\n"
         "\n"
         "Did not apply\n"
         "- 2 checks did not apply, because the run had no patch to read.\n"

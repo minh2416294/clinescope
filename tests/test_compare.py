@@ -397,6 +397,7 @@ def test_compare_cli_prints_table_and_exits_0(
         [
             str(EXAMPLES / "apply-patch-trace.json"),
             str(EXAMPLES / "gate-regression-badpatch.json"),
+            "--details",
         ]
     )
     out = capsys.readouterr().out
@@ -417,7 +418,7 @@ def test_compare_cli_with_labels_scores_tool_selection(
     manifest.write_text(
         json.dumps({str(trace): {"expected_tools": ["apply_patch"]}}), encoding="utf-8"
     )
-    exit_code = main([str(trace), "--labels", str(manifest)])
+    exit_code = main([str(trace), "--labels", str(manifest), "--details"])
     out = capsys.readouterr().out
 
     assert exit_code == 0
