@@ -4,7 +4,21 @@ All notable changes to Clinescope are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.0] - 2026-10-04
+
+1.3.0 printed scorer names and scores out of 100, which a Cline user cannot read
+without the README, and it said what to do only under `--advice`. This release makes
+plain English the default for `clinescope`, `python -m clinescope.compare` and
+`clinescope-corpus`: each problem with what to do and why the check could be wrong,
+then what went well, then what did not apply. The technical output moves behind a new
+`--details` flag. Exit codes, `clinescope-gate` and what the six scorers compute are
+unchanged.
+
+### Added
+
+- `--details` on `clinescope`, `python -m clinescope.compare` and `clinescope-corpus`. It
+  prints the technical output the default printed before: each check's name and score, and
+  the tables (#158, #159).
 
 ### Changed
 
@@ -12,7 +26,7 @@ All notable changes to Clinescope are recorded here. The format follows
   what to do about it and why the check could be wrong, then the checks that went well, then
   any check that did not apply to the run. It names no scorer and shows no score. A file is
   shown by its name only. `--details` prints the technical report instead. Exit codes,
-  `clinescope-gate`, `compare`, the corpus and `dependencies = []` are unchanged (#158).
+  `clinescope-gate` and `dependencies = []` are unchanged (#158).
 - Advice is no longer opt-in: it shows on every run that has a problem, in both views and in
   `--verbose`. `--advice` is still accepted and changes nothing.
 - Problems that had no advice now get some: an `--expected-input` no `editor` call carried, an
@@ -710,6 +724,7 @@ with four deterministic scorers (`tool_selection`, `diff_coherence`,
 chance-level and kept out of the gate, a real-trace validation corpus, a CI gate,
 and `--advice` / `--compare`.
 
+[1.4.0]: https://github.com/minh2416294/clinescope/releases/tag/v1.4.0
 [1.3.0]: https://github.com/minh2416294/clinescope/releases/tag/v1.3.0
 [1.2.1]: https://github.com/minh2416294/clinescope/releases/tag/v1.2.1
 [1.2.0]: https://github.com/minh2416294/clinescope/releases/tag/v1.2.0
