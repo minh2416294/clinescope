@@ -26,6 +26,7 @@ _NO_EDIT = _EXAMPLES / "corpus" / "llama-code-dump.json"
 _QWEN = _EXAMPLES / "corpus" / "qwen-missing-tools.json"
 _EDITOR = _EXAMPLES / "live-granite-editor-recovery.json"
 _APPLY_FAIL = _EXAMPLES / "live-gpt-oss-apply-fail.json"
+_ESCAPED = _EXAMPLES / "live-granite-escaped-newlines.json"
 _CORPUS_APPLY_FAIL = _EXAMPLES / "corpus" / "live-gpt-oss-apply-fail.json"
 _CORPUS_CLEAN = _EXAMPLES / "corpus" / "live-gpt-oss-trace.json"
 
@@ -101,7 +102,7 @@ def test_compare_lists_each_run_then_one_advice_block_per_kind(
         "llama-code-dump: 1 problem. 3 checks did not apply.\n"
         "- The agent made no edit that Clinescope can check.\n"
         "\n"
-        "live-granite-editor-recovery: no problems. 1 check went well, and 4 did not"
+        "live-granite-editor-recovery: no problems. 2 checks went well, and 4 did not"
         " apply.\n"
         "\n"
         "live-gpt-oss-apply-fail: 1 problem. 2 checks went well, and 1 did not apply.\n"
@@ -176,9 +177,14 @@ def test_compare_shows_an_unreadable_run_as_a_problem_and_keeps_exit_2(
 ) -> None:
     broken = tmp_path / "broken.json"
     broken.write_text("not json", encoding="utf-8")
-    code, out = _run(compare.main, [str(_CLEAN), str(broken)], capsys)
+    code = compare.main([str(_CLEAN), str(broken)])
+    captured = capsys.readouterr()
     assert code == 2
-    assert out == (
+    assert captured.err == (
+        "error: could not load broken: 'JSONDecodeError: Expecting value: line 1"
+        " column 1 (char 0)'\n"
+    )
+    assert captured.out == (
         "Clinescope compared 2 Cline runs and found problems in 1 of them.\n"
         "\n"
         "live-gpt-oss-trace: no problems. 3 checks went well, and 1 did not apply.\n"
@@ -194,6 +200,44 @@ def test_compare_shows_an_unreadable_run_as_a_problem_and_keeps_exit_2(
         "\n"
         "Why\n"
         "- This command reads only the log format the Cline CLI writes.\n"
+    )
+
+
+def test_compare_details_keeps_the_load_error_in_its_table_and_off_stderr(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    broken = tmp_path / "broken.json"
+    broken.write_text("not json", encoding="utf-8")
+    code = compare.main([str(broken), "--details"])
+    captured = capsys.readouterr()
+    assert code == 2
+    assert captured.err == ""
+    assert "error: could not load broken: JSONDecodeError" in captured.out
+
+
+def test_compare_lists_the_flattened_newlines_problem_like_the_single_run_view(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    code, out = _run(compare.main, [str(_ESCAPED)], capsys)
+    assert code == 0
+    assert out == (
+        "Clinescope compared 1 Cline run and found problems in it.\n"
+        "\n"
+        "live-granite-escaped-newlines: 1 problem. 1 check went well, and 4 did not"
+        " apply.\n"
+        "- An edit to 'inventory.py' replaced real line breaks with the two characters"
+        " \\n. Cline did not mark that edit as failed.\n"
+        "\n"
+        "Line breaks replaced with the text \\n\n"
+        "Runs: live-granite-escaped-newlines\n"
+        "\n"
+        "What to do\n"
+        "- Open the file named above and check that its line breaks are still in"
+        " place.\n"
+        "\n"
+        "Why\n"
+        "- Clinescope did not open the file.\n"
+        "- It only saw the shape of the edit.\n"
     )
 
 
@@ -320,9 +364,15 @@ def test_corpus_of_one_run_says_it_and_shows_an_unreadable_run(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     manifest = _labels(tmp_path, {tmp_path / "missing.json": {"display": "gone"}})
-    code, out = _run(corpus.main, [str(manifest)], capsys)
+    code = corpus.main([str(manifest)])
+    captured = capsys.readouterr()
     assert code == 2
-    assert out == (
+    assert captured.err.startswith(
+        'error: could not load gone: "FileNotFoundError: [Errno 2] No such file or'
+        " directory: '"
+    )
+    assert "error: corpus run failed at the usage level" in captured.err
+    assert captured.out == (
         "Clinescope scored 1 example run and compared it with its expected result.\n"
         "The run did not match its expected result.\n"
         "\n"
@@ -338,6 +388,19 @@ def test_corpus_of_one_run_says_it_and_shows_an_unreadable_run(
         "Why\n"
         "- This command reads only the log format the Cline CLI writes.\n"
     )
+
+
+def test_corpus_lists_the_flattened_newlines_problem(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    manifest = _labels(tmp_path, {_ESCAPED: {"display": "escaped run"}})
+    code, out = _run(corpus.main, [str(manifest)], capsys)
+    assert code == 0
+    assert (
+        "escaped run: 1 problem, as expected. 1 check went well, and 4 did not apply.\n"
+        "- An edit to 'inventory.py' replaced real line breaks with the two characters"
+        " \\n. Cline did not mark that edit as failed.\n"
+    ) in out
 
 
 def test_corpus_of_one_matching_run_says_so(

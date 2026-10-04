@@ -27,8 +27,10 @@ All notable changes to Clinescope are recorded here. The format follows
   Each run gets one line with how many problems it has and how many checks went well or did
   not apply, with its problems listed under it. After the runs, each kind of problem gets one
   "What to do" and one "Why", naming the runs it applies to. The corpus also says whether each
-  run matched its expected result and which kinds of failure the runs show. `--details`
-  prints the tables as before, and every exit code is unchanged (#159).
+  run matched its expected result and which kinds of failure the runs show. A run that
+  shows the `editor_newlines` problem on its own shows it here too. When a run cannot be
+  read, the reason goes to stderr, escaped. `--details` prints the tables as before, with
+  no new stderr line, and every exit code is unchanged (#159).
 - The "Why" for a run with no edit Clinescope can check now reads "Clinescope found no edit
   of that kind.", so it stays true when one advice block covers several runs (#159).
 

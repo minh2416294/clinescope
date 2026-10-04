@@ -160,7 +160,8 @@ model meant many lines and wrote one. In `examples/live-granite-escaped-newlines
 Cline CLI 3.0.65, 2026-09-27) that call replaced a whole file with one line holding 78 literal `\n`;
 `examples/corpus/README.md` records that Python could not parse the result. Cline recorded success, and
 before this line existed the report printed `clean run - nothing to fix`. A hit is reported as a problem, and in `--details` it keeps that footer off.
-It is not a score, no gate flag reads it, `compare` and the corpus ignore it, and in `--details` a trace
+It is not a score, no gate flag reads it, the `--details` tables of `compare` and the corpus ignore it
+(their plain views show it as the single-run report does, and no corpus label checks it), and in `--details` a trace
 with no hit renders exactly as before; the plain report lists it under "What went well", worded as the
 one shape below and never as a claim about every edit.
 

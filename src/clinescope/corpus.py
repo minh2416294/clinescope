@@ -62,7 +62,9 @@ from clinescope.compare import (
 )
 from clinescope.diff_coherence import score_diff_coherence
 from clinescope.diff_minimality import score_diff_minimality
+from clinescope.editor_newlines import editor_newlines_check
 from clinescope.editor_recovery import score_editor_recovery
+from clinescope.render_safety import quote_untrusted_text
 from clinescope.labels import (
     LabelError,
     ScorerExpectation,
@@ -105,6 +107,9 @@ _SCORER_COLUMNS = (
 _EXIT_OK = 0
 _EXIT_LABEL_MISMATCH = 1
 _EXIT_USAGE = 2
+
+# Starts the one mismatch an unloadable item carries; main strips it for stderr.
+_LOAD_FAILURE = "could not load trace: "
 
 
 @dataclass(frozen=True, slots=True)
@@ -225,7 +230,7 @@ def _check_item(key: str, label: TraceLabel, *, base_dir: Path) -> CorpusItemRes
             actual_advice={},
             matched=False,
             loaded=False,
-            mismatches=(f"could not load trace: {type(err).__name__}: {err}",),
+            mismatches=(f"{_LOAD_FAILURE}{type(err).__name__}: {err}",),
         )
 
     mismatches = _collect_mismatches(label, scored)
@@ -311,12 +316,14 @@ def _score_trace(trace_path: Path, label: TraceLabel) -> _ScoredTrace:
         )
     # Table only: editor_recovery is not in the label vocabulary (_SCORER_COLUMNS).
     compare_cells["editor_recovery"] = editor_recovery_cell(er)
+    has_editor = er.editor_call_count > 0
     plain = plain_report_results(
         ts,
         diff_coherence=dc,
         diff_minimality=dm,
         apply_recovery=ar,
-        editor_recovery=er if er.editor_call_count else None,
+        editor_recovery=er if has_editor else None,
+        editor_newlines=editor_newlines_check(trace) if has_editor else None,
         expected_provided=expected_provided,
     )
     return _ScoredTrace(
@@ -630,6 +637,16 @@ def main(argv: list[str] | None = None) -> int:
         print(render_corpus_report(report))
     else:
         print(render_corpus_plain(report))
+        # The plain view names no error text, so each load failure's reason goes to
+        # stderr, escaped because exception text can carry trace content.
+        for item in report.items:
+            if not item.loaded:
+                reason = item.mismatches[0].removeprefix(_LOAD_FAILURE)
+                print(
+                    f"error: could not load {item.display}: "
+                    f"{quote_untrusted_text(reason)}",
+                    file=sys.stderr,
+                )
     if report.exit_code == _EXIT_USAGE:
         print(
             "error: corpus run failed at the usage level "

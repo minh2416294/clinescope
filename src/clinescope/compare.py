@@ -67,6 +67,7 @@ from pathlib import Path
 from clinescope.apply_recovery import score_apply_recovery
 from clinescope.diff_coherence import score_diff_coherence
 from clinescope.diff_minimality import score_diff_minimality
+from clinescope.editor_newlines import editor_newlines_check
 from clinescope.editor_recovery import EditorRecoveryScore, score_editor_recovery
 from clinescope.labels import LabelError, TraceLabel, labels_load
 from clinescope.plain_report import (
@@ -77,6 +78,7 @@ from clinescope.plain_report import (
     plain_report_results,
     plain_run_lines,
 )
+from clinescope.render_safety import quote_untrusted_text
 from clinescope.report import (
     diff_coherence_cell_verdict,
     render_score_out_of_100,
@@ -267,14 +269,16 @@ def _score_cells(
             verdict=summary_verdict(value),
         )
     cells["editor_recovery"] = editor_recovery_cell(editor_score)
-    # The single-trace CLI passes editor_recovery only when the trace has an editor
-    # call; the plain results follow the same rule.
+    # The single-trace CLI passes editor_recovery and editor_newlines only when the
+    # trace has an editor call; the plain results follow the same rule.
+    has_editor = editor_score.editor_call_count > 0
     plain = plain_report_results(
         ts_score,
         diff_coherence=dc_score,
         diff_minimality=dm_score,
         apply_recovery=ar_score,
-        editor_recovery=editor_score if editor_score.editor_call_count else None,
+        editor_recovery=editor_score if has_editor else None,
+        editor_newlines=editor_newlines_check(trace) if has_editor else None,
         expected_provided=expected_provided,
     )
     return cells, plain
@@ -452,8 +456,16 @@ def main(argv: list[str] | None = None) -> int:
         return _EXIT_LOAD_ERROR
     if args.details:
         print(render_compare_report(report))
-    else:
-        print(render_compare_plain(report))
+        return report.exit_code
+    print(render_compare_plain(report))
+    # The plain view names no error text, so the reason goes to stderr. Exception
+    # text can carry trace content, so it is escaped.
+    for row in report.rows:
+        if row.error is not None:
+            print(
+                f"error: could not load {row.label}: {quote_untrusted_text(row.error)}",
+                file=sys.stderr,
+            )
     return report.exit_code
 
 
