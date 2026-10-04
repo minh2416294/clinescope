@@ -176,8 +176,8 @@ clinescope <trace.json> --test-cmd pytest                # did a command with th
 clinescope --vscode                                      # find and score a VS Code extension session
 clinescope-gate <trace.json> --min-diff-coherence 0.75   # CI gate: exit 0 pass, 1 fail, 2 usage error
 clinescope-gate <trace.json> --min-editor-recovery 1.0 --min-tool-selection 1.0 --expected editor   # an editor run
-clinescope-corpus                                        # the real-trace regression corpus
-python -m clinescope.compare A.json B.json               # multi-trace scorecard
+clinescope-corpus                                        # the real-trace regression corpus (--details: the table)
+python -m clinescope.compare A.json B.json               # several runs at once (--details: the scorecard table)
 python -m clinescope.judge_run --report-only             # recompute kappa, no model call
 python -m clinescope.judge_multidraw --report-only       # judge stability across draws
 ```

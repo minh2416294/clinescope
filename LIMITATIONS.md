@@ -160,7 +160,8 @@ model meant many lines and wrote one. In `examples/live-granite-escaped-newlines
 Cline CLI 3.0.65, 2026-09-27) that call replaced a whole file with one line holding 78 literal `\n`;
 `examples/corpus/README.md` records that Python could not parse the result. Cline recorded success, and
 before this line existed the report printed `clean run - nothing to fix`. A hit is reported as a problem, and in `--details` it keeps that footer off.
-It is not a score, no gate flag reads it, `compare` and the corpus ignore it, and in `--details` a trace
+It is not a score, no gate flag reads it, the `--details` tables of `compare` and the corpus ignore it
+(their plain views show it as the single-run report does, and no corpus label checks it), and in `--details` a trace
 with no hit renders exactly as before; the plain report lists it under "What went well", worded as the
 one shape below and never as a claim about every edit.
 
@@ -218,8 +219,8 @@ shown harm is the `editor_newlines` context line.
 `tool_selection` still scores all these tools (every family is in the pinned vocabulary).
 
 **`editor_recovery` is in the gate, and a clean editor run needs `tool_selection` to pass.** It renders
-in the `clinescope` report, feeds its advice, and has a column in the `python -m clinescope.compare`
-and `clinescope-corpus` tables, where `-` means the trace made no `editor` call. The corpus shows that
+in the `clinescope` report, feeds its advice, and has a column in the `--details` tables of
+`python -m clinescope.compare` and `clinescope-corpus`, where `-` means the trace made no `editor` call. The corpus shows that
 column but does not check it against a label. `clinescope-gate` reads it through
 `--min-editor-recovery`. It abstains when no `editor` call failed, so on a clean editor run it verifies
 nothing on its own and the gate exits `2`. `--min-tool-selection` with `--expected` is the one gated
