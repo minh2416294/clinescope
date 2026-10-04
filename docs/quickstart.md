@@ -252,7 +252,7 @@ Clinescope found no problems in the checks below.
 What went well
 - The agent used every tool you listed.
 - 1 edit failed, and a later edit to the same file went through.
-- No edit replaced real line breaks with the text \n.
+- No editor edit replaced two or more lines with one line that holds the text \n.
 
 Did not apply
 - 3 checks did not apply, because they only read a kind of edit this run did not use.

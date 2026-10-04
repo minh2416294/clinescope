@@ -398,7 +398,9 @@ def _plain_recovery_problem(
 def _plain_editor_newlines(results: _Results, check: EditorNewlinesCheck) -> None:
     advice = advice_for_editor_newlines(check)
     if advice is None:
-        results.went_well.append("No edit replaced real line breaks with the text \\n.")
+        results.went_well.append(
+            "No editor edit replaced two or more lines with one line that holds the text \\n."
+        )
         return
     names = [_plain_file_name(path) for _, path in check.hits if path is not None]
     if len(check.hits) == 1:

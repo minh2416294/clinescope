@@ -12,10 +12,9 @@ All notable changes to Clinescope are recorded here. The format follows
   what to do about it and why the check could be wrong, then the checks that went well, then
   any check that did not apply to the run. It names no scorer and shows no score. A file is
   shown by its name only. `--details` prints the technical report instead. Exit codes,
-  `clinescope-gate`, `--verbose`, `compare`, the corpus and `dependencies = []` are unchanged
-  (#158).
-- Advice is no longer opt-in: it shows on every run that has a problem, in both views.
-  `--advice` is still accepted and changes nothing.
+  `clinescope-gate`, `compare`, the corpus and `dependencies = []` are unchanged (#158).
+- Advice is no longer opt-in: it shows on every run that has a problem, in both views and in
+  `--verbose`. `--advice` is still accepted and changes nothing.
 - Problems that had no advice now get some: an `--expected-input` no `editor` call carried, an
   `editor` call that wrote literal `\n` where the old text had line breaks, and a `--test-cmd`
   command that did not run after the last edit or that Cline marked failed. The maintainer

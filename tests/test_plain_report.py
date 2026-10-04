@@ -146,7 +146,7 @@ def test_editor_run_shows_the_apply_patch_checks_as_not_applying(
         "What went well\n"
         "- The agent used every tool you listed.\n"
         "- 1 edit failed, and a later edit to the same file went through.\n"
-        "- No edit replaced real line breaks with the text \\n.\n"
+        "- No editor edit replaced two or more lines with one line that holds the text \\n.\n"
         "\n"
         "Did not apply\n"
         "- 3 checks did not apply, because they only read a kind of edit this run did"
